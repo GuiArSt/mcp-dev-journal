@@ -210,6 +210,7 @@ Replace `/absolute/path/to/` with your actual installation path.
 1. Go to Linear → Personal Settings → API → Personal API Keys
 2. Create new key
 3. Copy the key (`lin_api_...`)
+4. **(Optional)** Set `LINEAR_USER_ID` to your Linear user ID for default assignee filtering in `list_issues`. Use the `linear_get_viewer` tool to find your user ID.
 
 ### Journal Setup
 

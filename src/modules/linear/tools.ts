@@ -7,7 +7,7 @@ import { logger } from '../../shared/logger.js';
 /**
  * Register Linear tools with the MCP server
  */
-export function registerLinearTools(server: McpServer, client: LinearClient) {
+export function registerLinearTools(server: McpServer, client: LinearClient, defaultUserId?: string) {
   logger.info('Registering Linear tools...');
 
   // Tool 1: Get Viewer (Current User Info)
@@ -40,9 +40,9 @@ export function registerLinearTools(server: McpServer, client: LinearClient) {
     'linear_list_issues',
     {
       title: 'List Linear Issues',
-      description: 'List issues in Linear with optional filters for assignee, state, team, project, or text search. By default shows issues assigned to you.',
+      description: `List issues in Linear with optional filters for assignee, state, team, project, or text search. By default shows issues assigned to you${defaultUserId ? ` (user ID: ${defaultUserId})` : ' (set LINEAR_USER_ID env var to configure)'}.`,
       inputSchema: {
-        assigneeId: z.string().optional().describe('Filter by assignee user ID (defaults to your user ID: 55f0a513-ee91-4c51-bc15-0de92ca93cf2)'),
+        assigneeId: z.string().optional().describe(`Filter by assignee user ID${defaultUserId ? ` (defaults to your user ID: ${defaultUserId})` : ' (set LINEAR_USER_ID env var for default)'}`),
         stateId: z.string().optional().describe('Filter by workflow state ID'),
         teamId: z.string().optional().describe('Filter by team ID'),
         projectId: z.string().optional().describe('Filter by project ID'),
@@ -57,9 +57,9 @@ export function registerLinearTools(server: McpServer, client: LinearClient) {
     },
     async ({ assigneeId, stateId, teamId, projectId, query, limit, showAll }) => {
       try {
-        // Default to your user ID if not specified and showAll is false
-        const MY_USER_ID = '55f0a513-ee91-4c51-bc15-0de92ca93cf2';
-        const finalAssigneeId = showAll ? assigneeId : (assigneeId || MY_USER_ID);
+        // Default to configured user ID if not specified and showAll is false
+        // LINEAR_USER_ID env var can override, otherwise falls back to null (shows all)
+        const finalAssigneeId = showAll ? assigneeId : (assigneeId || defaultUserId || undefined);
 
         const issues = await client.listIssues({
           assigneeId: finalAssigneeId,

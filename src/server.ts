@@ -43,7 +43,7 @@ export class UnifiedMCPServer {
     // Initialize Linear module if configured
     if (this.config.linear) {
       const linearClient = new LinearClient(this.config.linear.apiKey);
-      registerLinearTools(this.server, linearClient);
+      registerLinearTools(this.server, linearClient, this.config.linear.userId);
     }
 
     // Initialize Journal module if configured

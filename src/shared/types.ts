@@ -25,6 +25,7 @@ export interface SlackConfig {
 
 export interface LinearConfig {
   apiKey: string;
+  userId?: string; // Optional user ID for default assignee filtering
 }
 
 export interface JournalConfig {

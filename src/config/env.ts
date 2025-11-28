@@ -14,6 +14,7 @@ const envSchema = z.object({
 
   // Linear (optional)
   LINEAR_API_KEY: z.string().optional(),
+  LINEAR_USER_ID: z.string().optional(),
 
   // AI Providers (at least one required for journal)
   ANTHROPIC_API_KEY: z.string().optional(),
@@ -47,6 +48,7 @@ export function loadConfig(): UnifiedConfig {
   if (env.LINEAR_API_KEY) {
     config.linear = {
       apiKey: env.LINEAR_API_KEY,
+      userId: env.LINEAR_USER_ID, // Optional: defaults to null, can be set via env var
     };
     logger.info('Linear module enabled');
   }
