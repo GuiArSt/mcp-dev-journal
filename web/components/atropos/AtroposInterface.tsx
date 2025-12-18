@@ -676,15 +676,15 @@ export function AtroposInterface() {
 
       {/* Save Dialog */}
       <Dialog open={showSaveDialog} onOpenChange={setShowSaveDialog}>
-        <DialogContent className="max-w-lg bg-[var(--tartarus-surface)] border-[var(--tartarus-border)]">
-          <DialogHeader>
+        <DialogContent className="max-w-2xl max-h-[85vh] flex flex-col bg-[var(--tartarus-surface)] border-[var(--tartarus-border)]">
+          <DialogHeader className="flex-shrink-0">
             <DialogTitle className="text-[var(--tartarus-ivory)] flex items-center gap-2">
               <Sparkles className="h-5 w-5 text-[var(--tartarus-gold)]" />
               Extracted Learnings
             </DialogTitle>
           </DialogHeader>
           {extractedLearnings && (
-            <div className="space-y-4 py-2">
+            <div className="flex-1 overflow-y-auto space-y-4 py-2 pr-2">
               {/* Label */}
               <div className="space-y-1">
                 <label className="text-xs text-[var(--tartarus-ivory-faded)]">
@@ -697,13 +697,14 @@ export function AtroposInterface() {
                 />
               </div>
 
-              {/* Main Changes */}
+              {/* Main Changes - Collapsible */}
               {extractedLearnings.mainChanges.length > 0 && (
-                <div className="space-y-1">
-                  <label className="text-xs text-[var(--tartarus-ivory-faded)]">
-                    Changes you made
-                  </label>
-                  <ul className="text-sm text-[var(--tartarus-ivory-dim)] space-y-1">
+                <details className="group" open>
+                  <summary className="flex items-center gap-2 cursor-pointer text-xs text-[var(--tartarus-ivory-faded)] hover:text-[var(--tartarus-ivory)] transition-colors">
+                    <ChevronRight className="h-3 w-3 transition-transform group-open:rotate-90" />
+                    Changes you made ({extractedLearnings.mainChanges.length})
+                  </summary>
+                  <ul className="text-sm text-[var(--tartarus-ivory-dim)] space-y-1 mt-2 ml-5">
                     {extractedLearnings.mainChanges.map((change, i) => (
                       <li key={i} className="flex items-start gap-2">
                         <span className="text-[var(--tartarus-teal)]">•</span>
@@ -711,20 +712,21 @@ export function AtroposInterface() {
                       </li>
                     ))}
                   </ul>
-                </div>
+                </details>
               )}
 
-              {/* New Patterns */}
+              {/* New Patterns - Collapsible */}
               {extractedLearnings.newPatterns.length > 0 && (
-                <div className="space-y-2">
-                  <label className="text-xs text-[var(--tartarus-ivory-faded)]">
-                    New patterns to remember
-                  </label>
-                  <div className="space-y-1">
+                <details className="group" open>
+                  <summary className="flex items-center gap-2 cursor-pointer text-xs text-[var(--tartarus-ivory-faded)] hover:text-[var(--tartarus-ivory)] transition-colors">
+                    <ChevronRight className="h-3 w-3 transition-transform group-open:rotate-90" />
+                    New patterns to remember ({extractedLearnings.newPatterns.length})
+                  </summary>
+                  <div className="space-y-1.5 mt-2 ml-5">
                     {extractedLearnings.newPatterns.map((pattern) => (
                       <label
                         key={pattern}
-                        className="flex items-center gap-2 text-sm text-[var(--tartarus-ivory-dim)] cursor-pointer"
+                        className="flex items-start gap-2 text-sm text-[var(--tartarus-ivory-dim)] cursor-pointer hover:text-[var(--tartarus-ivory)] transition-colors"
                       >
                         <input
                           type="checkbox"
@@ -738,22 +740,23 @@ export function AtroposInterface() {
                             }
                             setSelectedPatterns(newSet);
                           }}
-                          className="accent-[var(--tartarus-teal)]"
+                          className="accent-[var(--tartarus-teal)] mt-0.5 flex-shrink-0"
                         />
-                        {pattern}
+                        <span>{pattern}</span>
                       </label>
                     ))}
                   </div>
-                </div>
+                </details>
               )}
 
-              {/* Dictionary Words */}
+              {/* Dictionary Words - Collapsible */}
               {extractedLearnings.newDictionaryWords.length > 0 && (
-                <div className="space-y-2">
-                  <label className="text-xs text-[var(--tartarus-ivory-faded)]">
-                    Add to dictionary
-                  </label>
-                  <div className="flex flex-wrap gap-2">
+                <details className="group" open>
+                  <summary className="flex items-center gap-2 cursor-pointer text-xs text-[var(--tartarus-ivory-faded)] hover:text-[var(--tartarus-ivory)] transition-colors">
+                    <ChevronRight className="h-3 w-3 transition-transform group-open:rotate-90" />
+                    Add to dictionary ({extractedLearnings.newDictionaryWords.length})
+                  </summary>
+                  <div className="flex flex-wrap gap-2 mt-2 ml-5">
                     {extractedLearnings.newDictionaryWords.map((word) => (
                       <label
                         key={word}
@@ -782,11 +785,11 @@ export function AtroposInterface() {
                       </label>
                     ))}
                   </div>
-                </div>
+                </details>
               )}
             </div>
           )}
-          <DialogFooter>
+          <DialogFooter className="flex-shrink-0 border-t border-[var(--tartarus-border)] pt-4 mt-2">
             <Button
               variant="ghost"
               onClick={() => setShowSaveDialog(false)}
