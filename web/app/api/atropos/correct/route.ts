@@ -2,118 +2,162 @@ import { NextRequest, NextResponse } from "next/server";
 import { anthropic } from "@ai-sdk/anthropic";
 import { generateObject } from "ai";
 import { getDatabase } from "@/lib/db";
+import { withErrorHandler } from "@/lib/api-handler";
+import { ValidationError } from "@/lib/errors";
 import {
   CorrectionResponseSchema,
   getAtroposSystemPrompt,
   buildCorrectionUserPrompt,
-  getDefaultAtroposMemory,
   AtroposMemory,
 } from "@/lib/ai/atropos";
 
-interface AtroposMemoryRow {
+interface AtroposMemoryItem {
   id: number;
   user_id: string;
-  custom_dictionary: string;
-  memories: string;
+  content: string;
+  tags: string;
+  frequency: number;
+}
+
+interface AtroposDictionaryTerm {
+  term: string;
+}
+
+interface AtroposStatsRow {
   total_checks: number;
   total_corrections: number;
-  created_at: string;
-  updated_at: string;
+}
+
+/**
+ * Load memory from normalized tables
+ */
+function loadAtroposMemory(db: ReturnType<typeof getDatabase>, userId: string): AtroposMemory {
+  // Get memories
+  const memories = db
+    .prepare("SELECT content, tags FROM atropos_memories WHERE user_id = ? ORDER BY frequency DESC, updated_at DESC")
+    .all(userId) as AtroposMemoryItem[];
+
+  // Get dictionary terms
+  const dictTerms = db
+    .prepare("SELECT term FROM atropos_dictionary WHERE user_id = ?")
+    .all(userId) as AtroposDictionaryTerm[];
+
+  // Get stats
+  const stats = db
+    .prepare("SELECT total_checks, total_corrections FROM atropos_stats WHERE user_id = ?")
+    .get(userId) as AtroposStatsRow | undefined;
+
+  return {
+    customDictionary: dictTerms.map((t) => t.term),
+    memories: memories.map((m) => ({
+      content: m.content,
+      tags: JSON.parse(m.tags || "[]"),
+    })),
+    totalChecks: stats?.total_checks || 0,
+    totalCorrections: stats?.total_corrections || 0,
+  };
+}
+
+/**
+ * Save correction to history
+ */
+function saveCorrection(
+  db: ReturnType<typeof getDatabase>,
+  userId: string,
+  originalText: string,
+  correctedText: string,
+  hadChanges: boolean,
+  intentQuestions: string[],
+  sourceContext?: string
+) {
+  db.prepare(
+    `INSERT INTO atropos_corrections (user_id, original_text, corrected_text, had_changes, intent_questions, source_context)
+     VALUES (?, ?, ?, ?, ?, ?)`
+  ).run(userId, originalText, correctedText, hadChanges ? 1 : 0, JSON.stringify(intentQuestions), sourceContext || null);
+}
+
+/**
+ * Update stats in normalized table
+ */
+function updateStats(db: ReturnType<typeof getDatabase>, userId: string, hadChanges: boolean, charsDiff: number) {
+  db.prepare(
+    `INSERT INTO atropos_stats (user_id, total_checks, total_corrections, total_characters_corrected)
+     VALUES (?, 1, ?, ?)
+     ON CONFLICT(user_id) DO UPDATE SET
+       total_checks = total_checks + 1,
+       total_corrections = total_corrections + ?,
+       total_characters_corrected = total_characters_corrected + ?,
+       updated_at = CURRENT_TIMESTAMP`
+  ).run(userId, hadChanges ? 1 : 0, charsDiff, hadChanges ? 1 : 0, charsDiff);
 }
 
 /**
  * POST /api/atropos/correct
  * Correct text using Atropos with structured output
  */
-export async function POST(request: NextRequest) {
-  try {
-    const { text, answers } = await request.json();
+export const POST = withErrorHandler(async (request: NextRequest) => {
+  const { text, answers, sourceContext } = await request.json();
 
-    if (!text || typeof text !== "string") {
-      return NextResponse.json({ error: "Text is required" }, { status: 400 });
-    }
-
-    if (text.length > 50000) {
-      return NextResponse.json(
-        { error: "Text too long. Maximum 50,000 characters." },
-        { status: 400 }
-      );
-    }
-
-    // Check API key
-    const apiKey = process.env.ANTHROPIC_API_KEY;
-    if (!apiKey) {
-      return NextResponse.json(
-        { error: "Anthropic API key not configured" },
-        { status: 500 }
-      );
-    }
-
-    // Load user's memory
-    const db = getDatabase();
-    let memoryRow = db
-      .prepare("SELECT * FROM atropos_memory WHERE user_id = ?")
-      .get("default") as AtroposMemoryRow | undefined;
-
-    // Create default memory if not exists
-    if (!memoryRow) {
-      const defaultMemory = getDefaultAtroposMemory();
-      db.prepare(
-        `INSERT INTO atropos_memory (user_id, custom_dictionary, memories)
-         VALUES (?, ?, ?)`
-      ).run(
-        "default",
-        JSON.stringify(defaultMemory.customDictionary),
-        JSON.stringify(defaultMemory.memories)
-      );
-      memoryRow = db
-        .prepare("SELECT * FROM atropos_memory WHERE user_id = ?")
-        .get("default") as AtroposMemoryRow;
-    }
-
-    // Parse memory
-    const memory: AtroposMemory = {
-      customDictionary: JSON.parse(memoryRow.custom_dictionary || "[]"),
-      memories: JSON.parse(memoryRow.memories || "[]"),
-      totalChecks: memoryRow.total_checks,
-      totalCorrections: memoryRow.total_corrections,
-    };
-
-    // Build prompts
-    const systemPrompt = getAtroposSystemPrompt(memory);
-    const userPrompt = buildCorrectionUserPrompt(text, answers);
-
-    // Call Haiku 4.5 with structured output
-    const { object: response } = await generateObject({
-      model: anthropic("claude-haiku-4-5-20251001"),
-      schema: CorrectionResponseSchema,
-      system: systemPrompt,
-      prompt: userPrompt,
-    });
-
-    // Update stats (don't block response)
-    try {
-      db.prepare(
-        `UPDATE atropos_memory
-         SET total_checks = total_checks + 1,
-             total_corrections = total_corrections + ?,
-             updated_at = CURRENT_TIMESTAMP
-         WHERE user_id = ?`
-      ).run(response.hadChanges ? 1 : 0, "default");
-    } catch (e) {
-      console.error("[Atropos] Failed to update stats:", e);
-    }
-
-    return NextResponse.json({
-      correctedText: response.correctedText,
-      hadChanges: response.hadChanges,
-      intentQuestions: response.intentQuestions || [],
-    });
-  } catch (error: any) {
-    console.error("[Atropos Correct] Error:", error);
-    return NextResponse.json(
-      { error: error.message || "Correction failed" },
-      { status: 500 }
-    );
+  if (!text || typeof text !== "string") {
+    throw new ValidationError("Text is required");
   }
-}
+
+  if (text.length > 50000) {
+    throw new ValidationError("Text too long. Maximum 50,000 characters.");
+  }
+
+  // Check API key
+  const apiKey = process.env.ANTHROPIC_API_KEY;
+  if (!apiKey) {
+    throw new Error("Anthropic API key not configured");
+  }
+
+  const db = getDatabase();
+  const userId = "default";
+
+  // Load memory from normalized tables
+  const memory = loadAtroposMemory(db, userId);
+
+  // Build prompts
+  const systemPrompt = getAtroposSystemPrompt(memory);
+  const userPrompt = buildCorrectionUserPrompt(text, answers);
+
+  // Call Haiku 4.5 with structured output
+  const { object: response } = await generateObject({
+    model: anthropic("claude-haiku-4-5-20251001"),
+    schema: CorrectionResponseSchema,
+    system: systemPrompt,
+    prompt: userPrompt,
+  });
+
+  // Calculate character difference for stats
+  const charsDiff = Math.abs(response.correctedText.length - text.length);
+
+  // Save correction to history (async, don't block response)
+  try {
+    saveCorrection(
+      db,
+      userId,
+      text,
+      response.correctedText,
+      response.hadChanges,
+      (response.intentQuestions || []).map(q => q.question),
+      sourceContext
+    );
+  } catch (e) {
+    console.error("[Atropos] Failed to save correction:", e);
+  }
+
+  // Update stats (async, don't block response)
+  try {
+    updateStats(db, userId, response.hadChanges, charsDiff);
+  } catch (e) {
+    console.error("[Atropos] Failed to update stats:", e);
+  }
+
+  return NextResponse.json({
+    correctedText: response.correctedText,
+    hadChanges: response.hadChanges,
+    intentQuestions: response.intentQuestions || [],
+  });
+});

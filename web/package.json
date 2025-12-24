@@ -12,13 +12,16 @@
     "format:fix": "prettier --write \"**/*.{ts,tsx,js,jsx,json,css}\"",
     "fix": "npm run format:fix && npm run lint:fix",
     "typecheck": "tsc --noEmit",
-    "check": "npm run lint && npm run format && npm run typecheck"
+    "check": "npm run lint && npm run format && npm run typecheck",
+    "test": "vitest",
+    "test:run": "vitest run",
+    "test:coverage": "vitest run --coverage"
   },
   "dependencies": {
     "@ai-sdk/anthropic": "^2.0.56",
     "@ai-sdk/google": "^2.0.46",
     "@ai-sdk/openai": "^2.0.86",
-    "@ai-sdk/react": "^2.0.115",
+    "@ai-sdk/react": "^2.0.117",
     "@anthropic-ai/sdk": "^0.71.2",
     "@radix-ui/react-avatar": "^1.1.11",
     "@radix-ui/react-dialog": "^1.1.15",
@@ -42,12 +45,13 @@
     "clsx": "^2.1.1",
     "diff": "^8.0.2",
     "dotenv": "^17.2.3",
+    "drizzle-orm": "^0.45.1",
     "jsonwebtoken": "^9.0.3",
     "lucide-react": "^0.561.0",
     "mermaid": "^11.12.2",
     "next": "16.0.7",
-    "react": "19.2.0",
-    "react-dom": "19.2.0",
+    "react": "^19.2.3",
+    "react-dom": "^19.2.3",
     "react-markdown": "^10.1.0",
     "remark-gfm": "^4.0.1",
     "replicate": "^1.4.0",
@@ -61,6 +65,8 @@
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "@vitest/coverage-v8": "^4.0.16",
+    "drizzle-kit": "^0.31.8",
     "eslint": "^9.39.2",
     "eslint-config-next": "16.0.7",
     "eslint-config-prettier": "^10.1.8",
@@ -68,6 +74,7 @@
     "prettier": "^3.7.4",
     "prettier-plugin-tailwindcss": "^0.7.2",
     "tailwindcss": "^4",
-    "typescript": "^5"
+    "typescript": "^5",
+    "vitest": "^4.0.16"
   }
 }

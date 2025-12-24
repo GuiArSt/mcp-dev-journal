@@ -26,7 +26,6 @@ import {
   X,
   Plus,
 } from "lucide-react";
-import Image from "next/image";
 
 interface JournalEntry {
   id: number;
@@ -300,7 +299,7 @@ export default function EntryDetailPage() {
                 onClick={editWithKronus}
                 className="bg-[var(--tartarus-gold)] text-[var(--tartarus-void)] hover:bg-[var(--tartarus-gold-bright)]"
               >
-                <Image src="/chronus-logo.png" alt="Kronus" width={16} height={16} className="mr-2 rounded-full" />
+                <img src="/chronus-logo.png" alt="Kronus" className="h-4 w-4 mr-2 rounded-full object-cover" />
                 Edit with Kronus
               </Button>
             </>

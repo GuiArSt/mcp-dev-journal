@@ -39,47 +39,47 @@ import { cn } from "@/lib/utils";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 
-// Memoized markdown components to prevent re-creation on each render
+// Memoized markdown components - tighter spacing for better density
 const markdownComponents = {
   h1: ({ children }: any) => (
-    <h1 className="text-xl font-bold mt-4 mb-2 text-[var(--kronus-ivory)]">{children}</h1>
+    <h1 className="text-lg font-bold mt-3 mb-1.5 text-[var(--kronus-ivory)]">{children}</h1>
   ),
   h2: ({ children }: any) => (
-    <h2 className="text-lg font-semibold mt-3 mb-2 text-[var(--kronus-ivory)]">{children}</h2>
+    <h2 className="text-base font-semibold mt-2.5 mb-1 text-[var(--kronus-ivory)]">{children}</h2>
   ),
   h3: ({ children }: any) => (
-    <h3 className="text-base font-medium mt-2 mb-1 text-[var(--kronus-teal)]">{children}</h3>
+    <h3 className="text-sm font-medium mt-2 mb-0.5 text-[var(--kronus-teal)]">{children}</h3>
   ),
   p: ({ children }: any) => (
-    <p className="mb-2 leading-relaxed text-[var(--kronus-ivory-dim)]">{children}</p>
+    <p className="mb-1.5 leading-snug text-[var(--kronus-ivory-dim)]">{children}</p>
   ),
   ul: ({ children }: any) => (
-    <ul className="list-disc list-inside mb-2 space-y-1 ml-4 text-[var(--kronus-ivory-dim)]">{children}</ul>
+    <ul className="list-disc list-inside mb-1.5 space-y-0.5 ml-3 text-[var(--kronus-ivory-dim)]">{children}</ul>
   ),
   ol: ({ children }: any) => (
-    <ol className="list-decimal list-inside mb-2 space-y-1 ml-4 text-[var(--kronus-ivory-dim)]">{children}</ol>
+    <ol className="list-decimal list-inside mb-1.5 space-y-0.5 ml-3 text-[var(--kronus-ivory-dim)]">{children}</ol>
   ),
   li: ({ children }: any) => (
-    <li className="leading-relaxed marker:text-[var(--kronus-teal)]">{children}</li>
+    <li className="leading-snug marker:text-[var(--kronus-teal)]">{children}</li>
   ),
   code: ({ children, className }: any) => {
     const isInline = !className;
     return isInline ? (
-      <code className="bg-[var(--kronus-deep)] px-1.5 py-0.5 rounded text-xs font-mono text-[var(--kronus-teal)]">
+      <code className="bg-[var(--kronus-deep)] px-1 py-0.5 rounded text-xs font-mono text-[var(--kronus-teal)]">
         {children}
       </code>
     ) : (
-      <code className={cn("block bg-[var(--kronus-deep)] border border-[var(--kronus-border)] p-3 rounded-md text-xs font-mono overflow-x-auto text-[var(--kronus-ivory-dim)]", className)}>
+      <code className={cn("block bg-[var(--kronus-deep)] border border-[var(--kronus-border)] p-2 rounded-md text-xs font-mono overflow-x-auto text-[var(--kronus-ivory-dim)]", className)}>
         {children}
       </code>
     );
   },
   blockquote: ({ children }: any) => (
-    <blockquote className="border-l-3 border-[var(--kronus-teal)] bg-[var(--kronus-deep)] pl-4 pr-3 py-2 rounded-r-lg italic my-2 text-[var(--kronus-ivory-muted)]">
+    <blockquote className="border-l-2 border-[var(--kronus-teal)] bg-[var(--kronus-deep)] pl-3 pr-2 py-1.5 rounded-r-lg italic my-1.5 text-[var(--kronus-ivory-muted)]">
       {children}
     </blockquote>
   ),
-  hr: () => <hr className="my-4 border-[var(--kronus-border)]" />,
+  hr: () => <hr className="my-2.5 border-[var(--kronus-border)]" />,
   strong: ({ children }: any) => (
     <strong className="font-semibold text-[var(--kronus-ivory)]">{children}</strong>
   ),
@@ -90,13 +90,13 @@ const markdownComponents = {
     <a href={href} className="text-[var(--kronus-teal)] underline underline-offset-2 hover:text-[var(--kronus-gold)]" target="_blank" rel="noopener noreferrer">{children}</a>
   ),
   table: ({ children }: any) => (
-    <table className="w-full my-3 border-collapse">{children}</table>
+    <table className="w-full my-2 border-collapse">{children}</table>
   ),
   th: ({ children }: any) => (
-    <th className="border border-[var(--kronus-border)] bg-[var(--kronus-deep)] px-3 py-2 text-left text-[var(--kronus-ivory)] font-semibold">{children}</th>
+    <th className="border border-[var(--kronus-border)] bg-[var(--kronus-deep)] px-2 py-1.5 text-left text-[var(--kronus-ivory)] font-semibold text-sm">{children}</th>
   ),
   td: ({ children }: any) => (
-    <td className="border border-[var(--kronus-border)] px-3 py-2 text-[var(--kronus-ivory-dim)]">{children}</td>
+    <td className="border border-[var(--kronus-border)] px-2 py-1.5 text-[var(--kronus-ivory-dim)] text-sm">{children}</td>
   ),
 };
 
@@ -203,7 +203,7 @@ export function ChatInterface() {
             });
             const res = await fetch(`/api/entries?${params}`);
             const data = await res.json();
-            output = `Found ${data.total} entries for ${typedArgs.repository}:\n${JSON.stringify(data.entries?.slice(0, 5), null, 2)}`;
+            output = `Found ${data.total} entries for ${typedArgs.repository}:\n${JSON.stringify(data.entries, null, 2)}`;
             break;
           }
 
@@ -216,7 +216,7 @@ export function ChatInterface() {
             });
             const res = await fetch(`/api/entries?${params}`);
             const data = await res.json();
-            output = `Found ${data.total} entries for ${typedArgs.repository}/${typedArgs.branch}:\n${JSON.stringify(data.entries?.slice(0, 5), null, 2)}`;
+            output = `Found ${data.total} entries for ${typedArgs.repository}/${typedArgs.branch}:\n${JSON.stringify(data.entries, null, 2)}`;
             break;
           }
 
@@ -310,7 +310,7 @@ export function ChatInterface() {
 
             const res = await fetch(`/api/integrations/linear/issues?${params}`);
             const data = await res.json();
-            output = `Found ${data.issues?.length || 0} issues:\n${JSON.stringify(data.issues?.slice(0, 5), null, 2)}`;
+            output = `Found ${data.issues?.length || 0} issues:\n${JSON.stringify(data.issues, null, 2)}`;
             break;
           }
 
@@ -369,8 +369,7 @@ export function ChatInterface() {
             if (typedArgs.limit) params.set("limit", String(typedArgs.limit));
             const res = await fetch(`/api/documents?${params}`);
             const data = await res.json();
-            output = `Found ${data.total} documents:
-${JSON.stringify(data.documents?.slice(0, 5), null, 2)}`;
+            output = `Found ${data.total} documents:\n${JSON.stringify(data.documents, null, 2)}`;
             break;
           }
 
@@ -378,9 +377,7 @@ ${JSON.stringify(data.documents?.slice(0, 5), null, 2)}`;
             const res = await fetch(`/api/documents/${typedArgs.slug}`);
             const data = await res.json();
             if (!res.ok) throw new Error(data.error || "Document not found");
-            output = `Document: ${data.title}
-
-${data.content.substring(0, 500)}...`;
+            output = `**${data.title}** (ID: ${data.id})\nType: ${data.type}\nSlug: ${data.slug}\n\n${data.content}`;
             break;
           }
 
@@ -423,8 +420,7 @@ ${data.content.substring(0, 500)}...`;
           case "skill_list": {
             const res = await fetch("/api/cv/skills");
             const data = await res.json();
-            output = `Found ${data.length} skills:
-${JSON.stringify(data.slice(0, 10), null, 2)}`;
+            output = `Found ${data.length} skills:\n${JSON.stringify(data, null, 2)}`;
             break;
           }
 
@@ -766,13 +762,13 @@ Details: ${data.details}` : "";
             if (typedArgs.id) url += `/${typedArgs.id}`;  // Now supports ID lookup
             else if (typedArgs.slug) url += `/${encodeURIComponent(String(typedArgs.slug))}`;
             else throw new Error("Either id or slug is required");
-            
+
             const res = await fetch(url);
             const data = await res.json();
             if (!res.ok) throw new Error(data.error || "Document not found");
-            
+
             const doc = data.document || data;
-            output = `**${doc.title}** (ID: ${doc.id})\nType: ${doc.type}\nSlug: ${doc.slug}\n\n${doc.content.substring(0, 2000)}${doc.content.length > 2000 ? "\n\n... (truncated)" : ""}`;
+            output = `**${doc.title}** (ID: ${doc.id})\nType: ${doc.type}\nSlug: ${doc.slug}\n\n${doc.content}`;
             break;
           }
 
@@ -1563,7 +1559,7 @@ Details: ${data.details}` : "";
 
         {/* Messages Area */}
         <ScrollArea className="flex-1 z-10" ref={scrollRef}>
-          <div className="mx-auto max-w-3xl space-y-6 p-6">
+          <div className="mx-auto max-w-3xl space-y-4 p-4">
             {messages.length === 0 && (
               <div className="kronus-message p-6">
                 <div className="flex items-start gap-4">
@@ -1615,7 +1611,7 @@ Details: ${data.details}` : "";
               >
                 <div
                   className={cn(
-                    "p-4 overflow-visible rounded-xl transition-all",
+                    "p-3 overflow-visible rounded-xl transition-all",
                     message.role === "user" ? "user-message ml-12" : "kronus-message",
                     isSearchMatch && "ring-2 ring-[var(--kronus-teal)]/50",
                     isCurrentSearchResult && "ring-2 ring-[var(--kronus-gold)] bg-[var(--kronus-gold)]/5"

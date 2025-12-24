@@ -1,108 +1,82 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getDatabase } from "@/lib/db";
+import { eq, desc, and, sql, count } from "drizzle-orm";
+import { getDrizzleDb, journalEntries, entryAttachments } from "@/lib/db/drizzle";
+import { withErrorHandler } from "@/lib/api-handler";
+import { requireQuery, journalQuerySchema } from "@/lib/validations";
+import type { JournalEntry } from "@/lib/db/schema";
 
-export async function GET(request: NextRequest) {
-  try {
-    const db = getDatabase();
-    const { searchParams } = new URL(request.url);
-    const repository = searchParams.get("repository");
-    const branch = searchParams.get("branch");
-    const limit = parseInt(searchParams.get("limit") || "50");
-    const offset = parseInt(searchParams.get("offset") || "0");
+/**
+ * GET /api/entries
+ * List journal entries with optional filtering by repository/branch
+ */
+export const GET = withErrorHandler(async (request: NextRequest) => {
+  const { repository, branch, limit, offset } = requireQuery(journalQuerySchema, request);
+  const db = getDrizzleDb();
 
-    let entries: any[];
-    let total: number;
+  // Build where conditions
+  const conditions = [];
+  if (repository) conditions.push(eq(journalEntries.repository, repository));
+  if (branch) conditions.push(eq(journalEntries.branch, branch));
 
-    if (repository && branch) {
-      // Get entries by branch
-      entries = db
-        .prepare(
-          `SELECT * FROM journal_entries 
-           WHERE repository = ? AND branch = ? 
-           ORDER BY created_at DESC 
-           LIMIT ? OFFSET ?`
-        )
-        .all(repository, branch, limit, offset);
+  // Get entries
+  const entries = await db
+    .select()
+    .from(journalEntries)
+    .where(conditions.length > 0 ? and(...conditions) : undefined)
+    .orderBy(desc(journalEntries.createdAt))
+    .limit(limit)
+    .offset(offset);
 
-      const totalRow = db
-        .prepare(
-          "SELECT COUNT(*) as count FROM journal_entries WHERE repository = ? AND branch = ?"
-        )
-        .get(repository, branch) as { count: number };
-      total = totalRow.count;
-    } else if (repository) {
-      // Get entries by repository
-      entries = db
-        .prepare(
-          `SELECT * FROM journal_entries 
-           WHERE repository = ? 
-           ORDER BY created_at DESC 
-           LIMIT ? OFFSET ?`
-        )
-        .all(repository, limit, offset);
+  // Get total count
+  const [totalResult] = await db
+    .select({ count: count() })
+    .from(journalEntries)
+    .where(conditions.length > 0 ? and(...conditions) : undefined);
+  const total = totalResult?.count ?? 0;
 
-      const totalRow = db
-        .prepare("SELECT COUNT(*) as count FROM journal_entries WHERE repository = ?")
-        .get(repository) as { count: number };
-      total = totalRow.count;
-    } else {
-      // Get all entries
-      entries = db
-        .prepare(
-          `SELECT * FROM journal_entries 
-           ORDER BY created_at DESC 
-           LIMIT ? OFFSET ?`
-        )
-        .all(limit, offset);
+  // Get attachment counts for these entries
+  const commitHashes = entries.map((e) => e.commitHash);
+  const attachmentCounts = new Map<string, number>();
 
-      const totalRow = db.prepare("SELECT COUNT(*) as count FROM journal_entries").get() as {
-        count: number;
-      };
-      total = totalRow.count;
-    }
+  if (commitHashes.length > 0) {
+    const attachmentRows = await db
+      .select({
+        commitHash: entryAttachments.commitHash,
+        count: count(),
+      })
+      .from(entryAttachments)
+      .where(sql`${entryAttachments.commitHash} IN ${commitHashes}`)
+      .groupBy(entryAttachments.commitHash);
 
-    // Get attachment counts
-    const commitHashes = entries.map((e: any) => e.commit_hash);
-    const attachmentCounts = new Map<string, number>();
-
-    if (commitHashes.length > 0) {
-      const placeholders = commitHashes.map(() => "?").join(",");
-      const attachmentRows = db
-        .prepare(
-          `SELECT commit_hash, COUNT(*) as count 
-           FROM entry_attachments 
-           WHERE commit_hash IN (${placeholders})
-           GROUP BY commit_hash`
-        )
-        .all(...commitHashes) as Array<{ commit_hash: string; count: number }>;
-
-      commitHashes.forEach((hash) => attachmentCounts.set(hash, 0));
-      attachmentRows.forEach((row) => attachmentCounts.set(row.commit_hash, row.count));
-    }
-
-    const entriesWithAttachments = entries.map((entry: any) => ({
-      ...entry,
-      attachment_count: attachmentCounts.get(entry.commit_hash) || 0,
-    }));
-
-    return NextResponse.json({
-      entries: entriesWithAttachments,
-      total,
-      limit,
-      offset,
-      has_more: offset + entries.length < total,
-    });
-  } catch (error) {
-    console.error("Error fetching entries:", error);
-    return NextResponse.json({ error: "Failed to fetch entries" }, { status: 500 });
+    commitHashes.forEach((hash) => attachmentCounts.set(hash, 0));
+    attachmentRows.forEach((row) => attachmentCounts.set(row.commitHash, row.count));
   }
-}
 
+  // Map to API response format (snake_case for backwards compatibility)
+  const entriesWithAttachments = entries.map((entry) => ({
+    id: entry.id,
+    commit_hash: entry.commitHash,
+    repository: entry.repository,
+    branch: entry.branch,
+    author: entry.author,
+    code_author: entry.codeAuthor,
+    team_members: entry.teamMembers,
+    date: entry.date,
+    why: entry.why,
+    what_changed: entry.whatChanged,
+    decisions: entry.decisions,
+    technologies: entry.technologies,
+    kronus_wisdom: entry.kronusWisdom,
+    raw_agent_report: entry.rawAgentReport,
+    created_at: entry.createdAt,
+    attachment_count: attachmentCounts.get(entry.commitHash) || 0,
+  }));
 
-
-
-
-
-
-
-
+  return NextResponse.json({
+    entries: entriesWithAttachments,
+    total,
+    limit,
+    offset,
+    has_more: offset + entries.length < total,
+  });
+});

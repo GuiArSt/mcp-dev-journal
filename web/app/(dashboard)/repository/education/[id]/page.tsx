@@ -10,7 +10,6 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { ArrowLeft, Edit, Save, X, GraduationCap, MapPin, Calendar, BookOpen, Award, Plus, Target, Upload } from "lucide-react";
-import Image from "next/image";
 
 interface Education {
   id: string;
@@ -216,7 +215,7 @@ What would you like to change?`;
                 onClick={editWithKronus}
                 className="bg-[var(--tartarus-gold)] text-[var(--tartarus-void)] hover:bg-[var(--tartarus-gold-bright)]"
               >
-                <Image src="/chronus-logo.png" alt="Kronus" width={16} height={16} className="mr-2 rounded-full" />
+                <img src="/chronus-logo.png" alt="Kronus" className="h-4 w-4 mr-2 rounded-full object-cover" />
                 Edit with Kronus
               </Button>
             </>

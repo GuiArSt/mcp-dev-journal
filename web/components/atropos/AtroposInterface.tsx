@@ -105,6 +105,18 @@ export function AtroposInterface() {
   const [isLoadingMemory, setIsLoadingMemory] = useState(false);
   const [newWord, setNewWord] = useState("");
 
+  // AI-mediated memory edit state
+  const [memoryEditInput, setMemoryEditInput] = useState("");
+  const [isEditingMemory, setIsEditingMemory] = useState(false);
+  const [lastEditResponse, setLastEditResponse] = useState<string | null>(null);
+
+  // Direct memory add state
+  const [newMemoryInput, setNewMemoryInput] = useState("");
+  const [isAddingMemory, setIsAddingMemory] = useState(false);
+
+  // Tag filtering state
+  const [selectedTag, setSelectedTag] = useState<string | null>(null);
+
   // Compute diff between draft and corrected text
   const diffResult = useMemo<DiffResult | null>(() => {
     if (!draft || !corrected || draft === corrected) return null;
@@ -181,6 +193,108 @@ export function AtroposInterface() {
       console.error("Failed to load memory:", e);
     } finally {
       setIsLoadingMemory(false);
+    }
+  }, []);
+
+  // Get all unique tags from memories
+  const allTags = useMemo(() => {
+    if (!memory) return [];
+    const tags = new Set<string>();
+    memory.memories.forEach((m) => m.tags.forEach((t) => tags.add(t)));
+    return Array.from(tags).sort();
+  }, [memory]);
+
+  // Filter memories by selected tag
+  const filteredMemories = useMemo(() => {
+    if (!memory) return [];
+    if (!selectedTag) return memory.memories;
+    return memory.memories.filter((m) => m.tags.includes(selectedTag));
+  }, [memory, selectedTag]);
+
+  // AI-mediated memory edit
+  const handleAIMemoryEdit = useCallback(async () => {
+    if (!memoryEditInput.trim()) return;
+
+    setIsEditingMemory(true);
+    setLastEditResponse(null);
+
+    try {
+      const res = await fetch("/api/atropos/memory/edit", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userMessage: memoryEditInput }),
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        setMemory(data.memory);
+        setStats(data.stats);
+        setLastEditResponse(data.explanation);
+        setMemoryEditInput("");
+      } else {
+        const errorData = await res.json();
+        setLastEditResponse(`Error: ${errorData.error}`);
+      }
+    } catch (e: any) {
+      setLastEditResponse(`Error: ${e.message}`);
+    } finally {
+      setIsEditingMemory(false);
+    }
+  }, [memoryEditInput]);
+
+  // Direct memory add (no AI, just save)
+  const handleAddMemory = useCallback(async () => {
+    if (!newMemoryInput.trim()) return;
+
+    setIsAddingMemory(true);
+
+    try {
+      const res = await fetch("/api/atropos/memory", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          patterns: [newMemoryInput.trim()],
+          dictionaryWords: [],
+          label: "",
+        }),
+      });
+
+      if (res.ok) {
+        setNewMemoryInput("");
+        loadMemory();
+      }
+    } catch (e: any) {
+      console.error("Failed to add memory:", e);
+    } finally {
+      setIsAddingMemory(false);
+    }
+  }, [newMemoryInput, loadMemory]);
+
+  // Edit specific memory via Atropos (for inline buttons)
+  const handleEditMemoryDirect = useCallback(async (message: string) => {
+    setIsEditingMemory(true);
+    setLastEditResponse(null);
+
+    try {
+      const res = await fetch("/api/atropos/memory/edit", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userMessage: message }),
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        setMemory(data.memory);
+        setStats(data.stats);
+        setLastEditResponse(data.explanation);
+      } else {
+        const errorData = await res.json();
+        setLastEditResponse(`Error: ${errorData.error}`);
+      }
+    } catch (e: any) {
+      setLastEditResponse(`Error: ${e.message}`);
+    } finally {
+      setIsEditingMemory(false);
     }
   }, []);
 
@@ -815,7 +929,7 @@ export function AtroposInterface() {
         </DialogContent>
       </Dialog>
 
-      {/* Memory Insights Panel */}
+      {/* Memory Insights Panel - Minimized */}
       <div className="border-t border-[var(--tartarus-border)]">
         <button
           onClick={() => {
@@ -851,7 +965,7 @@ export function AtroposInterface() {
               </div>
             ) : memory ? (
               <>
-                {/* Stats */}
+                {/* Stats Row */}
                 <div className="grid grid-cols-4 gap-4">
                   <div className="p-3 rounded-lg bg-[var(--tartarus-surface)] border border-[var(--tartarus-border)]">
                     <p className="text-2xl font-bold text-[var(--tartarus-teal)]">
@@ -887,36 +1001,152 @@ export function AtroposInterface() {
                   </div>
                 </div>
 
-                {/* Recent Memories */}
-                {memory.memories.length > 0 && (
+                {/* Add New Memory */}
+                <div className="p-3 rounded-lg bg-[var(--tartarus-surface)] border border-[var(--tartarus-teal)]/30">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Plus className="h-4 w-4 text-[var(--tartarus-teal)]" />
+                    <span className="text-sm font-medium text-[var(--tartarus-teal)]">
+                      Add new memory
+                    </span>
+                  </div>
+                  <div className="flex gap-2">
+                    <Input
+                      placeholder="e.g., 'I prefer Oxford commas'"
+                      value={newMemoryInput}
+                      onChange={(e) => setNewMemoryInput(e.target.value)}
+                      onKeyDown={(e) => e.key === "Enter" && !isAddingMemory && handleAddMemory()}
+                      className="text-sm bg-[var(--tartarus-deep)] border-[var(--tartarus-border)] text-[var(--tartarus-ivory)] placeholder:text-[var(--tartarus-ivory-faded)]"
+                    />
+                    <Button
+                      size="sm"
+                      onClick={handleAddMemory}
+                      disabled={isAddingMemory || !newMemoryInput.trim()}
+                      className="bg-[var(--tartarus-teal)] hover:bg-[var(--tartarus-teal-bright)] text-[var(--tartarus-deep)]"
+                    >
+                      {isAddingMemory ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <Plus className="h-4 w-4" />
+                      )}
+                    </Button>
+                  </div>
+                </div>
+
+                {/* Atropos response after edit */}
+                {lastEditResponse && (
+                  <div className="p-2 rounded bg-[var(--tartarus-gold)]/10 border border-[var(--tartarus-gold)]/30">
+                    <p className="text-xs text-[var(--tartarus-gold)] italic flex items-center gap-2">
+                      <Sparkles className="h-3 w-3" />
+                      {lastEditResponse}
+                    </p>
+                  </div>
+                )}
+
+                {/* Tag Filter */}
+                {allTags.length > 0 && (
                   <div className="space-y-2">
                     <h4 className="text-sm font-medium text-[var(--tartarus-ivory)]">
-                      Recent Learnings
+                      Filter by Tag
                     </h4>
-                    <div className="space-y-2 max-h-40 overflow-auto">
-                      {memory.memories.slice(-5).reverse().map((m, idx) => (
-                        <div
-                          key={idx}
-                          className="p-2 rounded bg-[var(--tartarus-surface)] border border-[var(--tartarus-border)]"
-                        >
-                          <p className="text-sm text-[var(--tartarus-ivory-dim)]">
-                            {m.content}
-                          </p>
-                          {m.tags.length > 0 && (
-                            <div className="flex gap-1 mt-1">
-                              {m.tags.map((tag) => (
-                                <Badge
-                                  key={tag}
-                                  variant="outline"
-                                  className="text-[10px] border-[var(--tartarus-teal)]/30 text-[var(--tartarus-teal)]"
-                                >
-                                  {tag}
-                                </Badge>
-                              ))}
-                            </div>
+                    <div className="flex flex-wrap gap-2">
+                      <button
+                        onClick={() => setSelectedTag(null)}
+                        className={cn(
+                          "px-2 py-1 text-xs rounded transition-colors",
+                          selectedTag === null
+                            ? "bg-[var(--tartarus-teal)] text-[var(--tartarus-deep)]"
+                            : "bg-[var(--tartarus-surface)] text-[var(--tartarus-ivory-dim)] hover:text-[var(--tartarus-ivory)]"
+                        )}
+                      >
+                        All
+                      </button>
+                      {allTags.map((tag) => (
+                        <button
+                          key={tag}
+                          onClick={() => setSelectedTag(tag)}
+                          className={cn(
+                            "px-2 py-1 text-xs rounded transition-colors",
+                            selectedTag === tag
+                              ? "bg-[var(--tartarus-teal)] text-[var(--tartarus-deep)]"
+                              : "bg-[var(--tartarus-surface)] text-[var(--tartarus-ivory-dim)] hover:text-[var(--tartarus-ivory)]"
                           )}
-                        </div>
+                        >
+                          {tag}
+                        </button>
                       ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Memories List - Full View */}
+                {memory.memories.length > 0 && (
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <h4 className="text-sm font-medium text-[var(--tartarus-ivory)]">
+                        Learned Patterns ({filteredMemories.length})
+                      </h4>
+                    </div>
+                    <div className="space-y-2 max-h-60 overflow-auto">
+                      {filteredMemories.slice().reverse().map((m, idx) => {
+                        const memoryIndex = memory.memories.length - 1 - memory.memories.indexOf(m);
+                        return (
+                          <div
+                            key={idx}
+                            className="p-2.5 rounded bg-[var(--tartarus-surface)] border border-[var(--tartarus-border)] group"
+                          >
+                            <div className="flex items-start justify-between gap-2">
+                              <p className="text-sm text-[var(--tartarus-ivory-dim)] flex-1">
+                                {m.content}
+                              </p>
+                              <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+                                <button
+                                  onClick={() => {
+                                    const newContent = prompt("Edit memory:", m.content);
+                                    if (newContent && newContent !== m.content) {
+                                      handleEditMemoryDirect(`Edit memory #${memoryIndex} to: "${newContent}"`);
+                                    }
+                                  }}
+                                  disabled={isEditingMemory}
+                                  className="p-1 rounded hover:bg-[var(--tartarus-gold)]/20 text-[var(--tartarus-gold)] disabled:opacity-50"
+                                  title="Edit memory"
+                                >
+                                  <Sparkles className="h-3 w-3" />
+                                </button>
+                                <button
+                                  onClick={() => handleEditMemoryDirect(`Remove memory #${memoryIndex}`)}
+                                  disabled={isEditingMemory}
+                                  className="p-1 rounded hover:bg-[var(--tartarus-error)]/20 text-[var(--tartarus-error)] disabled:opacity-50"
+                                  title="Remove memory"
+                                >
+                                  {isEditingMemory ? <Loader2 className="h-3 w-3 animate-spin" /> : <X className="h-3 w-3" />}
+                                </button>
+                              </div>
+                            </div>
+                            <div className="flex items-center justify-between mt-1.5">
+                              <div className="flex gap-1">
+                                {m.tags.length > 0 ? (
+                                  m.tags.map((tag) => (
+                                    <Badge
+                                      key={tag}
+                                      variant="outline"
+                                      className="text-[10px] border-[var(--tartarus-teal)]/30 text-[var(--tartarus-teal)]"
+                                    >
+                                      {tag}
+                                    </Badge>
+                                  ))
+                                ) : (
+                                  <span className="text-[10px] text-[var(--tartarus-ivory-faded)]">
+                                    No tags
+                                  </span>
+                                )}
+                              </div>
+                              <span className="text-[10px] text-[var(--tartarus-ivory-faded)]">
+                                {new Date(m.createdAt).toLocaleDateString()}
+                              </span>
+                            </div>
+                          </div>
+                        );
+                      })}
                     </div>
                   </div>
                 )}
@@ -926,7 +1156,7 @@ export function AtroposInterface() {
                   <h4 className="text-sm font-medium text-[var(--tartarus-ivory)]">
                     Protected Dictionary
                   </h4>
-                  <div className="flex flex-wrap gap-2">
+                  <div className="flex flex-wrap gap-2 max-h-32 overflow-auto">
                     {memory.customDictionary.map((word) => (
                       <Badge
                         key={word}

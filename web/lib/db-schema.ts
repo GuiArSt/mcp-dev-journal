@@ -280,31 +280,7 @@ export function initRepositorySchema() {
     CREATE INDEX IF NOT EXISTS idx_conversations_updated_at ON conversations(updated_at);
   `);
 
-  // Writing Memory table (for Scribe spellchecker learning) - LEGACY
-  db.exec(`
-    CREATE TABLE IF NOT EXISTS writing_memory (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      user_id TEXT DEFAULT 'default',
-
-      -- Typo patterns (JSON array of {mistake, correction, frequency})
-      typo_patterns TEXT DEFAULT '[]',
-
-      -- Style preferences (JSON object)
-      style_preferences TEXT DEFAULT '{}',
-
-      -- Protected terms that should not be "corrected" (JSON array)
-      protected_terms TEXT DEFAULT '["MCP", "Supabase", "Kronus", "Tartarus", "Scribe", "Haiku", "API", "JSON", "SQL", "CLI", "SDK"]',
-
-      -- Usage stats
-      total_checks INTEGER DEFAULT 0,
-      total_corrections INTEGER DEFAULT 0,
-
-      created_at TEXT DEFAULT CURRENT_TIMESTAMP,
-      updated_at TEXT DEFAULT CURRENT_TIMESTAMP
-    );
-
-    CREATE UNIQUE INDEX IF NOT EXISTS idx_writing_memory_user_id ON writing_memory(user_id);
-  `);
+  // DEPRECATED: writing_memory table removed - use atropos_memory instead
 
   // Atropos Memory table (for the evolved spellchecker with poem + memory)
   db.exec(`
@@ -327,6 +303,67 @@ export function initRepositorySchema() {
     );
 
     CREATE UNIQUE INDEX IF NOT EXISTS idx_atropos_memory_user_id ON atropos_memory(user_id);
+  `);
+
+  // Athena Learning Items table (for spaced repetition and progress tracking)
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS athena_learning_items (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id TEXT DEFAULT 'default',
+
+      -- Item identification
+      type TEXT NOT NULL CHECK(type IN ('flashcard', 'quiz_question', 'concept')),
+      repository TEXT NOT NULL,
+      commit_hash TEXT,
+
+      -- Content (JSON structure depends on type)
+      content TEXT NOT NULL,
+
+      -- FSRS spaced repetition fields
+      difficulty REAL DEFAULT 0,
+      stability REAL DEFAULT 0,
+      retrievability REAL DEFAULT 1,
+      last_review TEXT,
+      next_review TEXT,
+      review_count INTEGER DEFAULT 0,
+      correct_count INTEGER DEFAULT 0,
+
+      -- Metadata
+      tags TEXT DEFAULT '[]',
+      created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+      updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_athena_items_user_repo ON athena_learning_items(user_id, repository);
+    CREATE INDEX IF NOT EXISTS idx_athena_items_next_review ON athena_learning_items(next_review);
+    CREATE INDEX IF NOT EXISTS idx_athena_items_type ON athena_learning_items(type);
+  `);
+
+  // Athena Learning Sessions table (track quiz/lesson sessions)
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS athena_sessions (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id TEXT DEFAULT 'default',
+
+      -- Session info
+      repository TEXT NOT NULL,
+      session_type TEXT NOT NULL CHECK(session_type IN ('lesson', 'quiz', 'review')),
+
+      -- Generated content (JSON)
+      content TEXT NOT NULL,
+
+      -- Results (for quizzes)
+      score INTEGER,
+      total_questions INTEGER,
+      answers TEXT, -- JSON array of user answers
+
+      -- Timing
+      started_at TEXT DEFAULT CURRENT_TIMESTAMP,
+      completed_at TEXT
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_athena_sessions_user ON athena_sessions(user_id);
+    CREATE INDEX IF NOT EXISTS idx_athena_sessions_repo ON athena_sessions(repository);
   `);
 
   // Run migrations for new columns
@@ -358,23 +395,7 @@ function migrateLogoColumns(db: ReturnType<typeof getDatabase>) {
   }
 }
 
-export interface WritingMemory {
-  id: number;
-  user_id: string;
-  typo_patterns: string; // JSON array
-  style_preferences: string; // JSON object
-  protected_terms: string; // JSON array
-  total_checks: number;
-  total_corrections: number;
-  created_at: string;
-  updated_at: string;
-}
-
-export interface TypoPattern {
-  mistake: string;
-  correction: string;
-  frequency: number;
-}
+// DEPRECATED: WritingMemory and TypoPattern interfaces removed - use AtroposMemoryRow instead
 
 export interface AtroposMemoryRow {
   id: number;

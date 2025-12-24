@@ -90,7 +90,7 @@ export type MemoryExtraction = z.infer<typeof MemoryExtractionSchema>;
 export interface AtroposMemoryEntry {
   content: string;
   tags: string[];
-  createdAt: string;
+  createdAt?: string;
 }
 
 export interface AtroposMemory {

@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import Image from "next/image";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -145,7 +144,7 @@ export default function DocumentDetailPage() {
   const editWithKronus = () => {
     if (!document) return;
     const tags = document.metadata?.tags?.join(", ") || "";
-    const context = `I want to UPDATE this ${document.type} in the repository. Please help me modify it:\n\n**Document Slug:** ${document.slug}\n**Title:** ${document.title}\n**Type:** ${document.type}${document.metadata?.type ? `\n**Category:** ${document.metadata.type}` : ""}${tags ? `\n**Tags:** ${tags}` : ""}\n\n**Current Content:**\n${document.content.substring(0, 1000)}${document.content.length > 1000 ? "..." : ""}\n\nWhat changes would you like to make? You can update the content or metadata (including tags) using the repository_update_document tool.`;
+    const context = `I want to UPDATE this ${document.type} in the repository. Please help me modify it:\n\n**Document Slug:** ${document.slug}\n**Title:** ${document.title}\n**Type:** ${document.type}${document.metadata?.type ? `\n**Category:** ${document.metadata.type}` : ""}${tags ? `\n**Tags:** ${tags}` : ""}\n\n**Current Content:**\n${document.content}\n\nWhat changes would you like to make? You can update the content or metadata (including tags) using the repository_update_document tool.`;
 
     sessionStorage.setItem("kronusPrefill", context);
     router.push("/chat");
@@ -228,7 +227,7 @@ export default function DocumentDetailPage() {
                 onClick={editWithKronus}
                 className="bg-[var(--tartarus-gold)] text-[var(--tartarus-void)] hover:bg-[var(--tartarus-gold-bright)] font-medium"
               >
-                <Image src="/chronus-logo.png" alt="Kronus" width={16} height={16} className="mr-2 rounded-full" />
+                <img src="/chronus-logo.png" alt="Kronus" className="h-4 w-4 mr-2 rounded-full object-cover" />
                 Edit with Kronus
               </Button>
             </>

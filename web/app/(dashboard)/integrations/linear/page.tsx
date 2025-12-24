@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import Image from "next/image";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -94,7 +93,7 @@ interface LinearViewer {
 const priorityLabels: Record<number, { label: string; color: string; emoji: string }> = {
   0: { label: "No priority", color: "text-[var(--tartarus-ivory-faded)]", emoji: "○" },
   1: { label: "Urgent", color: "text-[var(--tartarus-error)]", emoji: "●" },
-  2: { label: "High", color: "text-orange-400", emoji: "●" },
+  2: { label: "High", color: "text-[var(--tartarus-warning)]", emoji: "●" },
   3: { label: "Medium", color: "text-[var(--tartarus-gold)]", emoji: "●" },
   4: { label: "Low", color: "text-[var(--tartarus-teal)]", emoji: "●" },
 };
@@ -426,7 +425,7 @@ export default function LinearPage() {
                             title="Edit with Kronus"
                             className="text-[var(--tartarus-gold)] hover:text-[var(--tartarus-gold-bright)] hover:bg-[var(--tartarus-gold-soft)]"
                           >
-                            <Image src="/chronus-logo.png" alt="Kronus" width={16} height={16} className="rounded-full" />
+                            <img src="/chronus-logo.png" alt="Kronus" className="h-4 w-4 rounded-full object-cover" />
                           </Button>
                           <Button
                             variant="ghost"
@@ -508,7 +507,7 @@ export default function LinearPage() {
                             onClick={() => editProjectWithAI(project)}
                             title="Edit with Kronus"
                           >
-                            <Image src="/chronus-logo.png" alt="Kronus" width={16} height={16} className="rounded-full" />
+                            <img src="/chronus-logo.png" alt="Kronus" className="h-4 w-4 rounded-full object-cover" />
                           </Button>
                         </div>
                       </div>
@@ -614,7 +613,7 @@ export default function LinearPage() {
                   onClick={() => { setSelectedIssue(null); editIssueWithAI(selectedIssue); }}
                   className="bg-[var(--tartarus-gold)] text-[var(--tartarus-void)] hover:bg-[var(--tartarus-gold-bright)]"
                 >
-                  <Image src="/chronus-logo.png" alt="Kronus" width={16} height={16} className="mr-2 rounded-full" />
+                  <img src="/chronus-logo.png" alt="Kronus" className="h-4 w-4 mr-2 rounded-full object-cover" />
                   Edit with Kronus
                 </Button>
               </div>
@@ -699,7 +698,7 @@ export default function LinearPage() {
                   onClick={() => { setSelectedProject(null); editProjectWithAI(selectedProject); }}
                   className="bg-[var(--tartarus-gold)] text-[var(--tartarus-void)] hover:bg-[var(--tartarus-gold-bright)] ml-auto"
                 >
-                  <Image src="/chronus-logo.png" alt="Kronus" width={16} height={16} className="mr-2 rounded-full" />
+                  <img src="/chronus-logo.png" alt="Kronus" className="h-4 w-4 mr-2 rounded-full object-cover" />
                   Edit with Kronus
                 </Button>
               </div>

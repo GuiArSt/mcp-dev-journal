@@ -1,5 +1,19 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getDatabase } from "@/lib/db";
+import { withErrorHandler } from "@/lib/api-handler";
+import { NotFoundError, ConflictError, DatabaseError } from "@/lib/errors";
+
+interface DocumentRow {
+  id: number;
+  slug: string;
+  type: string;
+  title: string;
+  content: string;
+  language: string;
+  metadata: string;
+  created_at: string;
+  updated_at: string;
+}
 
 function slugify(text: string): string {
   return text
@@ -10,140 +24,161 @@ function slugify(text: string): string {
     .trim();
 }
 
-export async function GET(
-  request: NextRequest,
-  { params }: { params: Promise<{ slug: string }> }
-) {
+function parseDocumentMetadata(doc: DocumentRow): Omit<DocumentRow, 'metadata'> & { metadata: Record<string, unknown> } {
   try {
-    const { slug } = await params;
-    console.log(`[Documents API] Fetching document with slug/id: ${slug}`);
-    const db = getDatabase();
-    
-    // Support both slug and numeric ID
-    let document;
-    if (/^\d+$/.test(slug)) {
-      document = db.prepare("SELECT * FROM documents WHERE id = ?").get(parseInt(slug)) as any;
-    } else {
-      document = db.prepare("SELECT * FROM documents WHERE slug = ?").get(slug) as any;
-    }
-
-    if (!document) {
-      console.log(`[Documents API] Document not found for slug: ${slug}`);
-      return NextResponse.json({ error: "Document not found" }, { status: 404 });
-    }
-
-    console.log(`[Documents API] Found document: ${document.title}`);
-    try {
-      return NextResponse.json({
-        ...document,
-        metadata: JSON.parse(document.metadata || "{}"),
-      });
-    } catch (parseError) {
-      console.error(`[Documents API] Failed to parse metadata for ${slug}:`, parseError);
-      return NextResponse.json({
-        ...document,
-        metadata: {},
-      });
-    }
-  } catch (error) {
-    console.error("Error fetching document:", error);
-    return NextResponse.json({ error: "Failed to fetch document" }, { status: 500 });
+    return {
+      ...doc,
+      metadata: JSON.parse(doc.metadata || "{}") as Record<string, unknown>,
+    };
+  } catch {
+    return {
+      ...doc,
+      metadata: {} as Record<string, unknown>,
+    };
   }
 }
 
-export async function PUT(
+function getDocumentBySlugOrId(db: ReturnType<typeof getDatabase>, slug: string): DocumentRow | undefined {
+  if (/^\d+$/.test(slug)) {
+    return db.prepare("SELECT * FROM documents WHERE id = ?").get(parseInt(slug)) as DocumentRow | undefined;
+  }
+  return db.prepare("SELECT * FROM documents WHERE slug = ?").get(slug) as DocumentRow | undefined;
+}
+
+/**
+ * GET /api/documents/[slug]
+ * Get a single document by slug or ID
+ */
+export const GET = withErrorHandler<{ slug: string }>(async (
   request: NextRequest,
-  { params }: { params: Promise<{ slug: string }> }
-) {
-  try {
-    const { slug } = await params;
-    const db = getDatabase();
-    const body = await request.json();
-    const { title, content, metadata } = body;
+  context
+) => {
+  const { params } = context!;
+  const { slug } = await params;
+  console.log(`[Documents API] Fetching document with slug/id: ${slug}`);
+  const db = getDatabase();
 
-    // Support both slug and numeric ID
-    let existing;
-    const isNumericId = /^\d+$/.test(slug);
-    if (isNumericId) {
-      existing = db.prepare("SELECT * FROM documents WHERE id = ?").get(parseInt(slug)) as any;
-    } else {
-      existing = db.prepare("SELECT * FROM documents WHERE slug = ?").get(slug) as any;
-    }
-    if (!existing) {
-      return NextResponse.json({ error: "Document not found" }, { status: 404 });
-    }
+  const document = getDocumentBySlugOrId(db, slug);
+  if (!document) {
+    console.log(`[Documents API] Document not found for slug: ${slug}`);
+    throw new NotFoundError("Document not found");
+  }
 
-    const updates: string[] = [];
-    const values: any[] = [];
+  console.log(`[Documents API] Found document: ${document.title}`);
+  return NextResponse.json(parseDocumentMetadata(document));
+});
 
-    if (title !== undefined) {
-      updates.push("title = ?");
-      values.push(title);
-      // Update slug if title changed
-      const newSlug = slugify(title);
-      if (newSlug !== slug) {
-        // Check if new slug exists
-        const slugExists = db.prepare("SELECT id FROM documents WHERE slug = ?").get(newSlug);
-        if (slugExists) {
-          return NextResponse.json({ error: "Document with this title already exists" }, { status: 409 });
-        }
-        updates.push("slug = ?");
-        values.push(newSlug);
+/**
+ * PUT /api/documents/[slug]
+ * Update a document by slug or ID
+ */
+export const PUT = withErrorHandler<{ slug: string }>(async (
+  request: NextRequest,
+  context
+) => {
+  const { params } = context!;
+  const { slug } = await params;
+  const db = getDatabase();
+  const body = await request.json();
+  const { title, content, metadata } = body as {
+    title?: string;
+    content?: string;
+    metadata?: Record<string, unknown>;
+  };
+
+  const isNumericId = /^\d+$/.test(slug);
+  const existing = getDocumentBySlugOrId(db, slug);
+  if (!existing) {
+    throw new NotFoundError("Document not found");
+  }
+
+  const updates: string[] = [];
+  const values: (string | number)[] = [];
+
+  if (title !== undefined) {
+    updates.push("title = ?");
+    values.push(title);
+    // Update slug if title changed
+    const newSlug = slugify(title);
+    if (newSlug !== slug && !isNumericId) {
+      // Check if new slug exists
+      const slugExists = db.prepare("SELECT id FROM documents WHERE slug = ?").get(newSlug);
+      if (slugExists) {
+        throw new ConflictError("Document with this title already exists");
       }
+      updates.push("slug = ?");
+      values.push(newSlug);
     }
-
-    if (content !== undefined) {
-      updates.push("content = ?");
-      values.push(content);
-    }
-
-    if (metadata !== undefined) {
-      updates.push("metadata = ?");
-      values.push(JSON.stringify(metadata));
-    }
-
-    updates.push("updated_at = CURRENT_TIMESTAMP");
-    values.push(slug);
-
-    if (isNumericId) {
-      db.prepare(`UPDATE documents SET ${updates.join(", ")} WHERE id = ?`).run(...values.slice(0, -1), parseInt(slug));
-    } else {
-      db.prepare(`UPDATE documents SET ${updates.join(", ")} WHERE slug = ?`).run(...values);
-    }
-
-    const updated = db.prepare("SELECT * FROM documents WHERE slug = ?").get(
-      title ? slugify(title) : slug
-    ) as any;
-
-    return NextResponse.json({
-      ...updated,
-      metadata: JSON.parse(updated.metadata || "{}"),
-    });
-  } catch (error: any) {
-    console.error("Error updating document:", error);
-    if (error.message?.includes("UNIQUE constraint")) {
-      return NextResponse.json({ error: "Document with this title already exists" }, { status: 409 });
-    }
-    return NextResponse.json({ error: "Failed to update document" }, { status: 500 });
   }
-}
 
-export async function DELETE(
-  request: NextRequest,
-  { params }: { params: Promise<{ slug: string }> }
-) {
+  if (content !== undefined) {
+    updates.push("content = ?");
+    values.push(content);
+  }
+
+  if (metadata !== undefined) {
+    updates.push("metadata = ?");
+    values.push(JSON.stringify(metadata));
+  }
+
+  updates.push("updated_at = CURRENT_TIMESTAMP");
+
   try {
-    const { slug } = await params;
-    const db = getDatabase();
-    const result = db.prepare("DELETE FROM documents WHERE slug = ?").run(slug);
-
-    if (result.changes === 0) {
-      return NextResponse.json({ error: "Document not found" }, { status: 404 });
+    if (isNumericId) {
+      db.prepare(`UPDATE documents SET ${updates.join(", ")} WHERE id = ?`).run(...values, parseInt(slug));
+    } else {
+      db.prepare(`UPDATE documents SET ${updates.join(", ")} WHERE slug = ?`).run(...values, slug);
     }
 
-    return NextResponse.json({ success: true });
+    // Fetch updated document
+    let updated: DocumentRow | undefined;
+    if (isNumericId) {
+      updated = db.prepare("SELECT * FROM documents WHERE id = ?").get(parseInt(slug)) as DocumentRow | undefined;
+    } else if (title) {
+      updated = db.prepare("SELECT * FROM documents WHERE slug = ?").get(slugify(title)) as DocumentRow | undefined;
+    } else {
+      updated = db.prepare("SELECT * FROM documents WHERE slug = ?").get(slug) as DocumentRow | undefined;
+    }
+
+    if (!updated) {
+      throw new DatabaseError("Failed to retrieve updated document");
+    }
+
+    return NextResponse.json(parseDocumentMetadata(updated));
   } catch (error) {
-    console.error("Error deleting document:", error);
-    return NextResponse.json({ error: "Failed to delete document" }, { status: 500 });
+    if (error instanceof NotFoundError || error instanceof ConflictError || error instanceof DatabaseError) {
+      throw error;
+    }
+    if (error instanceof Error && error.message?.includes("UNIQUE constraint")) {
+      throw new ConflictError("Document with this title already exists");
+    }
+    throw new DatabaseError("Failed to update document");
   }
-}
+});
+
+/**
+ * DELETE /api/documents/[slug]
+ * Delete a document by slug or ID
+ */
+export const DELETE = withErrorHandler<{ slug: string }>(async (
+  request: NextRequest,
+  context
+) => {
+  const { params } = context!;
+  const { slug } = await params;
+  const db = getDatabase();
+
+  // Support both slug and numeric ID
+  let result;
+  if (/^\d+$/.test(slug)) {
+    result = db.prepare("DELETE FROM documents WHERE id = ?").run(parseInt(slug));
+  } else {
+    result = db.prepare("DELETE FROM documents WHERE slug = ?").run(slug);
+  }
+
+  if (result.changes === 0) {
+    throw new NotFoundError("Document not found");
+  }
+
+  return NextResponse.json({ success: true });
+});

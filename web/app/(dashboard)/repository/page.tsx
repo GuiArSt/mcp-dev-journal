@@ -2,7 +2,6 @@
 
 import { useEffect, useState, useMemo, useCallback, memo } from "react";
 import Link from "next/link";
-import Image from "next/image";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -222,7 +221,7 @@ export default function RepositoryPage() {
     e.preventDefault();
     e.stopPropagation();
     const tags = doc.metadata?.tags && Array.isArray(doc.metadata.tags) ? doc.metadata.tags.join(", ") : "";
-    const context = `I want to UPDATE this ${doc.type} in the repository. Please help me modify it:\n\n**Document Slug:** ${doc.slug}\n**Title:** ${doc.title}\n**Type:** ${doc.type}${doc.metadata?.type ? `\n**Category:** ${doc.metadata.type}` : ""}${tags ? `\n**Tags:** ${tags}` : ""}\n\n**Current Content:**\n${doc.content.substring(0, 1500)}${doc.content.length > 1500 ? "..." : ""}\n\nWhat changes would you like to make? You can update the content or metadata (including tags) using the repository tools.`;
+    const context = `I want to UPDATE this ${doc.type} in the repository. Please help me modify it:\n\n**Document Slug:** ${doc.slug}\n**Title:** ${doc.title}\n**Type:** ${doc.type}${doc.metadata?.type ? `\n**Category:** ${doc.metadata.type}` : ""}${tags ? `\n**Tags:** ${tags}` : ""}\n\n**Current Content:**\n${doc.content}\n\nWhat changes would you like to make? You can update the content or metadata (including tags) using the repository tools.`;
 
     sessionStorage.setItem("kronusPrefill", context);
     router.push("/chat");
@@ -784,7 +783,7 @@ What education entry would you like to add? Please provide the institution and d
                           onClick={(e) => editDocumentWithKronus(doc, e)}
                           title="Edit with Kronus"
                         >
-                          <Image src="/chronus-logo.png" alt="Kronus" width={16} height={16} className="rounded-full" />
+                          <img src="/chronus-logo.png" alt="Kronus" className="h-4 w-4 rounded-full object-cover" />
                         </Button>
 
                         {/* Decorative gradient bar */}
@@ -885,7 +884,7 @@ What education entry would you like to add? Please provide the institution and d
                           onClick={(e) => editDocumentWithKronus(doc, e)}
                           title="Edit with Kronus"
                         >
-                          <Image src="/chronus-logo.png" alt="Kronus" width={16} height={16} className="rounded-full" />
+                          <img src="/chronus-logo.png" alt="Kronus" className="h-4 w-4 rounded-full object-cover" />
                         </Button>
 
                         {/* Decorative gradient bar */}
@@ -985,7 +984,7 @@ What education entry would you like to add? Please provide the institution and d
                           onClick={addSkillWithKronus}
                           className="bg-[var(--tartarus-gold)] text-[var(--tartarus-void)] hover:bg-[var(--tartarus-gold)]/90 font-medium"
                         >
-                          <Image src="/chronus-logo.png" alt="Kronus" width={16} height={16} className="mr-2 rounded-full" />
+                          <img src="/chronus-logo.png" alt="Kronus" className="h-4 w-4 mr-2 rounded-full object-cover" />
                           Add with Kronus
                         </Button>
                       </div>
@@ -1112,7 +1111,7 @@ What education entry would you like to add? Please provide the institution and d
                         onClick={addExperienceWithKronus}
                         className="bg-[var(--tartarus-gold)] text-[var(--tartarus-void)] hover:bg-[var(--tartarus-gold)]/90 font-medium"
                       >
-                        <Image src="/chronus-logo.png" alt="Kronus" width={16} height={16} className="mr-2 rounded-full" />
+                        <img src="/chronus-logo.png" alt="Kronus" className="h-4 w-4 mr-2 rounded-full object-cover" />
                         Add with Kronus
                       </Button>
                     </div>
@@ -1271,7 +1270,7 @@ What education entry would you like to add? Please provide the institution and d
                         onClick={addEducationWithKronus}
                         className="bg-[var(--tartarus-gold)] text-[var(--tartarus-void)] hover:bg-[var(--tartarus-gold)]/90 font-medium"
                       >
-                        <Image src="/chronus-logo.png" alt="Kronus" width={16} height={16} className="mr-2 rounded-full" />
+                        <img src="/chronus-logo.png" alt="Kronus" className="h-4 w-4 mr-2 rounded-full object-cover" />
                         Add with Kronus
                       </Button>
                     </div>

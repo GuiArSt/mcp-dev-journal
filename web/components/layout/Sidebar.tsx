@@ -14,6 +14,7 @@ import {
   Settings,
   Archive,
   Scissors,
+  Languages,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -46,6 +47,12 @@ const navItems = [
     href: "/atropos",
     icon: Scissors,
     description: "The fate that corrects",
+  },
+  {
+    title: "Hermes",
+    href: "/hermes",
+    icon: Languages,
+    description: "The messenger translates",
   },
   {
     title: "Repository",

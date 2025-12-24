@@ -2,21 +2,20 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import { Skeleton } from "@/components/ui/skeleton";
 import {
   Search,
   GitBranch,
@@ -26,9 +25,59 @@ import {
   Sparkles,
   FolderGit2,
   ChevronRight,
+  ChevronDown,
+  Plus,
+  Settings,
+  ExternalLink,
+  FileText,
+  Layers,
+  Image as ImageIcon,
+  FileCode,
+  File,
 } from "lucide-react";
+import { MermaidPreview } from "@/components/multimedia/MermaidPreview";
 import { useRouter } from "next/navigation";
-import Image from "next/image";
+
+// Helper to clean technology strings from markdown formatting
+function cleanTechnologies(techString: string): string[] {
+  // First, remove **Label:** patterns and extract just the tech names
+  const cleaned = techString
+    .replace(/\*\*[^*]+:\*\*\s*/g, '') // Remove **Label:** patterns
+    .replace(/\*\*/g, '') // Remove remaining ** markers
+    .replace(/\([^)]+\)/g, '') // Remove parenthetical notes like (GPT-4-mini)
+    .replace(/\n/g, ', ') // Convert newlines to commas
+    .split(/[,\n]/) // Split by comma or newline
+    .map(tech => tech.trim())
+    .filter(tech => {
+      if (!tech || tech.length === 0) return false;
+      if (tech === ':') return false;
+      // Skip items that look like descriptions or scripts
+      if (tech.includes('.py') || tech.includes('.sql')) return false;
+      if (tech.length > 40) return false; // Skip long descriptions
+      return true;
+    })
+    .map(tech => tech.replace(/^[-•]\s*/, '')); // Remove bullet points
+
+  // Deduplicate
+  return [...new Set(cleaned)];
+}
+
+interface ProjectSummary {
+  id: number;
+  repository: string;
+  git_url?: string;
+  summary: string;
+  purpose?: string;
+  architecture?: string;
+  key_decisions?: string;
+  technologies?: string;
+  status?: string;
+  updated_at: string;
+  linear_project_id?: string;
+  linear_issue_id?: string;
+  entry_count: number;
+  last_entry_date?: string;
+}
 
 interface JournalEntry {
   id: number;
@@ -46,61 +95,770 @@ interface JournalEntry {
   attachment_count: number;
 }
 
+interface Attachment {
+  id: number;
+  commit_hash: string;
+  filename: string;
+  mime_type: string;
+  description: string | null;
+  size: number;
+  created_at: string;
+  repository: string;
+  branch: string;
+}
+
 export default function ReaderPage() {
   const router = useRouter();
+  const [projects, setProjects] = useState<ProjectSummary[]>([]);
   const [entries, setEntries] = useState<JournalEntry[]>([]);
-  const [repositories, setRepositories] = useState<string[]>([]);
-  const [selectedRepo, setSelectedRepo] = useState<string>("all");
+  const [attachments, setAttachments] = useState<Record<string, Attachment[]>>({});
+  const [attachmentContents, setAttachmentContents] = useState<Record<number, string>>({});
+  const [expandedAttachments, setExpandedAttachments] = useState<Set<number>>(new Set());
+  const [selectedProject, setSelectedProject] = useState<string | null>(null);
+  const [expandedProjects, setExpandedProjects] = useState<Set<string>>(new Set());
   const [searchQuery, setSearchQuery] = useState("");
   const [loading, setLoading] = useState(true);
-  const [page, setPage] = useState(0);
-  const [hasMore, setHasMore] = useState(false);
-  const [total, setTotal] = useState(0);
+  const [entriesLoading, setEntriesLoading] = useState(false);
+  const [attachmentsLoading, setAttachmentsLoading] = useState<Record<string, boolean>>({});
+  const [showAttachments, setShowAttachments] = useState<Set<string>>(new Set());
+  const [activeTab, setActiveTab] = useState("projects");
 
-  // Navigate to chat to EDIT an entry with Kronus
-  const editWithKronus = (entry: JournalEntry, e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    const context = `I want to UPDATE this journal entry. Please help me modify it:\n\n**Commit Hash:** ${entry.commit_hash}\n**Repository:** ${entry.repository}/${entry.branch}\n**Date:** ${new Date(entry.date).toLocaleDateString()}\n**Author:** ${entry.author}\n\n**Why:**\n${entry.why}\n\n**Decisions:**\n${entry.decisions}\n\n**Technologies:** ${entry.technologies}\n\n**Kronus Wisdom:** ${entry.kronus_wisdom || "(none)"}\n\nWhat changes would you like to make? You can update any field using the journal_edit_entry tool.`;
+  useEffect(() => {
+    fetchProjects();
+  }, []);
+
+  useEffect(() => {
+    if (selectedProject) {
+      fetchEntriesForProject(selectedProject);
+    }
+  }, [selectedProject]);
+
+  const fetchProjects = async () => {
+    setLoading(true);
+    try {
+      const response = await fetch("/api/project-summaries");
+      const data = await response.json();
+      setProjects(data.summaries || []);
+      // Auto-expand first project if exists
+      if (data.summaries?.length > 0) {
+        setExpandedProjects(new Set([data.summaries[0].repository]));
+      }
+    } catch (error) {
+      console.error("Failed to fetch projects:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchEntriesForProject = async (repository: string) => {
+    setEntriesLoading(true);
+    try {
+      const params = new URLSearchParams({
+        repository,
+        limit: "50",
+      });
+      const response = await fetch(`/api/entries?${params}`);
+      const data = await response.json();
+      setEntries(data.entries || []);
+    } catch (error) {
+      console.error("Failed to fetch entries:", error);
+    } finally {
+      setEntriesLoading(false);
+    }
+  };
+
+  const fetchAttachmentsForProject = async (repository: string) => {
+    if (attachments[repository]) return; // Already fetched
+
+    setAttachmentsLoading(prev => ({ ...prev, [repository]: true }));
+    try {
+      const params = new URLSearchParams({ repository });
+      const response = await fetch(`/api/attachments/by-repository?${params}`);
+      const data = await response.json();
+      setAttachments(prev => ({ ...prev, [repository]: data.attachments || [] }));
+      // Don't auto-fetch content - wait for explicit click
+    } catch (error) {
+      console.error("Failed to fetch attachments:", error);
+    } finally {
+      setAttachmentsLoading(prev => ({ ...prev, [repository]: false }));
+    }
+  };
+
+  const fetchAttachmentContent = async (attachmentId: number) => {
+    if (attachmentContents[attachmentId]) return; // Already fetched
+
+    try {
+      const response = await fetch(`/api/attachments/${attachmentId}?include_data=true`);
+      const data = await response.json();
+      if (data.data_base64) {
+        const decoded = atob(data.data_base64);
+        setAttachmentContents(prev => ({ ...prev, [attachmentId]: decoded }));
+      }
+    } catch (error) {
+      console.error("Failed to fetch attachment content:", error);
+    }
+  };
+
+  const toggleShowAttachments = (repository: string) => {
+    const newShow = new Set(showAttachments);
+    if (newShow.has(repository)) {
+      newShow.delete(repository);
+    } else {
+      newShow.add(repository);
+      fetchAttachmentsForProject(repository);
+    }
+    setShowAttachments(newShow);
+  };
+
+  const toggleAttachmentExpand = (attachmentId: number, isMermaid: boolean) => {
+    const newExpanded = new Set(expandedAttachments);
+    if (newExpanded.has(attachmentId)) {
+      newExpanded.delete(attachmentId);
+    } else {
+      newExpanded.add(attachmentId);
+      // Fetch mermaid content on expand
+      if (isMermaid) {
+        fetchAttachmentContent(attachmentId);
+      }
+    }
+    setExpandedAttachments(newExpanded);
+  };
+
+  const toggleProject = (repository: string) => {
+    const newExpanded = new Set(expandedProjects);
+    if (newExpanded.has(repository)) {
+      newExpanded.delete(repository);
+    } else {
+      newExpanded.add(repository);
+      setSelectedProject(repository);
+      // Don't auto-fetch attachments - user clicks "Show Attachments" button
+    }
+    setExpandedProjects(newExpanded);
+  };
+
+  // Navigate to chat to create new project
+  const createNewProject = () => {
+    const context = `I want to CREATE a new project in my journal. Please help me set it up.
+
+I'll need:
+- **Repository name**: The name of the repository/project
+- **Git URL**: Optional GitHub/GitLab URL
+- **Summary**: A brief description of what the project is about
+- **Purpose**: The goals and objectives
+- **Technologies**: Key technologies used
+
+Please guide me through creating a new project summary using the journal_create_project_summary tool.`;
 
     sessionStorage.setItem("kronusPrefill", context);
     router.push("/chat");
   };
 
-  useEffect(() => {
-    fetchRepositories();
-  }, []);
+  // Navigate to chat to create new entry
+  const createNewEntry = (repository?: string) => {
+    const context = repository
+      ? `I want to CREATE a new journal entry for the **${repository}** project.
 
-  useEffect(() => {
-    fetchEntries();
-  }, [selectedRepo, page]);
+Please help me document:
+- What I worked on
+- Why I made these changes
+- Key decisions made
+- Technologies used
 
-  const fetchRepositories = async () => {
-    try {
-      const response = await fetch("/api/repositories");
-      const data = await response.json();
-      setRepositories(data);
-    } catch (error) {
-      console.error("Failed to fetch repositories:", error);
-    }
+You can use the journal_create_entry tool to create a new entry.`
+      : `I want to CREATE a new journal entry. Please help me document my work.
+
+I'll need to provide:
+- Which repository/project this is for
+- What I worked on
+- Why I made these changes
+- Key decisions made
+
+You can use the journal_create_entry tool to create a new entry.`;
+
+    sessionStorage.setItem("kronusPrefill", context);
+    router.push("/chat");
   };
 
-  const fetchEntries = async () => {
+  // Navigate to chat to edit project
+  const editProjectWithKronus = (project: ProjectSummary, e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const context = `I want to UPDATE this project summary. Please help me modify it:
+
+**Repository:** ${project.repository}
+${project.git_url ? `**Git URL:** ${project.git_url}` : ""}
+
+**Current Summary:**
+${project.summary?.substring(0, 500)}${project.summary && project.summary.length > 500 ? "..." : ""}
+
+**Current Purpose:**
+${project.purpose?.substring(0, 300) || "(none)"}${project.purpose && project.purpose.length > 300 ? "..." : ""}
+
+**Technologies:** ${project.technologies || "(none)"}
+
+**Status:** ${project.status || "(none)"}
+
+What would you like to change? You can update any field using the journal_update_project_summary tool.`;
+
+    sessionStorage.setItem("kronusPrefill", context);
+    router.push("/chat");
+  };
+
+  // Navigate to chat to edit entry
+  const editEntryWithKronus = (entry: JournalEntry, e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const context = `I want to UPDATE this journal entry. Please help me modify it:
+
+**Commit Hash:** ${entry.commit_hash}
+**Repository:** ${entry.repository}/${entry.branch}
+**Date:** ${new Date(entry.date).toLocaleDateString()}
+**Author:** ${entry.author}
+
+**Why:**
+${entry.why}
+
+**Decisions:**
+${entry.decisions}
+
+**Technologies:** ${entry.technologies}
+
+**Kronus Wisdom:** ${entry.kronus_wisdom || "(none)"}
+
+What changes would you like to make? You can update any field using the journal_edit_entry tool.`;
+
+    sessionStorage.setItem("kronusPrefill", context);
+    router.push("/chat");
+  };
+
+  const filteredProjects = searchQuery
+    ? projects.filter(
+        (p) =>
+          p.repository.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          p.summary?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          p.technologies?.toLowerCase().includes(searchQuery.toLowerCase())
+      )
+    : projects;
+
+  const filteredEntries = searchQuery
+    ? entries.filter(
+        (e) =>
+          e.why.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          e.commit_hash.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          e.technologies?.toLowerCase().includes(searchQuery.toLowerCase())
+      )
+    : entries;
+
+  return (
+    <div className="flex h-full flex-col bg-[var(--tartarus-void)]">
+      {/* Header */}
+      <header className="flex h-14 items-center justify-between px-6 border-b border-[var(--tartarus-border)]">
+        <div className="flex items-center gap-3">
+          <Layers className="h-5 w-5 text-[var(--tartarus-teal)]" />
+          <h1 className="text-lg font-semibold text-[var(--tartarus-ivory)]">Developer Journal</h1>
+        </div>
+        <div className="flex items-center gap-2">
+          <Badge variant="outline" className="text-[var(--tartarus-ivory-muted)] border-[var(--tartarus-border)]">
+            {projects.length} projects
+          </Badge>
+          <Button
+            size="sm"
+            onClick={createNewProject}
+            className="bg-[var(--tartarus-gold)] text-[var(--tartarus-void)] hover:bg-[var(--tartarus-gold-bright)]"
+          >
+            <img src="/chronus-logo.png" alt="Kronus" className="h-4 w-4 mr-2 rounded-full object-cover" />
+            New Project
+          </Button>
+        </div>
+      </header>
+
+      {/* Search & Tabs */}
+      <div className="flex items-center gap-4 px-6 py-3 border-b border-[var(--tartarus-border)]">
+        <div className="relative flex-1 max-w-md">
+          <Search className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-[var(--tartarus-ivory-muted)]" />
+          <Input
+            placeholder="Search projects and entries..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="pl-9 bg-[var(--tartarus-surface)] border-[var(--tartarus-border)] text-[var(--tartarus-ivory)] placeholder:text-[var(--tartarus-ivory-faded)]"
+          />
+        </div>
+        <Tabs value={activeTab} onValueChange={setActiveTab}>
+          <TabsList className="bg-[var(--tartarus-surface)]">
+            <TabsTrigger value="projects" className="data-[state=active]:bg-[var(--tartarus-teal-soft)] data-[state=active]:text-[var(--tartarus-teal)]">
+              Projects
+            </TabsTrigger>
+            <TabsTrigger value="timeline" className="data-[state=active]:bg-[var(--tartarus-teal-soft)] data-[state=active]:text-[var(--tartarus-teal)]">
+              Timeline
+            </TabsTrigger>
+          </TabsList>
+        </Tabs>
+      </div>
+
+      {/* Content */}
+      <ScrollArea className="flex-1">
+        {activeTab === "projects" ? (
+          <div className="p-6 space-y-4">
+            {loading ? (
+              // Loading skeletons
+              Array.from({ length: 3 }).map((_, i) => (
+                <Card key={i} className="border-[var(--tartarus-border)] bg-[var(--tartarus-surface)]">
+                  <CardHeader>
+                    <Skeleton className="h-6 w-1/3 bg-[var(--tartarus-elevated)]" />
+                    <Skeleton className="h-4 w-2/3 bg-[var(--tartarus-elevated)]" />
+                  </CardHeader>
+                  <CardContent>
+                    <Skeleton className="h-20 w-full bg-[var(--tartarus-elevated)]" />
+                  </CardContent>
+                </Card>
+              ))
+            ) : filteredProjects.length === 0 ? (
+              <div className="py-12 text-center">
+                <div className="flex flex-col items-center gap-4">
+                  <div className="h-16 w-16 rounded-full bg-[var(--tartarus-elevated)] flex items-center justify-center">
+                    <FolderGit2 className="h-8 w-8 text-[var(--tartarus-ivory-muted)]" />
+                  </div>
+                  <p className="text-[var(--tartarus-ivory-muted)]">No projects found.</p>
+                  <Button
+                    onClick={createNewProject}
+                    className="bg-[var(--tartarus-gold)] text-[var(--tartarus-void)] hover:bg-[var(--tartarus-gold-bright)]"
+                  >
+                    <img src="/chronus-logo.png" alt="Kronus" className="h-4 w-4 mr-2 rounded-full object-cover" />
+                    Create First Project
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              filteredProjects.map((project) => (
+                <Collapsible
+                  key={project.id}
+                  open={expandedProjects.has(project.repository)}
+                  onOpenChange={() => toggleProject(project.repository)}
+                >
+                  <Card className="border-[var(--tartarus-border)] bg-[var(--tartarus-surface)] overflow-hidden">
+                    {/* Project Header */}
+                    <CollapsibleTrigger asChild>
+                      <CardHeader className="cursor-pointer hover:bg-[var(--tartarus-elevated)] transition-colors">
+                        <div className="flex items-start justify-between">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2">
+                              {expandedProjects.has(project.repository) ? (
+                                <ChevronDown className="h-4 w-4 text-[var(--tartarus-ivory-muted)]" />
+                              ) : (
+                                <ChevronRight className="h-4 w-4 text-[var(--tartarus-ivory-muted)]" />
+                              )}
+                              <FolderGit2 className="h-5 w-5 text-[var(--tartarus-teal)]" />
+                              <CardTitle className="text-lg text-[var(--tartarus-ivory)]">
+                                {project.repository}
+                              </CardTitle>
+                              <Badge className="bg-[var(--tartarus-teal-soft)] text-[var(--tartarus-teal)] ml-2">
+                                {project.entry_count} entries
+                              </Badge>
+                            </div>
+                            <CardDescription className="mt-1 ml-10 line-clamp-2 text-[var(--tartarus-ivory-muted)]">
+                              {project.summary?.substring(0, 200)}...
+                            </CardDescription>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            {project.git_url && (
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                asChild
+                                onClick={(e) => e.stopPropagation()}
+                                className="text-[var(--tartarus-ivory-muted)] hover:text-[var(--tartarus-teal)]"
+                              >
+                                <a href={project.git_url} target="_blank" rel="noopener noreferrer">
+                                  <ExternalLink className="h-4 w-4" />
+                                </a>
+                              </Button>
+                            )}
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={(e) => editProjectWithKronus(project, e)}
+                              className="text-[var(--tartarus-gold)] hover:text-[var(--tartarus-gold-bright)] hover:bg-[var(--tartarus-gold-soft)]"
+                            >
+                              <img src="/chronus-logo.png" alt="Kronus" className="h-4 w-4 mr-1.5 rounded-full object-cover" />
+                              Edit
+                            </Button>
+                          </div>
+                        </div>
+                        {project.technologies && (
+                          <div className="flex flex-wrap gap-1 mt-2 ml-10">
+                            {cleanTechnologies(project.technologies).slice(0, 6).map((tech) => (
+                              <Badge key={tech} variant="outline" className="text-xs border-[var(--tartarus-border)] text-[var(--tartarus-ivory-muted)]">
+                                {tech.split(" ")[0]}
+                              </Badge>
+                            ))}
+                          </div>
+                        )}
+                      </CardHeader>
+                    </CollapsibleTrigger>
+
+                    {/* Expanded Content */}
+                    <CollapsibleContent>
+                      <CardContent className="border-t border-[var(--tartarus-border)] pt-4">
+                        {/* Project Details */}
+                        {project.purpose && (
+                          <div className="mb-4">
+                            <h4 className="text-sm font-medium text-[var(--tartarus-teal)] mb-2">Purpose</h4>
+                            <div className="prose prose-sm max-w-none text-[var(--tartarus-ivory-muted)] prose-strong:text-[var(--tartarus-ivory)]">
+                              <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                                {project.purpose}
+                              </ReactMarkdown>
+                            </div>
+                          </div>
+                        )}
+
+                        {project.architecture && (
+                          <div className="mb-4">
+                            <h4 className="text-sm font-medium text-[var(--tartarus-teal)] mb-2">Architecture</h4>
+                            <div className="prose prose-sm max-w-none text-[var(--tartarus-ivory-muted)] prose-strong:text-[var(--tartarus-ivory)] prose-headings:text-[var(--tartarus-ivory)] prose-h2:text-base prose-h3:text-sm">
+                              <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                                {project.architecture}
+                              </ReactMarkdown>
+                            </div>
+                          </div>
+                        )}
+
+                        {project.key_decisions && (
+                          <div className="mb-4">
+                            <h4 className="text-sm font-medium text-[var(--tartarus-teal)] mb-2">Key Decisions</h4>
+                            <div className="prose prose-sm max-w-none text-[var(--tartarus-ivory-muted)] prose-strong:text-[var(--tartarus-ivory)]">
+                              <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                                {project.key_decisions}
+                              </ReactMarkdown>
+                            </div>
+                          </div>
+                        )}
+
+                        {project.status && (
+                          <div className="mb-4">
+                            <h4 className="text-sm font-medium text-[var(--tartarus-teal)] mb-2">Status</h4>
+                            <div className="prose prose-sm max-w-none text-[var(--tartarus-ivory-muted)] prose-strong:text-[var(--tartarus-gold)]">
+                              <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                                {project.status}
+                              </ReactMarkdown>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Technologies (full list) */}
+                        {project.technologies && (
+                          <div className="mb-4">
+                            <h4 className="text-sm font-medium text-[var(--tartarus-teal)] mb-2">Technologies</h4>
+                            <div className="flex flex-wrap gap-1.5">
+                              {cleanTechnologies(project.technologies).map((tech) => (
+                                <Badge key={tech} variant="outline" className="text-xs border-[var(--tartarus-border)] text-[var(--tartarus-ivory-muted)]">
+                                  {tech}
+                                </Badge>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Metadata */}
+                        <div className="mb-4 flex items-center gap-4 text-xs text-[var(--tartarus-ivory-muted)]">
+                          {project.last_entry_date && (
+                            <span className="flex items-center gap-1">
+                              <Calendar className="h-3 w-3" />
+                              Last entry: {new Date(project.last_entry_date).toLocaleDateString()}
+                            </span>
+                          )}
+                          <span className="flex items-center gap-1">
+                            <FileText className="h-3 w-3" />
+                            {project.entry_count} entries
+                          </span>
+                          {project.linear_project_id && (
+                            <Badge variant="outline" className="text-xs border-[var(--tartarus-teal-dim)] text-[var(--tartarus-teal)]">
+                              Linear Linked
+                            </Badge>
+                          )}
+                        </div>
+
+                        {/* Attachments Section */}
+                        <div className="mb-4">
+                          <div className="flex items-center justify-between mb-2">
+                            <h4 className="text-sm font-medium text-[var(--tartarus-teal)] flex items-center gap-2">
+                              <Paperclip className="h-4 w-4" />
+                              Attachments
+                            </h4>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => toggleShowAttachments(project.repository)}
+                              className="text-xs text-[var(--tartarus-teal)] hover:bg-[var(--tartarus-teal-soft)]"
+                            >
+                              {showAttachments.has(project.repository) ? (
+                                <>
+                                  <ChevronDown className="h-3 w-3 mr-1" />
+                                  Hide
+                                </>
+                              ) : (
+                                <>
+                                  <ChevronRight className="h-3 w-3 mr-1" />
+                                  Show
+                                </>
+                              )}
+                            </Button>
+                          </div>
+
+                          {showAttachments.has(project.repository) && (
+                            <>
+                              {attachmentsLoading[project.repository] ? (
+                                <div className="space-y-2">
+                                  <Skeleton className="h-12 w-full bg-[var(--tartarus-elevated)]" />
+                                </div>
+                              ) : attachments[project.repository]?.length === 0 ? (
+                                <p className="text-xs text-[var(--tartarus-ivory-muted)] py-2">No attachments</p>
+                              ) : (
+                                <div className="space-y-2">
+                                  {/* All attachments as clickable items */}
+                                  {attachments[project.repository]?.map(att => {
+                                    const isMermaid = att.filename.endsWith('.mmd') || att.filename.endsWith('.mermaid');
+                                    const isImage = att.mime_type.startsWith('image/');
+                                    const isExpanded = expandedAttachments.has(att.id);
+
+                                    return (
+                                      <div key={att.id} className="rounded-lg border border-[var(--tartarus-border)] bg-[var(--tartarus-elevated)] overflow-hidden">
+                                        {/* Clickable header */}
+                                        <button
+                                          onClick={() => toggleAttachmentExpand(att.id, isMermaid)}
+                                          className="w-full flex items-center gap-2 px-3 py-2 bg-[var(--tartarus-surface)] hover:bg-[var(--tartarus-elevated)] transition-colors text-left"
+                                        >
+                                          {isExpanded ? (
+                                            <ChevronDown className="h-3 w-3 text-[var(--tartarus-ivory-muted)]" />
+                                          ) : (
+                                            <ChevronRight className="h-3 w-3 text-[var(--tartarus-ivory-muted)]" />
+                                          )}
+                                          {isMermaid ? (
+                                            <FileCode className="h-4 w-4 text-[var(--tartarus-teal)]" />
+                                          ) : isImage ? (
+                                            <ImageIcon className="h-4 w-4 text-[var(--tartarus-teal)]" />
+                                          ) : (
+                                            <File className="h-4 w-4 text-[var(--tartarus-ivory-muted)]" />
+                                          )}
+                                          <span className="text-sm text-[var(--tartarus-ivory)] flex-1">{att.filename}</span>
+                                          {att.description && (
+                                            <span className="text-xs text-[var(--tartarus-ivory-muted)] truncate max-w-[200px]">{att.description}</span>
+                                          )}
+                                          <span className="text-xs text-[var(--tartarus-ivory-faded)]">
+                                            {(att.size / 1024).toFixed(1)} KB
+                                          </span>
+                                        </button>
+
+                                        {/* Expanded content - only rendered on click */}
+                                        {isExpanded && (
+                                          <div className="border-t border-[var(--tartarus-border)]">
+                                            {isMermaid ? (
+                                              <div className="p-4 bg-white dark:bg-slate-950">
+                                                {attachmentContents[att.id] ? (
+                                                  <MermaidPreview code={attachmentContents[att.id]} />
+                                                ) : (
+                                                  <div className="text-sm text-[var(--tartarus-ivory-muted)]">Loading diagram...</div>
+                                                )}
+                                              </div>
+                                            ) : isImage ? (
+                                              <div className="p-4">
+                                                <img
+                                                  src={`/api/attachments/${att.id}/raw`}
+                                                  alt={att.description || att.filename}
+                                                  className="max-w-full h-auto rounded"
+                                                  loading="lazy"
+                                                />
+                                              </div>
+                                            ) : (
+                                              <div className="p-3 text-xs text-[var(--tartarus-ivory-muted)]">
+                                                <a
+                                                  href={`/api/attachments/${att.id}/raw`}
+                                                  download={att.filename}
+                                                  className="text-[var(--tartarus-teal)] hover:underline"
+                                                >
+                                                  Download file
+                                                </a>
+                                              </div>
+                                            )}
+                                          </div>
+                                        )}
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              )}
+                            </>
+                          )}
+                        </div>
+
+                        {/* Entries List */}
+                        <div className="mt-4 border-t border-[var(--tartarus-border)] pt-4">
+                          <div className="flex items-center justify-between mb-3">
+                            <h4 className="text-sm font-medium text-[var(--tartarus-ivory)]">
+                              Journal Entries
+                            </h4>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => createNewEntry(project.repository)}
+                              className="border-[var(--tartarus-gold-dim)] text-[var(--tartarus-gold)] hover:bg-[var(--tartarus-gold-soft)]"
+                            >
+                              <Plus className="h-4 w-4 mr-1" />
+                              New Entry
+                            </Button>
+                          </div>
+
+                          {selectedProject === project.repository ? (
+                            entriesLoading ? (
+                              <div className="space-y-2">
+                                {Array.from({ length: 3 }).map((_, i) => (
+                                  <Skeleton key={i} className="h-16 w-full bg-[var(--tartarus-elevated)]" />
+                                ))}
+                              </div>
+                            ) : filteredEntries.length === 0 ? (
+                              <div className="py-6 text-center">
+                                <p className="text-[var(--tartarus-ivory-muted)] text-sm">No entries yet.</p>
+                              </div>
+                            ) : (
+                              <div className="space-y-2">
+                                {filteredEntries.slice(0, 10).map((entry) => (
+                                  <Link key={entry.id} href={`/reader/${entry.commit_hash}`}>
+                                    <div className="group flex items-start gap-3 p-3 rounded-lg bg-[var(--tartarus-elevated)] hover:bg-[var(--tartarus-deep)] transition-colors cursor-pointer border border-[var(--tartarus-border)]">
+                                      <div className="flex-1 min-w-0">
+                                        <div className="flex items-center gap-2 text-xs text-[var(--tartarus-ivory-muted)]">
+                                          <span className="font-mono">{entry.commit_hash.substring(0, 7)}</span>
+                                          <span className="flex items-center gap-1">
+                                            <GitBranch className="h-3 w-3" />
+                                            {entry.branch}
+                                          </span>
+                                          <span className="flex items-center gap-1">
+                                            <Calendar className="h-3 w-3" />
+                                            {new Date(entry.date).toLocaleDateString()}
+                                          </span>
+                                          {entry.attachment_count > 0 && (
+                                            <span className="flex items-center gap-1">
+                                              <Paperclip className="h-3 w-3" />
+                                              {entry.attachment_count}
+                                            </span>
+                                          )}
+                                        </div>
+                                        <p className="text-sm text-[var(--tartarus-ivory)] mt-1 line-clamp-2">
+                                          {entry.why.replace(/[#*`]/g, "").substring(0, 150)}...
+                                        </p>
+                                        {entry.kronus_wisdom && (
+                                          <div className="flex items-center gap-1 mt-1 text-xs text-[var(--tartarus-teal)]">
+                                            <Sparkles className="h-3 w-3" />
+                                            <span className="line-clamp-1 italic">{entry.kronus_wisdom.substring(0, 80)}...</span>
+                                          </div>
+                                        )}
+                                      </div>
+                                      <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                        <Button
+                                          variant="ghost"
+                                          size="sm"
+                                          className="h-7 text-[var(--tartarus-gold)] hover:bg-[var(--tartarus-gold-soft)] text-xs px-2"
+                                          onClick={(e) => editEntryWithKronus(entry, e)}
+                                        >
+                                          <img src="/chronus-logo.png" alt="Kronus" className="h-3.5 w-3.5 mr-1 rounded-full object-cover" />
+                                          Edit
+                                        </Button>
+                                        <ChevronRight className="h-4 w-4 text-[var(--tartarus-ivory-muted)]" />
+                                      </div>
+                                    </div>
+                                  </Link>
+                                ))}
+                                {entries.length > 10 && (
+                                  <div className="text-center py-2">
+                                    <Link href={`/reader?project=${project.repository}`}>
+                                      <Button variant="ghost" size="sm" className="text-[var(--tartarus-teal)]">
+                                        View all {entries.length} entries
+                                      </Button>
+                                    </Link>
+                                  </div>
+                                )}
+                              </div>
+                            )
+                          ) : (
+                            <div className="py-4 text-center">
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => {
+                                  setSelectedProject(project.repository);
+                                  const newExpanded = new Set(expandedProjects);
+                                  newExpanded.add(project.repository);
+                                  setExpandedProjects(newExpanded);
+                                }}
+                                className="text-[var(--tartarus-teal)]"
+                              >
+                                Load {project.entry_count} entries
+                              </Button>
+                            </div>
+                          )}
+                        </div>
+                      </CardContent>
+                    </CollapsibleContent>
+                  </Card>
+                </Collapsible>
+              ))
+            )}
+          </div>
+        ) : (
+          // Timeline View - All entries chronologically
+          <div className="p-6 space-y-4">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-medium text-[var(--tartarus-ivory)]">All Entries</h2>
+              <Button
+                size="sm"
+                onClick={() => createNewEntry()}
+                className="bg-[var(--tartarus-gold)] text-[var(--tartarus-void)] hover:bg-[var(--tartarus-gold-bright)]"
+              >
+                <img src="/chronus-logo.png" alt="Kronus" className="h-4 w-4 mr-2 rounded-full object-cover" />
+                New Entry
+              </Button>
+            </div>
+
+            {loading ? (
+              Array.from({ length: 5 }).map((_, i) => (
+                <Skeleton key={i} className="h-24 w-full bg-[var(--tartarus-elevated)]" />
+              ))
+            ) : (
+              <TimelineEntries searchQuery={searchQuery} onEditEntry={editEntryWithKronus} />
+            )}
+          </div>
+        )}
+      </ScrollArea>
+    </div>
+  );
+}
+
+// Timeline component for all entries view
+function TimelineEntries({
+  searchQuery,
+  onEditEntry
+}: {
+  searchQuery: string;
+  onEditEntry: (entry: JournalEntry, e: React.MouseEvent) => void;
+}) {
+  const [entries, setEntries] = useState<JournalEntry[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [page, setPage] = useState(0);
+  const [hasMore, setHasMore] = useState(false);
+
+  useEffect(() => {
+    fetchAllEntries();
+  }, [page]);
+
+  const fetchAllEntries = async () => {
     setLoading(true);
     try {
       const params = new URLSearchParams({
         limit: "20",
         offset: String(page * 20),
       });
-      if (selectedRepo && selectedRepo !== "all") {
-        params.set("repository", selectedRepo);
-      }
-
       const response = await fetch(`/api/entries?${params}`);
       const data = await response.json();
       setEntries(data.entries || []);
       setHasMore(data.has_more || false);
-      setTotal(data.total || 0);
     } catch (error) {
       console.error("Failed to fetch entries:", error);
     } finally {
@@ -117,172 +875,104 @@ export default function ReaderPage() {
       )
     : entries;
 
-  return (
-    <div className="journal-page flex h-full flex-col">
-      {/* Header */}
-      <header className="journal-header flex h-14 items-center justify-between px-6">
-        <h1 className="journal-title text-lg">Journal Reader</h1>
-        <div className="text-muted-foreground flex items-center gap-2 text-sm">
-          <span>{total} entries</span>
-        </div>
-      </header>
+  if (loading) {
+    return (
+      <div className="space-y-3">
+        {Array.from({ length: 5 }).map((_, i) => (
+          <Skeleton key={i} className="h-24 w-full bg-[var(--tartarus-elevated)]" />
+        ))}
+      </div>
+    );
+  }
 
-      {/* Filters */}
-      <div className="journal-tabs flex items-center gap-4 px-6 py-3">
-        <div className="relative max-w-sm flex-1">
-          <Search className="text-muted-foreground absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2" />
-          <Input
-            placeholder="Search entries..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-9"
-          />
-        </div>
-        <Select
-          value={selectedRepo}
-          onValueChange={(v) => {
-            setSelectedRepo(v);
-            setPage(0);
-          }}
-        >
-          <SelectTrigger className="w-[200px]">
-            <FolderGit2 className="mr-2 h-4 w-4" />
-            <SelectValue placeholder="All Repositories" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Repositories</SelectItem>
-            {repositories.map((repo) => (
-              <SelectItem key={repo} value={repo}>
-                {repo}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+  return (
+    <>
+      <div className="space-y-3">
+        {filteredEntries.map((entry) => (
+          <Link key={entry.id} href={`/reader/${entry.commit_hash}`}>
+            <Card className="group hover:bg-[var(--tartarus-elevated)] transition-colors border-[var(--tartarus-border)] bg-[var(--tartarus-surface)]">
+              <CardContent className="p-4">
+                <div className="flex items-start justify-between">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 text-sm">
+                      <FolderGit2 className="h-4 w-4 text-[var(--tartarus-teal)]" />
+                      <span className="font-medium text-[var(--tartarus-ivory)]">{entry.repository}</span>
+                      <span className="text-[var(--tartarus-ivory-muted)]">/</span>
+                      <span className="text-[var(--tartarus-ivory-muted)] flex items-center gap-1">
+                        <GitBranch className="h-3 w-3" />
+                        {entry.branch}
+                      </span>
+                    </div>
+                    <div className="text-xs text-[var(--tartarus-ivory-muted)] mt-1 flex items-center gap-3">
+                      <span className="font-mono">{entry.commit_hash.substring(0, 7)}</span>
+                      <span className="flex items-center gap-1">
+                        <User className="h-3 w-3" />
+                        {entry.author}
+                      </span>
+                      <span className="flex items-center gap-1">
+                        <Calendar className="h-3 w-3" />
+                        {new Date(entry.date).toLocaleDateString()}
+                      </span>
+                      {entry.attachment_count > 0 && (
+                        <span className="flex items-center gap-1">
+                          <Paperclip className="h-3 w-3" />
+                          {entry.attachment_count}
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-sm text-[var(--tartarus-ivory-muted)] mt-2 line-clamp-2">
+                      {entry.why.replace(/[#*`]/g, "").substring(0, 200)}...
+                    </p>
+                    {entry.kronus_wisdom && (
+                      <div className="flex items-center gap-1 mt-2 text-xs text-[var(--tartarus-teal)]">
+                        <Sparkles className="h-3 w-3" />
+                        <span className="line-clamp-1 italic">{entry.kronus_wisdom.substring(0, 100)}...</span>
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-8 text-[var(--tartarus-gold)] hover:bg-[var(--tartarus-gold-soft)] text-xs"
+                      onClick={(e) => onEditEntry(entry, e)}
+                    >
+                      <img src="/chronus-logo.png" alt="Kronus" className="h-4 w-4 mr-1.5 rounded-full object-cover" />
+                      Edit
+                    </Button>
+                    <ChevronRight className="h-5 w-5 text-[var(--tartarus-ivory-muted)]" />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </Link>
+        ))}
       </div>
 
-      {/* Entry List */}
-      <ScrollArea className="flex-1 bg-[var(--journal-paper)]">
-        <div className="space-y-4 p-6">
-          {loading ? (
-            // Loading skeletons
-            Array.from({ length: 5 }).map((_, i) => (
-              <Card key={i}>
-                <CardHeader className="pb-3">
-                  <Skeleton className="h-5 w-1/3" />
-                  <Skeleton className="h-4 w-1/4" />
-                </CardHeader>
-                <CardContent>
-                  <Skeleton className="mb-2 h-4 w-full" />
-                  <Skeleton className="h-4 w-2/3" />
-                </CardContent>
-              </Card>
-            ))
-          ) : filteredEntries.length === 0 ? (
-            <div className="py-12 text-center">
-              <p className="text-muted-foreground">No journal entries found.</p>
-            </div>
-          ) : (
-            filteredEntries.map((entry) => (
-              <Link key={entry.id} href={`/reader/${entry.commit_hash}`}>
-                <Card className="hover:bg-accent/50 group cursor-pointer transition-colors">
-                  <CardHeader className="pb-3">
-                    <div className="flex items-start justify-between">
-                      <div>
-                        <CardTitle className="flex items-center gap-2 text-base">
-                          <FolderGit2 className="text-primary h-4 w-4" />
-                          {entry.repository}
-                          <span className="text-muted-foreground font-normal">/</span>
-                          <span className="text-muted-foreground flex items-center gap-1 font-normal">
-                            <GitBranch className="h-3 w-3" />
-                            {entry.branch}
-                          </span>
-                        </CardTitle>
-                        <div className="text-muted-foreground mt-1 flex items-center gap-3 text-xs">
-                          <span className="font-mono">{entry.commit_hash.substring(0, 7)}</span>
-                          <span className="flex items-center gap-1">
-                            <User className="h-3 w-3" />
-                            {entry.author}
-                          </span>
-                          <span className="flex items-center gap-1">
-                            <Calendar className="h-3 w-3" />
-                            {new Date(entry.date).toLocaleDateString()}
-                          </span>
-                          {entry.attachment_count > 0 && (
-                            <span className="flex items-center gap-1">
-                              <Paperclip className="h-3 w-3" />
-                              {entry.attachment_count}
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-1">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8 text-amber-600 hover:text-amber-700 hover:bg-amber-50 dark:text-amber-400 dark:hover:text-amber-300 dark:hover:bg-amber-950 opacity-0 group-hover:opacity-100 transition-opacity"
-                          onClick={(e) => editWithKronus(entry, e)}
-                          title="Edit with Kronus"
-                        >
-                          <Image src="/chronus-logo.png" alt="Kronus" width={16} height={16} className="rounded-full" />
-                        </Button>
-                        <ChevronRight className="text-muted-foreground h-5 w-5 opacity-0 transition-opacity group-hover:opacity-100" />
-                      </div>
-                    </div>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-muted-foreground line-clamp-2 text-sm prose prose-sm max-w-none prose-p:m-0 prose-p:text-muted-foreground">
-                      <ReactMarkdown remarkPlugins={[remarkGfm]}>{entry.why}</ReactMarkdown>
-                    </div>
-                    {entry.kronus_wisdom && (
-                      <div className="mt-3 flex items-start gap-2 text-xs">
-                        <Sparkles className="text-primary mt-0.5 h-3 w-3" />
-                        <div className="text-primary/80 line-clamp-1 italic prose prose-sm max-w-none prose-p:m-0 prose-p:text-primary/80 prose-p:italic">
-                          <ReactMarkdown remarkPlugins={[remarkGfm]}>{entry.kronus_wisdom}</ReactMarkdown>
-                        </div>
-                      </div>
-                    )}
-                    {entry.technologies && (
-                      <div className="mt-3 flex flex-wrap gap-1">
-                        {entry.technologies
-                          .split(",")
-                          .slice(0, 5)
-                          .map((tech) => (
-                            <Badge key={tech.trim()} variant="secondary" className="text-xs">
-                              {tech.trim()}
-                            </Badge>
-                          ))}
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
-              </Link>
-            ))
-          )}
+      {/* Pagination */}
+      {filteredEntries.length > 0 && (
+        <div className="flex items-center justify-center gap-4 py-4">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setPage(Math.max(0, page - 1))}
+            disabled={page === 0}
+            className="border-[var(--tartarus-border)] text-[var(--tartarus-ivory-muted)]"
+          >
+            Previous
+          </Button>
+          <span className="text-sm text-[var(--tartarus-ivory-muted)]">Page {page + 1}</span>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setPage(page + 1)}
+            disabled={!hasMore}
+            className="border-[var(--tartarus-border)] text-[var(--tartarus-ivory-muted)]"
+          >
+            Next
+          </Button>
         </div>
-
-        {/* Pagination */}
-        {!loading && filteredEntries.length > 0 && (
-          <div className="flex items-center justify-center gap-4 pb-6">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setPage(Math.max(0, page - 1))}
-              disabled={page === 0}
-            >
-              Previous
-            </Button>
-            <span className="text-muted-foreground text-sm">Page {page + 1}</span>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setPage(page + 1)}
-              disabled={!hasMore}
-            >
-              Next
-            </Button>
-          </div>
-        )}
-      </ScrollArea>
-    </div>
+      )}
+    </>
   );
 }

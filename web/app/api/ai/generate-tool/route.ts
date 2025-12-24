@@ -1,7 +1,22 @@
-import { generateText } from "ai";
+import { generateObject } from "ai";
 import { anthropic } from "@ai-sdk/anthropic";
 import { z } from "zod";
 import { NextResponse } from "next/server";
+
+/**
+ * Schema for tool generation output - enforced via generateObject
+ */
+const ToolDefinitionSchema = z.object({
+  description: z
+    .string()
+    .describe("1-2 sentence description explaining when and why to use this tool"),
+  inputSchema: z
+    .record(z.string(), z.string())
+    .describe("Object mapping field names to Zod schema definitions as strings, e.g. { 'name': 'string().min(1)', 'count': 'number().optional()' }"),
+  promptTemplate: z
+    .string()
+    .describe("Instructions for the AI on how to use this tool effectively"),
+});
 
 /**
  * Generate a tool definition using Claude Haiku 4.5
@@ -21,8 +36,10 @@ export async function POST(req: Request) {
     // Use Claude Haiku 4.5 for fast, cost-effective tool generation
     const model = anthropic("claude-haiku-4-5-20251001");
 
-    const result = await generateText({
+    // Use generateObject for strict schema enforcement - no parsing needed
+    const { object: parsed } = await generateObject({
       model,
+      schema: ToolDefinitionSchema,
       system: `You are an expert at creating AI tool definitions with Zod schemas.
 Your task is to generate:
 1. A clear, concise tool description
@@ -32,35 +49,20 @@ Your task is to generate:
 The tool should be designed for AI agents to create or update resources.
 Focus on making the schema type-safe and the prompt actionable.
 
-ALWAYS respond with valid JSON only, no markdown, no code blocks.`,
+For inputSchema, provide field names as keys and Zod schema definitions as values (without the 'z.' prefix).
+Examples:
+- "string().min(1).describe('User name')"
+- "number().optional()"
+- "array(string()).describe('List of tags')"
+- "enum(['active', 'inactive']).describe('Status')"`,
       prompt: `Create a tool definition for: "${description}"
 
 ${context ? `Context: ${context}` : ""}
 
 ${examples ? `Examples of desired behavior:\n${examples}` : ""}
 
-Generate:
-1. A tool description (1-2 sentences explaining when and why to use this tool)
-2. A Zod schema definition (complete z.object with all necessary fields, descriptions, and validation)
-3. A prompt template (instructions for the AI on how to use this tool, what to consider, and best practices)
-
-Respond with ONLY valid JSON:
-{
-  "description": "...",
-  "inputSchema": {
-    "field1": "z.string().describe('...')",
-    "field2": "z.number().optional()"
-  },
-  "promptTemplate": "..."
-}`,
+Generate a complete tool definition with description, inputSchema, and promptTemplate.`,
     });
-
-    // Parse JSON from text response
-    const jsonMatch = result.text.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) {
-      throw new Error("Failed to parse JSON from response");
-    }
-    const parsed = JSON.parse(jsonMatch[0]);
 
     // Convert the schema strings to actual Zod schema
     const schemaFields: Record<string, z.ZodTypeAny> = {};
