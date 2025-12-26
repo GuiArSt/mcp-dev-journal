@@ -203,21 +203,6 @@ export const conversations = sqliteTable("conversations", {
 // ============================================================================
 
 /**
- * Atropos memory - writing assistant memory (legacy single-row)
- * @deprecated Use atroposMemories and atroposDictionary instead
- */
-export const atroposMemory = sqliteTable("atropos_memory", {
-  id: integer("id").primaryKey({ autoIncrement: true }),
-  userId: text("user_id").default("default"),
-  customDictionary: text("custom_dictionary").default("[]"),
-  memories: text("memories").default("[]"),
-  totalChecks: integer("total_checks").default(0),
-  totalCorrections: integer("total_corrections").default(0),
-  createdAt: text("created_at").default("CURRENT_TIMESTAMP"),
-  updatedAt: text("updated_at").default("CURRENT_TIMESTAMP"),
-});
-
-/**
  * Atropos corrections - history of all corrections made
  */
 export const atroposCorrections = sqliteTable("atropos_corrections", {
@@ -403,8 +388,7 @@ export type NewMediaAsset = typeof mediaAssets.$inferInsert;
 export type Conversation = typeof conversations.$inferSelect;
 export type NewConversation = typeof conversations.$inferInsert;
 
-export type AtroposMemory = typeof atroposMemory.$inferSelect;
-export type NewAtroposMemory = typeof atroposMemory.$inferInsert;
+// Legacy AtroposMemory type removed - use AtroposMemoryItem, AtroposDictionaryTerm, AtroposUserStats instead
 
 export type AtroposCorrection = typeof atroposCorrections.$inferSelect;
 export type NewAtroposCorrection = typeof atroposCorrections.$inferInsert;

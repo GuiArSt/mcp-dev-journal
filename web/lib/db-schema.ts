@@ -280,30 +280,9 @@ export function initRepositorySchema() {
     CREATE INDEX IF NOT EXISTS idx_conversations_updated_at ON conversations(updated_at);
   `);
 
-  // DEPRECATED: writing_memory table removed - use atropos_memory instead
-
-  // Atropos Memory table (for the evolved spellchecker with poem + memory)
-  db.exec(`
-    CREATE TABLE IF NOT EXISTS atropos_memory (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      user_id TEXT DEFAULT 'default',
-
-      -- Custom dictionary (JSON array of protected words/terms)
-      custom_dictionary TEXT DEFAULT '["MCP", "Supabase", "Kronus", "Tartarus", "Atropos", "Haiku", "API", "JSON", "SQL", "CLI", "SDK", "TypeScript", "JavaScript", "React", "Next.js", "Node.js"]',
-
-      -- Memories/learnings (JSON array of {content, tags[], createdAt})
-      memories TEXT DEFAULT '[]',
-
-      -- Usage stats
-      total_checks INTEGER DEFAULT 0,
-      total_corrections INTEGER DEFAULT 0,
-
-      created_at TEXT DEFAULT CURRENT_TIMESTAMP,
-      updated_at TEXT DEFAULT CURRENT_TIMESTAMP
-    );
-
-    CREATE UNIQUE INDEX IF NOT EXISTS idx_atropos_memory_user_id ON atropos_memory(user_id);
-  `);
+  // DEPRECATED: atropos_memory table removed
+  // Data migrated to normalized tables: atropos_memories, atropos_dictionary, atropos_stats
+  // Run: npx tsx scripts/migrate-atropos.ts to migrate and drop legacy table
 
   // Athena Learning Items table (for spaced repetition and progress tracking)
   db.exec(`

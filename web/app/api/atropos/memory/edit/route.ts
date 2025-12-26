@@ -3,20 +3,30 @@ import { anthropic } from "@ai-sdk/anthropic";
 import { generateObject } from "ai";
 import { z } from "zod";
 import { getDatabase } from "@/lib/db";
-import {
-  getDefaultAtroposMemory,
-  AtroposMemory,
-  AtroposMemoryEntry,
-  buildMemoryInjection,
-} from "@/lib/ai/atropos";
 
 interface AtroposMemoryRow {
   id: number;
   user_id: string;
-  custom_dictionary: string;
-  memories: string;
+  content: string;
+  tags: string;
+  frequency: number;
+  created_at: string;
+  updated_at: string;
+}
+
+interface AtroposDictionaryRow {
+  id: number;
+  user_id: string;
+  term: string;
+  created_at: string;
+}
+
+interface AtroposStatsRow {
+  id: number;
+  user_id: string;
   total_checks: number;
   total_corrections: number;
+  total_characters_corrected: number;
   created_at: string;
   updated_at: string;
 }
@@ -42,6 +52,7 @@ const MemoryEditResponseSchema = z.object({
 /**
  * POST /api/atropos/memory/edit
  * AI-mediated memory editing - Atropos interprets user request and modifies memory
+ * Now uses normalized tables: atropos_memories, atropos_dictionary, atropos_stats
  */
 export async function POST(request: NextRequest) {
   try {
@@ -59,52 +70,57 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Load current memory
     const db = getDatabase();
-    let memoryRow = db
-      .prepare("SELECT * FROM atropos_memory WHERE user_id = ?")
-      .get("default") as AtroposMemoryRow | undefined;
+    const userId = "default";
 
-    if (!memoryRow) {
-      const defaultMemory = getDefaultAtroposMemory();
+    // Load memories from normalized table
+    const memoriesRows = db
+      .prepare("SELECT * FROM atropos_memories WHERE user_id = ? ORDER BY created_at DESC")
+      .all(userId) as AtroposMemoryRow[];
+
+    // Load dictionary from normalized table
+    const dictionaryRows = db
+      .prepare("SELECT * FROM atropos_dictionary WHERE user_id = ?")
+      .all(userId) as AtroposDictionaryRow[];
+
+    // Load stats
+    let statsRow = db
+      .prepare("SELECT * FROM atropos_stats WHERE user_id = ?")
+      .get(userId) as AtroposStatsRow | undefined;
+
+    if (!statsRow) {
       db.prepare(
-        `INSERT INTO atropos_memory (user_id, custom_dictionary, memories)
-         VALUES (?, ?, ?)`
-      ).run(
-        "default",
-        JSON.stringify(defaultMemory.customDictionary),
-        JSON.stringify(defaultMemory.memories)
-      );
-      memoryRow = db
-        .prepare("SELECT * FROM atropos_memory WHERE user_id = ?")
-        .get("default") as AtroposMemoryRow;
+        `INSERT INTO atropos_stats (user_id, total_checks, total_corrections, total_characters_corrected)
+         VALUES (?, 0, 0, 0)`
+      ).run(userId);
+      statsRow = db
+        .prepare("SELECT * FROM atropos_stats WHERE user_id = ?")
+        .get(userId) as AtroposStatsRow;
     }
 
-    const memory: AtroposMemory = {
-      customDictionary: JSON.parse(memoryRow.custom_dictionary || "[]"),
-      memories: JSON.parse(memoryRow.memories || "[]"),
-      totalChecks: memoryRow.total_checks,
-      totalCorrections: memoryRow.total_corrections,
-    };
+    // Build memory object for AI context
+    const memories = memoriesRows.map(m => ({
+      id: m.id,
+      content: m.content,
+      tags: JSON.parse(m.tags || "[]") as string[],
+      createdAt: m.created_at,
+    }));
 
-    // Build context with current memory state
-    const memoryContext = buildMemoryInjection(memory);
+    const customDictionary = dictionaryRows.map(d => d.term);
 
-    // Format memories with indices for reference
-    const memoriesWithIndices = memory.memories
-      .slice()
-      .reverse()
-      .map((m, idx) => `[${idx}] ${m.content} (tags: ${m.tags.join(", ") || "none"})`)
+    // Format memories with indices for reference (most recent first, already sorted)
+    const memoriesWithIndices = memories
+      .map((m, idx) => `[${idx}] (id:${m.id}) ${m.content} (tags: ${m.tags.join(", ") || "none"})`)
       .join("\n");
 
     const systemPrompt = `You are Atropos, the fate that corrects. You manage your memory of the user's writing patterns.
 
 ## Current Memory State
 
-**Dictionary Words (${memory.customDictionary.length}):**
-${memory.customDictionary.join(", ") || "(empty)"}
+**Dictionary Words (${customDictionary.length}):**
+${customDictionary.join(", ") || "(empty)"}
 
-**Memories (${memory.memories.length}, most recent first):**
+**Memories (${memories.length}, most recent first):**
 ${memoriesWithIndices || "(none)"}
 
 ## Your Task
@@ -123,57 +139,63 @@ Be helpful and interpret the user's intent. If they say "remember that I prefer.
       prompt: userMessage,
     });
 
-    // Apply the action
-    let customDictionary = [...memory.customDictionary];
-    let memories: AtroposMemoryEntry[] = [...memory.memories];
+    // Apply the action to normalized tables
     let actionTaken = response.action;
 
     switch (response.action) {
       case "add_memory":
         if (response.memoryContent) {
-          memories.push({
-            content: response.memoryContent,
-            tags: response.memoryTags || [],
-            createdAt: new Date().toISOString(),
-          });
+          db.prepare(
+            `INSERT INTO atropos_memories (user_id, content, tags)
+             VALUES (?, ?, ?)`
+          ).run(userId, response.memoryContent, JSON.stringify(response.memoryTags || []));
         }
         break;
 
       case "edit_memory":
         if (response.targetMemoryIndex !== undefined && response.memoryContent) {
-          // Index is from most recent, so convert to actual array index
-          const actualIndex = memories.length - 1 - response.targetMemoryIndex;
-          if (actualIndex >= 0 && actualIndex < memories.length) {
-            memories[actualIndex] = {
-              ...memories[actualIndex],
-              content: response.memoryContent,
-              tags: response.memoryTags || memories[actualIndex].tags,
-            };
+          const targetMemory = memories[response.targetMemoryIndex];
+          if (targetMemory) {
+            db.prepare(
+              `UPDATE atropos_memories
+               SET content = ?, tags = ?, updated_at = CURRENT_TIMESTAMP
+               WHERE id = ?`
+            ).run(
+              response.memoryContent,
+              JSON.stringify(response.memoryTags || []),
+              targetMemory.id
+            );
           }
         }
         break;
 
       case "remove_memory":
         if (response.targetMemoryIndex !== undefined) {
-          const actualIndex = memories.length - 1 - response.targetMemoryIndex;
-          if (actualIndex >= 0 && actualIndex < memories.length) {
-            memories.splice(actualIndex, 1);
+          const targetMemory = memories[response.targetMemoryIndex];
+          if (targetMemory) {
+            db.prepare("DELETE FROM atropos_memories WHERE id = ?").run(targetMemory.id);
           }
         }
         break;
 
       case "add_word":
-        if (response.word && !customDictionary.includes(response.word)) {
-          customDictionary.push(response.word);
+        if (response.word) {
+          const exists = db
+            .prepare("SELECT id FROM atropos_dictionary WHERE user_id = ? AND term = ?")
+            .get(userId, response.word);
+          if (!exists) {
+            db.prepare(
+              `INSERT INTO atropos_dictionary (user_id, term) VALUES (?, ?)`
+            ).run(userId, response.word);
+          }
         }
         break;
 
       case "remove_word":
         if (response.word) {
-          const idx = customDictionary.indexOf(response.word);
-          if (idx > -1) {
-            customDictionary.splice(idx, 1);
-          }
+          db.prepare(
+            "DELETE FROM atropos_dictionary WHERE user_id = ? AND term = ?"
+          ).run(userId, response.word);
         }
         break;
 
@@ -182,34 +204,39 @@ Be helpful and interpret the user's intent. If they say "remember that I prefer.
         break;
     }
 
-    // Save updated memory
-    db.prepare(
-      `UPDATE atropos_memory
-       SET custom_dictionary = ?,
-           memories = ?,
-           updated_at = CURRENT_TIMESTAMP
-       WHERE user_id = ?`
-    ).run(JSON.stringify(customDictionary), JSON.stringify(memories), "default");
+    // Reload current state after changes
+    const updatedMemories = db
+      .prepare("SELECT * FROM atropos_memories WHERE user_id = ? ORDER BY created_at DESC")
+      .all(userId) as AtroposMemoryRow[];
+
+    const updatedDictionary = db
+      .prepare("SELECT term FROM atropos_dictionary WHERE user_id = ?")
+      .all(userId) as { term: string }[];
 
     return NextResponse.json({
       success: true,
       action: actionTaken,
       explanation: response.explanation,
       memory: {
-        customDictionary,
-        memories,
-        totalChecks: memory.totalChecks,
-        totalCorrections: memory.totalCorrections,
+        customDictionary: updatedDictionary.map(d => d.term),
+        memories: updatedMemories.map(m => ({
+          content: m.content,
+          tags: JSON.parse(m.tags || "[]"),
+          createdAt: m.created_at,
+        })),
+        totalChecks: statsRow.total_checks,
+        totalCorrections: statsRow.total_corrections,
       },
       stats: {
-        dictionaryWords: customDictionary.length,
-        memoryEntries: memories.length,
+        dictionaryWords: updatedDictionary.length,
+        memoryEntries: updatedMemories.length,
       },
     });
-  } catch (error: any) {
-    console.error("[Atropos Memory Edit] Error:", error);
+  } catch (error: unknown) {
+    const err = error as Error;
+    console.error("[Atropos Memory Edit] Error:", err);
     return NextResponse.json(
-      { error: error.message || "Memory edit failed" },
+      { error: err.message || "Memory edit failed" },
       { status: 500 }
     );
   }

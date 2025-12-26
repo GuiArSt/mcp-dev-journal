@@ -3,7 +3,22 @@ import { getDatabase } from "@/lib/db";
 import { triggerBackup } from "@/lib/backup";
 import { withErrorHandler } from "@/lib/api-handler";
 import { requireBody, updateJournalEntrySchema } from "@/lib/validations";
-import { NotFoundError, ValidationError } from "@/lib/errors";
+import { NotFoundError, ValidationError, ForbiddenError } from "@/lib/errors";
+import { getDrizzleDb, journalEntries, entryAttachments, athenaLearningItems } from "@/lib/db/drizzle";
+import { eq } from "drizzle-orm";
+
+/**
+ * Verify request is from manual UI action, not programmatic access (MCP/Kronus)
+ * Requires X-Manual-Action: true header
+ */
+function requireManualAction(request: NextRequest): void {
+  const manualHeader = request.headers.get("X-Manual-Action");
+  if (manualHeader !== "true") {
+    throw new ForbiddenError(
+      "Delete operations require manual confirmation. This action cannot be performed by AI agents or automated tools."
+    );
+  }
+}
 
 interface JournalEntryRow {
   id: number;
@@ -127,4 +142,60 @@ export const PATCH = withErrorHandler<{ commitHash: string }>(async (
   }
 
   return NextResponse.json(updatedEntry);
+});
+
+/**
+ * DELETE /api/entries/[commitHash]
+ * Delete a single journal entry and all related data
+ */
+export const DELETE = withErrorHandler<{ commitHash: string }>(async (
+  request: NextRequest,
+  context
+) => {
+  // Require manual action header - prevents MCP/Kronus from deleting entries
+  requireManualAction(request);
+
+  const { commitHash } = await context!.params;
+  const db = getDrizzleDb();
+
+  // Check entry exists
+  const [entry] = await db
+    .select({ commitHash: journalEntries.commitHash, repository: journalEntries.repository })
+    .from(journalEntries)
+    .where(eq(journalEntries.commitHash, commitHash))
+    .limit(1);
+
+  if (!entry) {
+    throw new NotFoundError("Entry not found");
+  }
+
+  // Delete related Athena learning items for this commit
+  await db
+    .delete(athenaLearningItems)
+    .where(eq(athenaLearningItems.commitHash, commitHash));
+
+  // Delete attachments (cascade should handle this, but be explicit)
+  await db
+    .delete(entryAttachments)
+    .where(eq(entryAttachments.commitHash, commitHash));
+
+  // Delete the entry
+  await db
+    .delete(journalEntries)
+    .where(eq(journalEntries.commitHash, commitHash));
+
+  // Trigger backup after deletion
+  try {
+    triggerBackup();
+  } catch (error) {
+    console.error("Backup failed after delete:", error);
+  }
+
+  return NextResponse.json({
+    success: true,
+    deleted: {
+      commitHash,
+      repository: entry.repository,
+    },
+  });
 });

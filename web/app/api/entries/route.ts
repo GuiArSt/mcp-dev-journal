@@ -1,9 +1,24 @@
 import { NextRequest, NextResponse } from "next/server";
-import { eq, desc, and, sql, count } from "drizzle-orm";
-import { getDrizzleDb, journalEntries, entryAttachments } from "@/lib/db/drizzle";
+import { eq, desc, and, sql, count, inArray } from "drizzle-orm";
+import { getDrizzleDb, journalEntries, entryAttachments, projectSummaries, athenaLearningItems, athenaSessions } from "@/lib/db/drizzle";
 import { withErrorHandler } from "@/lib/api-handler";
 import { requireQuery, journalQuerySchema } from "@/lib/validations";
+import { ValidationError, NotFoundError, ForbiddenError } from "@/lib/errors";
+import { triggerBackup } from "@/lib/backup";
 import type { JournalEntry } from "@/lib/db/schema";
+
+/**
+ * Verify request is from manual UI action, not programmatic access (MCP/Kronus)
+ * Requires X-Manual-Action: true header
+ */
+function requireManualAction(request: NextRequest): void {
+  const manualHeader = request.headers.get("X-Manual-Action");
+  if (manualHeader !== "true") {
+    throw new ForbiddenError(
+      "Delete operations require manual confirmation. This action cannot be performed by AI agents or automated tools."
+    );
+  }
+}
 
 /**
  * GET /api/entries
@@ -78,5 +93,79 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
     limit,
     offset,
     has_more: offset + entries.length < total,
+  });
+});
+
+/**
+ * DELETE /api/entries?repository=xxx
+ * Delete all entries for a repository and all related data
+ * Requires X-Manual-Action: true header (manual UI only, not MCP/Kronus)
+ */
+export const DELETE = withErrorHandler(async (request: NextRequest) => {
+  // Require manual action header - prevents MCP/Kronus from deleting entries
+  requireManualAction(request);
+
+  const url = new URL(request.url);
+  const repository = url.searchParams.get("repository");
+
+  if (!repository) {
+    throw new ValidationError("repository query parameter is required");
+  }
+
+  const db = getDrizzleDb();
+
+  // Get all entries for this repository
+  const entries = await db
+    .select({ commitHash: journalEntries.commitHash })
+    .from(journalEntries)
+    .where(eq(journalEntries.repository, repository));
+
+  if (entries.length === 0) {
+    throw new NotFoundError(`No entries found for repository: ${repository}`);
+  }
+
+  const commitHashes = entries.map((e) => e.commitHash);
+
+  // Delete related Athena learning items for this repository
+  await db
+    .delete(athenaLearningItems)
+    .where(eq(athenaLearningItems.repository, repository));
+
+  // Delete related Athena sessions for this repository
+  await db
+    .delete(athenaSessions)
+    .where(eq(athenaSessions.repository, repository));
+
+  // Delete all attachments for these entries
+  if (commitHashes.length > 0) {
+    await db
+      .delete(entryAttachments)
+      .where(inArray(entryAttachments.commitHash, commitHashes));
+  }
+
+  // Delete all entries for this repository
+  await db
+    .delete(journalEntries)
+    .where(eq(journalEntries.repository, repository));
+
+  // Delete the project summary for this repository
+  await db
+    .delete(projectSummaries)
+    .where(eq(projectSummaries.repository, repository));
+
+  // Trigger backup after deletion
+  try {
+    triggerBackup();
+  } catch (error) {
+    console.error("Backup failed after delete:", error);
+  }
+
+  return NextResponse.json({
+    success: true,
+    deleted: {
+      repository,
+      entriesCount: entries.length,
+      commitHashes,
+    },
   });
 });

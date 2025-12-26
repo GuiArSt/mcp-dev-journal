@@ -406,15 +406,7 @@ export function ChatInterface() {
             break;
           }
 
-          case "document_delete": {
-            const res = await fetch(`/api/documents/${typedArgs.slug}`, {
-              method: "DELETE",
-            });
-            const data = await res.json();
-            if (!res.ok) throw new Error(data.error || "Failed to delete document");
-            output = `✅ Deleted document: ${typedArgs.slug}`;
-            break;
-          }
+          // NOTE: document_delete removed - destructive actions are UI-only
 
           // ===== CV Tools =====
           case "skill_list": {

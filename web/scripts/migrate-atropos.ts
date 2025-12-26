@@ -204,6 +204,11 @@ async function migrate() {
     console.log(`   atropos_dictionary: ${dictCount.count} rows`);
     console.log(`   atropos_stats: ${statsCount.count} rows`);
 
+    // Step 6: Drop legacy table
+    console.log("\n🗑️  Dropping legacy atropos_memory table...");
+    db.exec("DROP TABLE IF EXISTS atropos_memory");
+    console.log("✅ Legacy table dropped");
+
   } catch (error) {
     console.error("❌ Migration failed:", error);
     process.exit(1);

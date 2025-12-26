@@ -241,12 +241,7 @@ export const toolSpecs = {
     }),
   },
 
-  document_delete: {
-    description: "Delete a document by its slug.",
-    inputSchema: z.object({
-      slug: z.string().min(1).describe("Document slug"),
-    }),
-  },
+  // NOTE: document_delete removed - destructive actions are UI-only, not exposed to AI agents
 
   // ===== CV Tools - Generate + Edit Pattern =====
   skill_list: {
