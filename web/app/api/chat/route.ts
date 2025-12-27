@@ -3,7 +3,7 @@ import { anthropic } from "@ai-sdk/anthropic";
 import { openai } from "@ai-sdk/openai";
 import { google } from "@ai-sdk/google";
 import { z } from "zod";
-import { getKronusSystemPrompt } from "@/lib/ai/kronus";
+import { getKronusSystemPrompt, SoulConfig, DEFAULT_SOUL_CONFIG } from "@/lib/ai/kronus";
 
 /**
  * Get the AI model - Anthropic is preferred for Kronus
@@ -341,10 +341,19 @@ const tools = {
 
 export async function POST(req: Request) {
   try {
-    const { messages } = await req.json();
+    const { messages, soulConfig } = await req.json();
+
+    // Parse soul config from request, default to all sections enabled
+    const config: SoulConfig = soulConfig ? {
+      writings: soulConfig.writings ?? true,
+      portfolioProjects: soulConfig.portfolioProjects ?? true,
+      skills: soulConfig.skills ?? true,
+      workExperience: soulConfig.workExperience ?? true,
+      education: soulConfig.education ?? true,
+    } : DEFAULT_SOUL_CONFIG;
 
     const model = getModel();
-    const systemPrompt = getKronusSystemPrompt();
+    const systemPrompt = getKronusSystemPrompt(config);
 
     // Convert UI messages to model format for proper streaming
     const modelMessages = convertToModelMessages(messages);

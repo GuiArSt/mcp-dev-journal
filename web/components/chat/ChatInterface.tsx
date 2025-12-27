@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useEffect, useState, useCallback, memo } from "react";
+import { useRef, useEffect, useState, useCallback, memo, useMemo } from "react";
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport, lastAssistantMessageIsCompleteWithToolCalls } from "ai";
 import { Button } from "@/components/ui/button";
@@ -38,6 +38,7 @@ import {
 import { cn } from "@/lib/utils";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import { SoulConfig, SoulConfigState, DEFAULT_CONFIG } from "./SoulConfig";
 
 // Memoized markdown components - tighter spacing for better density
 const markdownComponents = {
@@ -157,8 +158,21 @@ export function ChatInterface() {
   const [currentSearchIndex, setCurrentSearchIndex] = useState(0);
   const messageRefs = useRef<Map<string, HTMLDivElement>>(new Map());
 
+  // Soul config - controls which repository sections Kronus knows about
+  const [soulConfig, setSoulConfig] = useState<SoulConfigState>(DEFAULT_CONFIG);
+  // Store the config that was used when the conversation started (locked after first message)
+  const [lockedSoulConfig, setLockedSoulConfig] = useState<SoulConfigState | null>(null);
+
+  // Custom transport that includes soul config
+  const chatTransport = useMemo(() => {
+    return new DefaultChatTransport({
+      api: "/api/chat",
+      body: { soulConfig: lockedSoulConfig || soulConfig },
+    });
+  }, [lockedSoulConfig, soulConfig]);
+
   const { messages, sendMessage, status, setMessages, addToolResult, error } = useChat({
-    transport: new DefaultChatTransport({ api: "/api/chat" }),
+    transport: chatTransport,
     sendAutomaticallyWhen: lastAssistantMessageIsCompleteWithToolCalls,
 
     async onToolCall({ toolCall }) {
@@ -1219,6 +1233,11 @@ Details: ${data.details}` : "";
     e.preventDefault();
     if ((!input.trim() && !selectedFiles) || status === "submitted" || status === "streaming") return;
 
+    // Lock the soul config on first message of a new conversation
+    if (messages.length === 0 && !lockedSoulConfig) {
+      setLockedSoulConfig(soulConfig);
+    }
+
     // Send message with optional files
     sendMessage({
       text: input || "What do you see in this image?",
@@ -1368,6 +1387,7 @@ Details: ${data.details}` : "";
     setCurrentConversationId(null);
     setToolStates({});
     setShowHistory(false);
+    setLockedSoulConfig(null); // Unlock config for new conversation
   };
 
   const handleDeleteConversation = async (id: number, e: React.MouseEvent) => {
@@ -1454,6 +1474,11 @@ Details: ${data.details}` : "";
             <Plus className="mr-1 h-4 w-4" />
             New
           </Button>
+          {/* Soul Config - always editable, affects next new chat */}
+          <SoulConfig
+            config={soulConfig}
+            onChange={setSoulConfig}
+          />
           <div className="flex-1" />
           {messages.length > 0 && (
             <>

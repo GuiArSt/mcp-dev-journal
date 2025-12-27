@@ -357,6 +357,35 @@ export const athenaSessions = sqliteTable("athena_sessions", {
 });
 
 // ============================================================================
+// PORTFOLIO PROJECTS SYSTEM
+// ============================================================================
+
+/**
+ * Portfolio projects - shipped work, case studies, showcased projects
+ * Distinct from project_summaries (which are git repository documentation)
+ */
+export const portfolioProjects = sqliteTable("portfolio_projects", {
+  id: text("id").primaryKey(), // e.g., 'langfuse-refactor'
+  title: text("title").notNull(),
+  category: text("category").notNull(), // 'AI Software', 'Web Design', 'Data Engineering', etc.
+  company: text("company"), // Company or 'Personal Project'
+  dateCompleted: text("date_completed"), // YYYY-MM format or null for WIP
+  status: text("status", { enum: ["shipped", "wip", "archived"] }).notNull().default("shipped"),
+  featured: integer("featured", { mode: "boolean" }).default(false),
+  image: text("image"), // Path to project image
+  excerpt: text("excerpt"), // Short description for cards
+  description: text("description"), // Full description
+  role: text("role"), // Your role in the project
+  technologies: text("technologies").default("[]"), // JSON array of tech stack
+  metrics: text("metrics").default("{}"), // JSON object with measurable outcomes
+  links: text("links").default("{}"), // JSON object: { live, github, caseStudy }
+  tags: text("tags").default("[]"), // JSON array for filtering
+  sortOrder: integer("sort_order").default(0), // Manual ordering
+  createdAt: text("created_at").default("CURRENT_TIMESTAMP"),
+  updatedAt: text("updated_at").default("CURRENT_TIMESTAMP"),
+});
+
+// ============================================================================
 // TYPE EXPORTS
 // ============================================================================
 
@@ -419,3 +448,6 @@ export type NewHermesDictionaryTerm = typeof hermesDictionary.$inferInsert;
 
 export type HermesUserStats = typeof hermesStats.$inferSelect;
 export type NewHermesUserStats = typeof hermesStats.$inferInsert;
+
+export type PortfolioProject = typeof portfolioProjects.$inferSelect;
+export type NewPortfolioProject = typeof portfolioProjects.$inferInsert;

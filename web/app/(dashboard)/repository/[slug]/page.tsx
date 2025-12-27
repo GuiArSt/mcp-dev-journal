@@ -18,6 +18,7 @@ import {
 } from "@/components/ui/select";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import remarkBreaks from "remark-breaks";
 import { Edit, Save, X, ArrowLeft, Tag, Plus, FileText, Settings } from "lucide-react";
 
 interface Document {
@@ -396,7 +397,7 @@ export default function DocumentDetailPage() {
                   {document.type === "prompt" ? (
                     <pre className="whitespace-pre-wrap break-words bg-[var(--tartarus-deep)] text-[var(--tartarus-ivory)] p-4 rounded-lg border border-[var(--tartarus-border)] font-mono text-sm leading-relaxed">{document.content}</pre>
                   ) : (
-                    <ReactMarkdown remarkPlugins={[remarkGfm]}>{document.content}</ReactMarkdown>
+                    <ReactMarkdown remarkPlugins={[remarkGfm, remarkBreaks]}>{document.content}</ReactMarkdown>
                   )}
                 </div>
               )}

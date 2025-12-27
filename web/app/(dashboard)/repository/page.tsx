@@ -25,9 +25,9 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
-import { Search, FileText, Code, Briefcase, GraduationCap, BookOpen, Calendar, Edit, Tag, Cpu, Palette, Database, Server, PenTool, Users, Plus, Trash2, Settings, X } from "lucide-react";
+import { Search, FileText, Code, Briefcase, GraduationCap, BookOpen, Calendar, Edit, Tag, Cpu, Palette, Database, Server, PenTool, Users, Plus, Trash2, Settings, X, Layers, ExternalLink, Star } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { SkillEditForm, ExperienceEditForm, EducationEditForm } from "@/components/repository/CVEditForms";
+import { SkillEditForm, ExperienceEditForm, EducationEditForm, PortfolioProjectEditForm } from "@/components/repository/CVEditForms";
 import { getSkillIconUrl } from "@/lib/skill-icons";
 
 // Available Lucide icons for categories
@@ -190,6 +190,25 @@ interface Education {
   achievements: string[];
 }
 
+interface PortfolioProject {
+  id: string;
+  title: string;
+  category: string;
+  company?: string | null;
+  dateCompleted?: string | null;
+  status: "shipped" | "wip" | "archived";
+  featured: boolean;
+  image?: string | null;
+  excerpt?: string | null;
+  description?: string | null;
+  role?: string | null;
+  technologies: string[];
+  metrics: Record<string, string>;
+  links: Record<string, string>;
+  tags: string[];
+  sortOrder?: number;
+}
+
 export default function RepositoryPage() {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState("writings");
@@ -198,6 +217,7 @@ export default function RepositoryPage() {
   const [skills, setSkills] = useState<Skill[]>([]);
   const [experience, setExperience] = useState<WorkExperience[]>([]);
   const [education, setEducation] = useState<Education[]>([]);
+  const [portfolioProjects, setPortfolioProjects] = useState<PortfolioProject[]>([]);
   const [skillCategories, setSkillCategories] = useState<SkillCategory[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
@@ -206,6 +226,7 @@ export default function RepositoryPage() {
   const [editingSkill, setEditingSkill] = useState<string | null>(null);
   const [editingExperience, setEditingExperience] = useState<string | null>(null);
   const [editingEducation, setEditingEducation] = useState<string | null>(null);
+  const [editingProject, setEditingProject] = useState<string | null>(null);
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
 
   // Category management state
@@ -384,12 +405,21 @@ What education entry would you like to add? Please provide the institution and d
           const catData = await catRes.json();
           setSkillCategories(catData || []);
         }
+      } else if (activeTab === "portfolio") {
+        const res = await fetch("/api/portfolio-projects");
+        if (!res.ok) {
+          throw new Error(`HTTP error! status: ${res.status}`);
+        }
+        const data = await res.json();
+        console.log("Fetched portfolio projects:", data.projects?.length || 0);
+        setPortfolioProjects(data.projects || []);
       }
     } catch (error) {
       console.error("Failed to fetch data:", error);
       // Set empty arrays on error to prevent stale data
       if (activeTab === "writings") setWritings([]);
       else if (activeTab === "prompts") setPrompts([]);
+      else if (activeTab === "portfolio") setPortfolioProjects([]);
       else if (activeTab === "cv") {
         setSkills([]);
         setExperience([]);
@@ -501,6 +531,43 @@ What education entry would you like to add? Please provide the institution and d
       console.error("Failed to save education:", error);
     }
   }, []);
+
+  const handleSaveProject = useCallback(async (data: Partial<PortfolioProject>) => {
+    try {
+      const res = await fetch(`/api/portfolio-projects/${data.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      });
+      if (res.ok) {
+        setEditingProject(null);
+        fetchData();
+      }
+    } catch (error) {
+      console.error("Failed to save project:", error);
+    }
+  }, []);
+
+  // Navigate to chat to ADD a new portfolio project with Kronus
+  const addProjectWithKronus = useCallback(() => {
+    const context = `I want to ADD a new portfolio project to my CV. Please help me create it.
+
+**Required Fields:**
+- **id**: Unique project ID (lowercase, no spaces, e.g. 'my-awesome-app')
+- **title**: Project title
+- **category**: Category (e.g., 'Web App', 'Mobile App', 'AI/ML', 'Data Engineering')
+
+**Optional Fields:**
+- company, role, status (shipped/wip/archived), featured
+- dateCompleted, excerpt, description
+- technologies (array), tags (array)
+- metrics (object), links (object), image URL
+
+What project would you like to add?`;
+
+    sessionStorage.setItem("kronusPrefill", context);
+    router.push("/chat");
+  }, [router]);
 
   // Category management handlers
   const openCategoryDialog = useCallback((category?: SkillCategory) => {
@@ -645,6 +712,10 @@ What education entry would you like to add? Please provide the institution and d
             <TabsTrigger value="prompts">
               <Code className="mr-2 h-4 w-4" />
               Prompts
+            </TabsTrigger>
+            <TabsTrigger value="portfolio">
+              <Layers className="mr-2 h-4 w-4" />
+              Portfolio
             </TabsTrigger>
             <TabsTrigger value="cv">
               <Briefcase className="mr-2 h-4 w-4" />
@@ -942,6 +1013,150 @@ What education entry would you like to add? Please provide the institution and d
                     </Link>
                   ))}
                 </div>
+              )}
+            </TabsContent>
+
+            {/* Portfolio Projects Tab */}
+            <TabsContent value="portfolio" className="mt-0 space-y-6">
+              {loading ? (
+                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                  {Array.from({ length: 6 }).map((_, i) => (
+                    <Skeleton key={i} className="h-48 w-full" />
+                  ))}
+                </div>
+              ) : (
+                <>
+                  <div className="mb-6 flex items-center justify-between">
+                    <h2 className="flex items-center gap-2 text-xl font-semibold">
+                      <Layers className="h-5 w-5" />
+                      Portfolio Projects
+                      <Badge variant="secondary" className="ml-2">{portfolioProjects.length}</Badge>
+                    </h2>
+                    <Button
+                      size="sm"
+                      onClick={addProjectWithKronus}
+                      className="bg-[var(--tartarus-gold)] text-[var(--tartarus-void)] hover:bg-[var(--tartarus-gold)]/90 font-medium"
+                    >
+                      <img src="/chronus-logo.png" alt="Kronus" className="h-4 w-4 mr-2 rounded-full object-cover" />
+                      Add with Kronus
+                    </Button>
+                  </div>
+
+                  {portfolioProjects.length === 0 ? (
+                    <div className="rounded-lg border border-dashed p-12 text-center">
+                      <Layers className="mx-auto h-12 w-12 text-muted-foreground" />
+                      <h3 className="mt-4 text-lg font-semibold">No portfolio projects yet</h3>
+                      <p className="text-muted-foreground mt-2">Add your first project to showcase your work.</p>
+                    </div>
+                  ) : (
+                    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                      {portfolioProjects.map((project) => (
+                        editingProject === project.id ? (
+                          <PortfolioProjectEditForm
+                            key={project.id}
+                            project={project}
+                            onSave={handleSaveProject}
+                            onCancel={() => setEditingProject(null)}
+                          />
+                        ) : (
+                          <Card key={project.id} className="group relative overflow-hidden transition-shadow hover:shadow-lg">
+                            {/* Featured star */}
+                            {project.featured && (
+                              <div className="absolute top-2 right-2 z-10">
+                                <Star className="h-5 w-5 fill-yellow-400 text-yellow-400" />
+                              </div>
+                            )}
+
+                            {/* Edit button on hover */}
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              className="absolute top-2 left-2 z-10 opacity-0 group-hover:opacity-100 transition-opacity bg-white/80 hover:bg-white"
+                              onClick={() => setEditingProject(project.id)}
+                            >
+                              <Edit className="h-4 w-4" />
+                            </Button>
+
+                            {/* Image */}
+                            {project.image && (
+                              <div className="h-32 w-full overflow-hidden bg-muted">
+                                <img
+                                  src={project.image}
+                                  alt={project.title}
+                                  className="h-full w-full object-cover"
+                                />
+                              </div>
+                            )}
+
+                            <CardHeader className="pb-2">
+                              <div className="flex items-start justify-between">
+                                <div>
+                                  <CardTitle className="text-lg">{project.title}</CardTitle>
+                                  <p className="text-sm text-muted-foreground">
+                                    {project.company || "Personal"} • {project.category}
+                                  </p>
+                                </div>
+                              </div>
+                            </CardHeader>
+
+                            <CardContent className="pt-0 space-y-3">
+                              {/* Status badge */}
+                              <div className="flex gap-2 flex-wrap">
+                                <Badge
+                                  variant={project.status === "shipped" ? "default" : project.status === "wip" ? "outline" : "secondary"}
+                                >
+                                  {project.status === "shipped" ? "Shipped" : project.status === "wip" ? "In Progress" : "Archived"}
+                                </Badge>
+                                {project.role && (
+                                  <Badge variant="outline">{project.role}</Badge>
+                                )}
+                              </div>
+
+                              {/* Excerpt */}
+                              {project.excerpt && (
+                                <p className="text-sm text-muted-foreground line-clamp-2">{project.excerpt}</p>
+                              )}
+
+                              {/* Technologies */}
+                              {project.technologies.length > 0 && (
+                                <div className="flex gap-1 flex-wrap">
+                                  {project.technologies.slice(0, 4).map((tech) => (
+                                    <Badge key={tech} variant="secondary" className="text-xs bg-blue-100 text-blue-700">
+                                      {tech}
+                                    </Badge>
+                                  ))}
+                                  {project.technologies.length > 4 && (
+                                    <Badge variant="secondary" className="text-xs">
+                                      +{project.technologies.length - 4}
+                                    </Badge>
+                                  )}
+                                </div>
+                              )}
+
+                              {/* Links */}
+                              {Object.keys(project.links).length > 0 && (
+                                <div className="flex gap-2">
+                                  {Object.entries(project.links).map(([name, url]) => (
+                                    <a
+                                      key={name}
+                                      href={url}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="text-xs text-blue-600 hover:underline flex items-center gap-1"
+                                    >
+                                      <ExternalLink className="h-3 w-3" />
+                                      {name}
+                                    </a>
+                                  ))}
+                                </div>
+                              )}
+                            </CardContent>
+                          </Card>
+                        )
+                      ))}
+                    </div>
+                  )}
+                </>
               )}
             </TabsContent>
 
