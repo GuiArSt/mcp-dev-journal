@@ -268,8 +268,9 @@ export function initRepositorySchema() {
   `);
 
   // Conversations table (for Kronus chat history)
+  // NOTE: Using chat_conversations for consistency with existing data
   db.exec(`
-    CREATE TABLE IF NOT EXISTS conversations (
+    CREATE TABLE IF NOT EXISTS chat_conversations (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       title TEXT NOT NULL,
       messages TEXT NOT NULL DEFAULT '[]',
@@ -277,7 +278,7 @@ export function initRepositorySchema() {
       updated_at TEXT DEFAULT CURRENT_TIMESTAMP
     );
 
-    CREATE INDEX IF NOT EXISTS idx_conversations_updated_at ON conversations(updated_at);
+    CREATE INDEX IF NOT EXISTS idx_chat_conversations_updated_at ON chat_conversations(updated_at);
   `);
 
   // DEPRECATED: atropos_memory table removed

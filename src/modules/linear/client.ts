@@ -8,6 +8,7 @@ import type {
   CreateIssueInput,
   UpdateIssueInput,
   UpdateProjectInput,
+  CreateProjectInput,
 } from './types.js';
 
 /**
@@ -248,6 +249,73 @@ export class LinearClient {
     }
   }
 
+  async createProject(input: CreateProjectInput): Promise<LinearProject> {
+    try {
+      logger.debug(`Creating Linear project: ${input.name}`);
+
+      // Use GraphQL mutation for project creation
+      const createInput: any = {
+        name: input.name,
+        teamIds: input.teamIds,
+      };
+
+      if (input.description) createInput.description = input.description;
+      if (input.content) createInput.content = input.content;
+      if (input.leadId) createInput.leadId = input.leadId;
+      if (input.targetDate) createInput.targetDate = input.targetDate;
+      if (input.startDate) createInput.startDate = input.startDate;
+
+      const result = await this.sdk.client.request<{
+        projectCreate: {
+          success: boolean;
+          project: {
+            id: string;
+            name: string;
+            description: string | null;
+            content: string | null;
+            url: string;
+          };
+        };
+      }>(
+        `
+        mutation projectCreate($input: ProjectCreateInput!) {
+          projectCreate(input: $input) {
+            success
+            project {
+              id
+              name
+              description
+              content
+              url
+            }
+          }
+        }
+      `,
+        {
+          input: createInput,
+        }
+      );
+
+      if (!result.projectCreate?.success || !result.projectCreate.project) {
+        throw new LinearAPIError('Failed to create project: No project returned');
+      }
+
+      const createdProject = result.projectCreate.project;
+
+      return {
+        id: createdProject.id,
+        name: createdProject.name,
+        description: createdProject.description || undefined,
+        content: createdProject.content || undefined,
+      };
+    } catch (error) {
+      throw new LinearAPIError(
+        `Failed to create project: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        error
+      );
+    }
+  }
+
   async updateProject(input: UpdateProjectInput): Promise<LinearProject> {
     try {
       logger.debug(`Updating Linear project: ${input.projectId}`);
@@ -257,6 +325,9 @@ export class LinearClient {
       if (input.name) updateInput.name = input.name;
       if (input.description !== undefined) updateInput.description = input.description;
       if (input.content !== undefined) updateInput.content = input.content;
+      if (input.leadId !== undefined) updateInput.leadId = input.leadId;
+      if (input.targetDate !== undefined) updateInput.targetDate = input.targetDate;
+      if (input.startDate !== undefined) updateInput.startDate = input.startDate;
 
       const result = await this.sdk.client.request<{
         projectUpdate: {

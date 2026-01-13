@@ -12,6 +12,9 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import remarkMath from "remark-math";
+import rehypeKatex from "rehype-katex";
+import "katex/dist/katex.min.css";
 import {
   Dialog,
   DialogContent,
@@ -594,7 +597,7 @@ export default function LinearPage() {
                   <div>
                     <h4 className="font-medium mb-2 text-[var(--tartarus-ivory)]">Description</h4>
                     <div className="bg-[var(--tartarus-deep)] p-5 rounded-lg border border-[var(--tartarus-border)] max-h-[400px] overflow-auto prose prose-base max-w-none leading-relaxed prose-headings:text-[var(--tartarus-ivory)] prose-headings:font-semibold prose-headings:mb-3 prose-p:text-[var(--tartarus-ivory-dim)] prose-p:leading-relaxed prose-p:mb-3 prose-a:text-[var(--tartarus-teal)] prose-a:underline prose-strong:text-[var(--tartarus-ivory)] prose-em:text-[var(--tartarus-ivory-muted)] prose-code:text-[var(--tartarus-teal)] prose-code:bg-[var(--tartarus-void)] prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded prose-pre:bg-[var(--tartarus-void)] prose-pre:p-4 prose-ul:text-[var(--tartarus-ivory-dim)] prose-ul:my-3 prose-ol:text-[var(--tartarus-ivory-dim)] prose-ol:my-3 prose-li:my-1">
-                      <ReactMarkdown remarkPlugins={[remarkGfm]}>{selectedIssue.description}</ReactMarkdown>
+                      <ReactMarkdown remarkPlugins={[remarkGfm, remarkMath]} rehypePlugins={[rehypeKatex]}>{selectedIssue.description}</ReactMarkdown>
                     </div>
                   </div>
                 ) : (
@@ -668,7 +671,7 @@ export default function LinearPage() {
                   <div>
                     <h4 className="font-medium mb-2 text-[var(--tartarus-ivory)]">Description</h4>
                     <div className="bg-[var(--tartarus-deep)] p-5 rounded-lg border border-[var(--tartarus-border)] prose prose-base max-w-none leading-relaxed prose-headings:text-[var(--tartarus-ivory)] prose-headings:font-semibold prose-headings:mb-3 prose-p:text-[var(--tartarus-ivory-dim)] prose-p:leading-relaxed prose-p:mb-3 prose-a:text-[var(--tartarus-teal)] prose-a:underline prose-strong:text-[var(--tartarus-ivory)] prose-em:text-[var(--tartarus-ivory-muted)] prose-code:text-[var(--tartarus-teal)] prose-code:bg-[var(--tartarus-void)] prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded prose-pre:bg-[var(--tartarus-void)] prose-pre:p-4 prose-ul:text-[var(--tartarus-ivory-dim)] prose-ul:my-3 prose-ol:text-[var(--tartarus-ivory-dim)] prose-ol:my-3 prose-li:my-1">
-                      <ReactMarkdown remarkPlugins={[remarkGfm]}>{selectedProject.description}</ReactMarkdown>
+                      <ReactMarkdown remarkPlugins={[remarkGfm, remarkMath]} rehypePlugins={[rehypeKatex]}>{selectedProject.description}</ReactMarkdown>
                     </div>
                   </div>
                 )}
@@ -677,7 +680,7 @@ export default function LinearPage() {
                   <div>
                     <h4 className="font-medium mb-2 text-[var(--tartarus-ivory)]">Content</h4>
                     <div className="bg-[var(--tartarus-deep)] p-5 rounded-lg border border-[var(--tartarus-border)] max-h-[500px] overflow-auto prose prose-base max-w-none leading-relaxed prose-headings:text-[var(--tartarus-ivory)] prose-headings:font-semibold prose-headings:mb-3 prose-p:text-[var(--tartarus-ivory-dim)] prose-p:leading-relaxed prose-p:mb-3 prose-a:text-[var(--tartarus-teal)] prose-a:underline prose-strong:text-[var(--tartarus-ivory)] prose-em:text-[var(--tartarus-ivory-muted)] prose-code:text-[var(--tartarus-teal)] prose-code:bg-[var(--tartarus-void)] prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded prose-pre:bg-[var(--tartarus-void)] prose-pre:p-4 prose-ul:text-[var(--tartarus-ivory-dim)] prose-ul:my-3 prose-ol:text-[var(--tartarus-ivory-dim)] prose-ol:my-3 prose-li:my-1 prose-img:rounded-lg prose-img:max-w-full prose-img:my-4">
-                      <ReactMarkdown remarkPlugins={[remarkGfm]}>{selectedProject.content}</ReactMarkdown>
+                      <ReactMarkdown remarkPlugins={[remarkGfm, remarkMath]} rehypePlugins={[rehypeKatex]}>{selectedProject.content}</ReactMarkdown>
                     </div>
                   </div>
                 ) : !selectedProject.description && (

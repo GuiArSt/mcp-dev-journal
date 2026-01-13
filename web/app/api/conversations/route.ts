@@ -5,67 +5,56 @@ import {
   searchConversations,
   initConversationsTable,
 } from "@/lib/db-conversations";
+import { withErrorHandler } from "@/lib/api-handler";
+import { requireQuery, requireBody } from "@/lib/validations";
+import { conversationQuerySchema, saveConversationSchema } from "@/lib/validations/schemas";
+import { z } from "zod";
 
-// GET - List conversations
-export async function GET(request: NextRequest) {
-  try {
-    initConversationsTable();
+/**
+ * GET /api/conversations
+ *
+ * List or search conversations with pagination.
+ */
+export const GET = withErrorHandler(async (request: NextRequest) => {
+  initConversationsTable();
 
-    const { searchParams } = new URL(request.url);
-    const query = searchParams.get("query");
-    const limit = parseInt(searchParams.get("limit") || "50");
-    const offset = parseInt(searchParams.get("offset") || "0");
+  const { query, limit, offset } = requireQuery(conversationQuerySchema, request);
 
-    if (query) {
-      const conversations = searchConversations(query, limit);
-      return NextResponse.json({ conversations, total: conversations.length });
-    }
-
-    const result = listConversations(limit, offset);
-    return NextResponse.json(result);
-  } catch (error: any) {
-    console.error("Error listing conversations:", error);
-    return NextResponse.json(
-      { error: error.message || "Failed to list conversations" },
-      { status: 500 }
-    );
+  if (query) {
+    const conversations = searchConversations(query, limit);
+    return NextResponse.json({ conversations, total: conversations.length });
   }
-}
 
-// POST - Save new conversation
-// Note: Also handles sendBeacon requests which send as text/plain
-export async function POST(request: NextRequest) {
-  try {
-    initConversationsTable();
+  const result = listConversations(limit, offset);
+  return NextResponse.json(result);
+});
 
-    // Handle both JSON and text/plain (from sendBeacon)
-    const contentType = request.headers.get("content-type") || "";
-    let body: { title?: string; messages?: any[] };
+/**
+ * POST /api/conversations
+ *
+ * Save a new conversation.
+ * Note: Also handles sendBeacon requests which send as text/plain.
+ */
+export const POST = withErrorHandler(async (request: NextRequest) => {
+  initConversationsTable();
 
-    if (contentType.includes("text/plain")) {
-      const text = await request.text();
-      body = JSON.parse(text);
-    } else {
-      body = await request.json();
-    }
+  // Handle both JSON and text/plain (from sendBeacon)
+  const contentType = request.headers.get("content-type") || "";
+  let body: unknown;
 
-    const { title, messages } = body;
-
-    if (!title || !messages || !Array.isArray(messages)) {
-      return NextResponse.json({ error: "title and messages are required" }, { status: 400 });
-    }
-
-    const id = saveConversation(title, messages);
-
-    return NextResponse.json({
-      id,
-      message: "Conversation saved successfully",
-    });
-  } catch (error: any) {
-    console.error("Error saving conversation:", error);
-    return NextResponse.json(
-      { error: error.message || "Failed to save conversation" },
-      { status: 500 }
-    );
+  if (contentType.includes("text/plain")) {
+    const text = await request.text();
+    body = JSON.parse(text);
+  } else {
+    body = await request.json();
   }
-}
+
+  // Validate after parsing
+  const { title, messages } = saveConversationSchema.parse(body);
+  const id = saveConversation(title, messages);
+
+  return NextResponse.json({
+    id,
+    message: "Conversation saved successfully",
+  });
+});

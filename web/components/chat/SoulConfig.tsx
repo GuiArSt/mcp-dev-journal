@@ -4,29 +4,36 @@ import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Switch } from "@/components/ui/switch";
-import { Settings2 } from "lucide-react";
+import {
+  Flame,
+  FileText,
+  Briefcase,
+  Code2,
+  Building2,
+  GraduationCap,
+  BookOpen,
+  FolderKanban,
+  ListTodo,
+  CheckCircle2,
+  RefreshCw,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
+import {
+  TARTARUS,
+  popoverStyles,
+  headerStyles,
+  sectionStyles,
+  toggleRowStyles,
+  footerStyles,
+  switchStyles,
+  formatNumber,
+} from "./config-styles";
 
-// Explicit colors for the Soul config popover (avoids CSS variable issues)
-// Using the Tartarus palette colors for consistency
-const COLORS = {
-  bg: "#0a0a0f",
-  border: "#2a2a3a",
-  text: "#e8e6e3",
-  muted: "#888",
-  teal: "#00CED1",        // tartarus-teal - beautiful blue
-  tealDim: "#008B8B",     // tartarus-teal-dim - for off state
-  gold: "#D4AF37",        // tartarus-gold
-  red: "#E74C3C",         // tartarus-error
-  switchOff: "#1a1a1a",   // tartarus-surface
-};
+// Model context limits - Gemini 3 Pro has 1M context
+const MODEL_CONTEXT_LIMIT = 1000000;
+const CONTEXT_WARNING_THRESHOLD = 0.5;
 
-// Model context limits
-const MODEL_CONTEXT_LIMIT = 200000; // Opus 4 has 200K context
-const CONTEXT_WARNING_THRESHOLD = 0.5; // Warn at 50% (100K tokens)
-
-// SoulConfigState - only controls which repository sections Kronus knows about
-// Font/format settings have been moved to FormatConfig.tsx
+// SoulConfigState - controls which repository sections Kronus knows about
 export interface SoulConfigState {
   writings: boolean;
   portfolioProjects: boolean;
@@ -34,15 +41,31 @@ export interface SoulConfigState {
   workExperience: boolean;
   education: boolean;
   journalEntries: boolean;
+  // Linear context - mirrored from Linear API
+  linearProjects: boolean;
+  linearIssues: boolean;
+  linearIncludeCompleted: boolean;
 }
 
+// Stats returned from API with actual token counts
 interface SectionStats {
   writings: number;
+  writingsTokens: number;
   portfolioProjects: number;
+  portfolioProjectsTokens: number;
   skills: number;
+  skillsTokens: number;
   workExperience: number;
+  workExperienceTokens: number;
   education: number;
+  educationTokens: number;
   journalEntries: number;
+  journalEntriesTokens: number;
+  linearProjects: number;
+  linearProjectsTokens: number;
+  linearIssues: number;
+  linearIssuesTokens: number;
+  baseTokens: number;
   totalTokens: number;
 }
 
@@ -58,59 +81,91 @@ const DEFAULT_CONFIG: SoulConfigState = {
   workExperience: true,
   education: true,
   journalEntries: true,
+  linearProjects: true,
+  linearIssues: true,
+  linearIncludeCompleted: false,
 };
 
-// Estimated tokens per section (rough estimates based on current data)
-const SECTION_TOKEN_ESTIMATES = {
-  writings: 50000,      // 35 writings, ~1400 tokens each avg
-  portfolioProjects: 3000, // 13 projects, ~230 tokens each
-  skills: 2000,         // 45 skills, ~45 tokens each
-  workExperience: 1500, // 8 jobs, ~190 tokens each
-  education: 500,       // 3 entries, ~170 tokens each
-  journalEntries: 15000, // ~30 entries, ~500 tokens each
-  base: 6000,           // Soul.xml + tool definitions
+const FALLBACK_STATS: SectionStats = {
+  writings: 35,
+  writingsTokens: 50000,
+  portfolioProjects: 13,
+  portfolioProjectsTokens: 3000,
+  skills: 45,
+  skillsTokens: 2000,
+  workExperience: 8,
+  workExperienceTokens: 1500,
+  education: 3,
+  educationTokens: 500,
+  journalEntries: 30,
+  journalEntriesTokens: 15000,
+  linearProjects: 0,
+  linearProjectsTokens: 0,
+  linearIssues: 0,
+  linearIssuesTokens: 0,
+  baseTokens: 6000,
+  totalTokens: 78000,
 };
+
+// Section metadata with icons
+const REPOSITORY_SECTIONS = [
+  { key: "writings", label: "Writings", icon: FileText, statsKey: "writings", tokensKey: "writingsTokens" },
+  { key: "portfolioProjects", label: "Portfolio", icon: Briefcase, statsKey: "portfolioProjects", tokensKey: "portfolioProjectsTokens" },
+  { key: "skills", label: "Skills", icon: Code2, statsKey: "skills", tokensKey: "skillsTokens" },
+  { key: "workExperience", label: "Experience", icon: Building2, statsKey: "workExperience", tokensKey: "workExperienceTokens" },
+  { key: "education", label: "Education", icon: GraduationCap, statsKey: "education", tokensKey: "educationTokens" },
+  { key: "journalEntries", label: "Journal", icon: BookOpen, statsKey: "journalEntries", tokensKey: "journalEntriesTokens" },
+] as const;
+
+const LINEAR_SECTIONS = [
+  { key: "linearProjects", label: "Projects", icon: FolderKanban, statsKey: "linearProjects", tokensKey: "linearProjectsTokens" },
+  { key: "linearIssues", label: "Issues", icon: ListTodo, statsKey: "linearIssues", tokensKey: "linearIssuesTokens" },
+] as const;
 
 export function SoulConfig({ config, onChange }: SoulConfigProps) {
   const [open, setOpen] = useState(false);
   const [stats, setStats] = useState<SectionStats | null>(null);
   const [loading, setLoading] = useState(false);
+  const [syncing, setSyncing] = useState(false);
 
-  // Fetch actual stats when popover opens
   useEffect(() => {
-    if (open && !stats) {
+    if (open) {
       setLoading(true);
       fetch("/api/kronus/stats")
-        .then((res) => res.json())
+        .then((res) => {
+          if (!res.ok) throw new Error("Failed to fetch stats");
+          return res.json();
+        })
         .then((data) => {
-          setStats(data);
+          // Validate that we got actual stats data
+          if (data && typeof data.writings === "number") {
+            setStats(data);
+          } else {
+            setStats(FALLBACK_STATS);
+          }
           setLoading(false);
         })
         .catch(() => {
-          // Use estimates if API fails
-          setStats({
-            writings: 35,
-            portfolioProjects: 13,
-            skills: 45,
-            workExperience: 8,
-            education: 3,
-            journalEntries: 30,
-            totalTokens: 78000,
-          });
+          setStats(FALLBACK_STATS);
           setLoading(false);
         });
     }
-  }, [open, stats]);
+  }, [open]);
 
-  // Calculate estimated tokens based on current config
+  const currentStats = stats || FALLBACK_STATS;
   const estimatedTokens =
-    SECTION_TOKEN_ESTIMATES.base +
-    (config.writings ? SECTION_TOKEN_ESTIMATES.writings : 0) +
-    (config.portfolioProjects ? SECTION_TOKEN_ESTIMATES.portfolioProjects : 0) +
-    (config.skills ? SECTION_TOKEN_ESTIMATES.skills : 0) +
-    (config.workExperience ? SECTION_TOKEN_ESTIMATES.workExperience : 0) +
-    (config.education ? SECTION_TOKEN_ESTIMATES.education : 0) +
-    (config.journalEntries ? SECTION_TOKEN_ESTIMATES.journalEntries : 0);
+    currentStats.baseTokens +
+    (config.writings ? currentStats.writingsTokens : 0) +
+    (config.portfolioProjects ? currentStats.portfolioProjectsTokens : 0) +
+    (config.skills ? currentStats.skillsTokens : 0) +
+    (config.workExperience ? currentStats.workExperienceTokens : 0) +
+    (config.education ? currentStats.educationTokens : 0) +
+    (config.journalEntries ? currentStats.journalEntriesTokens : 0) +
+    (config.linearProjects ? (currentStats.linearProjectsTokens || 0) : 0) +
+    (config.linearIssues ? (currentStats.linearIssuesTokens || 0) : 0);
+
+  const contextPercentage = (estimatedTokens / MODEL_CONTEXT_LIMIT) * 100;
+  const isHighContext = contextPercentage > CONTEXT_WARNING_THRESHOLD * 100;
 
   const toggleSection = (section: keyof SoulConfigState) => {
     onChange({ ...config, [section]: !config[section] });
@@ -125,6 +180,8 @@ export function SoulConfig({ config, onChange }: SoulConfigProps) {
       workExperience: true,
       education: true,
       journalEntries: true,
+      linearProjects: true,
+      linearIssues: true,
     });
   };
 
@@ -137,10 +194,35 @@ export function SoulConfig({ config, onChange }: SoulConfigProps) {
       workExperience: false,
       education: false,
       journalEntries: false,
+      linearProjects: false,
+      linearIssues: false,
     });
   };
 
-  const enabledCount = [config.writings, config.portfolioProjects, config.skills, config.workExperience, config.education, config.journalEntries].filter(Boolean).length;
+  const syncLinear = async () => {
+    setSyncing(true);
+    try {
+      await fetch("/api/integrations/linear/sync", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ includeCompleted: config.linearIncludeCompleted }),
+      });
+      // Refresh stats
+      const res = await fetch("/api/kronus/stats");
+      setStats(await res.json());
+    } catch (e) {
+      console.error("Linear sync failed:", e);
+    }
+    setSyncing(false);
+  };
+
+  const enabledCount = [
+    config.writings, config.portfolioProjects, config.skills,
+    config.workExperience, config.education, config.journalEntries,
+    config.linearProjects, config.linearIssues
+  ].filter(Boolean).length;
+
+  const totalSections = 8;
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -149,200 +231,245 @@ export function SoulConfig({ config, onChange }: SoulConfigProps) {
           variant="ghost"
           size="sm"
           className={cn(
-            "gap-1",
-            enabledCount < 6 && "text-[var(--kronus-gold)]"
+            "gap-1.5 transition-colors",
+            enabledCount < totalSections ? "text-[#D4AF37]" : "text-[#888899]"
           )}
         >
-          <Settings2 className="h-4 w-4" />
-          Soul
-          {enabledCount < 6 && (
-            <span className="text-xs bg-[var(--kronus-gold)]/20 px-1.5 py-0.5 rounded">
-              {enabledCount}/6
-            </span>
-          )}
+          <Flame className="h-4 w-4" />
+          <span className="hidden sm:inline">Soul</span>
+          <span
+            className="text-[10px] px-1.5 py-0.5 rounded-full font-mono"
+            style={{
+              backgroundColor: enabledCount < totalSections ? TARTARUS.goldGlow : TARTARUS.surface,
+              color: enabledCount < totalSections ? TARTARUS.gold : TARTARUS.textMuted,
+            }}
+          >
+            {enabledCount}/{totalSections}
+          </span>
         </Button>
       </PopoverTrigger>
       <PopoverContent
-        className="w-80 z-[100] shadow-2xl rounded-lg"
+        className="w-[340px] z-[100] shadow-2xl rounded-xl p-0 overflow-hidden"
         align="start"
         sideOffset={8}
-        style={{
-          backgroundColor: "#0a0a0f",
-          border: "1px solid #2a2a3a",
-          color: "#e8e6e3"
-        }}
+        style={popoverStyles.container}
       >
-        <div className="space-y-4 p-1" style={{ backgroundColor: "#0a0a0f" }}>
-          <div className="flex items-center justify-between">
-            <h4 style={{ fontWeight: 600, color: "#e8e6e3", fontSize: "14px" }}>Soul Repository</h4>
+        <div style={popoverStyles.inner}>
+          {/* Header */}
+          <div
+            className="px-4 py-3 flex items-center justify-between"
+            style={{ borderBottom: `1px solid ${TARTARUS.borderSubtle}` }}
+          >
+            <div>
+              <h4 style={headerStyles.title}>Soul Repository</h4>
+              <p style={headerStyles.subtitle}>Context for Kronus</p>
+            </div>
             <div className="flex gap-1">
               <button
                 onClick={selectAll}
-                style={{
-                  fontSize: "12px",
-                  padding: "2px 8px",
-                  color: "#888",
-                  background: "transparent",
-                  border: "none",
-                  cursor: "pointer"
-                }}
+                className="hover:bg-white/5 rounded"
+                style={headerStyles.actionButton}
               >
                 All
               </button>
               <button
                 onClick={selectNone}
-                style={{
-                  fontSize: "12px",
-                  padding: "2px 8px",
-                  color: "#888",
-                  background: "transparent",
-                  border: "none",
-                  cursor: "pointer"
-                }}
+                className="hover:bg-white/5 rounded"
+                style={headerStyles.actionButton}
               >
                 None
               </button>
             </div>
           </div>
 
-          <p style={{ fontSize: "12px", color: "#888" }}>
-            Changes apply to your next new chat.
-          </p>
+          {/* Content */}
+          <div className="px-4 py-3 space-y-4 max-h-[400px] overflow-y-auto">
+            {/* Repository Section */}
+            <div>
+              <div style={sectionStyles.label}>Repository</div>
+              <div className="space-y-1">
+                {REPOSITORY_SECTIONS.map(({ key, label, icon: Icon, statsKey, tokensKey }) => {
+                  const enabled = config[key as keyof SoulConfigState] as boolean;
+                  const count = (currentStats[statsKey as keyof SectionStats] as number) ?? 0;
+                  const tokens = (currentStats[tokensKey as keyof SectionStats] as number) ?? 0;
 
-          <div className="space-y-3">
-            {/* Writings */}
-            <div className="flex items-center gap-3 group">
-              <Switch
-                checked={config.writings}
-                onCheckedChange={() => toggleSection("writings")}
-                style={{ backgroundColor: config.writings ? COLORS.teal : COLORS.switchOff }}
-              />
-              <div className="flex-1">
-                <span style={{ color: config.writings ? COLORS.teal : COLORS.muted, fontSize: "14px", transition: "color 0.2s" }}>
-                  Writings
-                </span>
-                <span style={{ color: COLORS.muted, fontSize: "12px", marginLeft: "8px" }}>
-                  {loading ? "..." : stats?.writings || 35}
-                </span>
+                  return (
+                    <div
+                      key={key}
+                      className="flex items-center gap-3 px-2 py-2 rounded-lg hover:bg-white/[0.03] transition-colors cursor-pointer"
+                      onClick={() => toggleSection(key as keyof SoulConfigState)}
+                    >
+                      <Switch
+                        checked={enabled}
+                        onCheckedChange={() => toggleSection(key as keyof SoulConfigState)}
+                        className="data-[state=checked]:bg-[#00CED1] data-[state=unchecked]:bg-[#12121a]"
+                        onClick={(e) => e.stopPropagation()}
+                      />
+                      <Icon
+                        className="h-4 w-4 transition-colors"
+                        style={{ color: enabled ? TARTARUS.teal : TARTARUS.textDim }}
+                      />
+                      <span
+                        className="flex-1 text-[13px] font-medium transition-colors"
+                        style={{ color: enabled ? TARTARUS.text : TARTARUS.textMuted }}
+                      >
+                        {label}
+                      </span>
+                      <span
+                        className="text-[11px] font-mono px-2 py-0.5 rounded"
+                        style={{
+                          color: TARTARUS.textDim,
+                          backgroundColor: TARTARUS.surface,
+                        }}
+                      >
+                        {loading ? "..." : count}
+                      </span>
+                      <span
+                        className="text-[11px] font-mono w-12 text-right"
+                        style={{ color: TARTARUS.textDim }}
+                      >
+                        ~{loading ? "..." : formatNumber(tokens)}
+                      </span>
+                    </div>
+                  );
+                })}
               </div>
-              <span style={{ color: COLORS.muted, fontSize: "12px" }}>~50k</span>
             </div>
 
-            {/* Portfolio Projects */}
-            <div className="flex items-center gap-3 group">
-              <Switch
-                checked={config.portfolioProjects}
-                onCheckedChange={() => toggleSection("portfolioProjects")}
-                style={{ backgroundColor: config.portfolioProjects ? COLORS.teal : COLORS.switchOff }}
-              />
-              <div className="flex-1">
-                <span style={{ color: config.portfolioProjects ? COLORS.teal : COLORS.muted, fontSize: "14px", transition: "color 0.2s" }}>
-                  Portfolio Projects
-                </span>
-                <span style={{ color: COLORS.muted, fontSize: "12px", marginLeft: "8px" }}>
-                  {loading ? "..." : stats?.portfolioProjects || 13}
-                </span>
+            {/* Linear Section */}
+            <div style={sectionStyles.divider}>
+              <div className="flex items-center justify-between mb-2">
+                <div style={sectionStyles.label} className="mb-0">Linear</div>
+                <button
+                  onClick={syncLinear}
+                  disabled={syncing}
+                  className="flex items-center gap-1 text-[10px] px-2 py-1 rounded hover:bg-white/5 transition-colors"
+                  style={{ color: TARTARUS.textMuted }}
+                >
+                  <RefreshCw className={cn("h-3 w-3", syncing && "animate-spin")} />
+                  {syncing ? "Syncing..." : "Sync"}
+                </button>
               </div>
-              <span style={{ color: COLORS.muted, fontSize: "12px" }}>~3k</span>
-            </div>
+              <div className="space-y-1">
+                {LINEAR_SECTIONS.map(({ key, label, icon: Icon, statsKey, tokensKey }) => {
+                  const enabled = config[key as keyof SoulConfigState] as boolean;
+                  const count = (currentStats[statsKey as keyof SectionStats] as number) ?? 0;
+                  const tokens = (currentStats[tokensKey as keyof SectionStats] as number) ?? 0;
 
-            {/* Skills */}
-            <div className="flex items-center gap-3 group">
-              <Switch
-                checked={config.skills}
-                onCheckedChange={() => toggleSection("skills")}
-                style={{ backgroundColor: config.skills ? COLORS.teal : COLORS.switchOff }}
-              />
-              <div className="flex-1">
-                <span style={{ color: config.skills ? COLORS.teal : COLORS.muted, fontSize: "14px", transition: "color 0.2s" }}>
-                  Skills
-                </span>
-                <span style={{ color: COLORS.muted, fontSize: "12px", marginLeft: "8px" }}>
-                  {loading ? "..." : stats?.skills || 45}
-                </span>
-              </div>
-              <span style={{ color: COLORS.muted, fontSize: "12px" }}>~2k</span>
-            </div>
+                  return (
+                    <div
+                      key={key}
+                      className="flex items-center gap-3 px-2 py-2 rounded-lg hover:bg-white/[0.03] transition-colors cursor-pointer"
+                      onClick={() => toggleSection(key as keyof SoulConfigState)}
+                    >
+                      <Switch
+                        checked={enabled}
+                        onCheckedChange={() => toggleSection(key as keyof SoulConfigState)}
+                        className="data-[state=checked]:bg-[#4285F4] data-[state=unchecked]:bg-[#12121a]"
+                        onClick={(e) => e.stopPropagation()}
+                      />
+                      <Icon
+                        className="h-4 w-4 transition-colors"
+                        style={{ color: enabled ? TARTARUS.google : TARTARUS.textDim }}
+                      />
+                      <span
+                        className="flex-1 text-[13px] font-medium transition-colors"
+                        style={{ color: enabled ? TARTARUS.text : TARTARUS.textMuted }}
+                      >
+                        {label}
+                      </span>
+                      <span
+                        className="text-[11px] font-mono px-2 py-0.5 rounded"
+                        style={{
+                          color: TARTARUS.textDim,
+                          backgroundColor: TARTARUS.surface,
+                        }}
+                      >
+                        {loading ? "..." : count}
+                      </span>
+                      <span
+                        className="text-[11px] font-mono w-12 text-right"
+                        style={{ color: TARTARUS.textDim }}
+                      >
+                        ~{loading ? "..." : formatNumber(tokens)}
+                      </span>
+                    </div>
+                  );
+                })}
 
-            {/* Work Experience */}
-            <div className="flex items-center gap-3 group">
-              <Switch
-                checked={config.workExperience}
-                onCheckedChange={() => toggleSection("workExperience")}
-                style={{ backgroundColor: config.workExperience ? COLORS.teal : COLORS.switchOff }}
-              />
-              <div className="flex-1">
-                <span style={{ color: config.workExperience ? COLORS.teal : COLORS.muted, fontSize: "14px", transition: "color 0.2s" }}>
-                  Work Experience
-                </span>
-                <span style={{ color: COLORS.muted, fontSize: "12px", marginLeft: "8px" }}>
-                  {loading ? "..." : stats?.workExperience || 8}
-                </span>
+                {/* Include Completed toggle */}
+                <div
+                  className="flex items-center gap-3 px-2 py-2 rounded-lg hover:bg-white/[0.03] transition-colors cursor-pointer"
+                  onClick={() => toggleSection("linearIncludeCompleted")}
+                >
+                  <Switch
+                    checked={config.linearIncludeCompleted}
+                    onCheckedChange={() => toggleSection("linearIncludeCompleted")}
+                    className="data-[state=checked]:bg-[#D4AF37] data-[state=unchecked]:bg-[#12121a]"
+                    onClick={(e) => e.stopPropagation()}
+                  />
+                  <CheckCircle2
+                    className="h-4 w-4 transition-colors"
+                    style={{ color: config.linearIncludeCompleted ? TARTARUS.gold : TARTARUS.textDim }}
+                  />
+                  <span
+                    className="flex-1 text-[13px] font-medium transition-colors"
+                    style={{ color: config.linearIncludeCompleted ? TARTARUS.text : TARTARUS.textMuted }}
+                  >
+                    Include Completed
+                  </span>
+                </div>
               </div>
-              <span style={{ color: COLORS.muted, fontSize: "12px" }}>~1.5k</span>
-            </div>
-
-            {/* Education */}
-            <div className="flex items-center gap-3 group">
-              <Switch
-                checked={config.education}
-                onCheckedChange={() => toggleSection("education")}
-                style={{ backgroundColor: config.education ? COLORS.teal : COLORS.switchOff }}
-              />
-              <div className="flex-1">
-                <span style={{ color: config.education ? COLORS.teal : COLORS.muted, fontSize: "14px", transition: "color 0.2s" }}>
-                  Education
-                </span>
-                <span style={{ color: COLORS.muted, fontSize: "12px", marginLeft: "8px" }}>
-                  {loading ? "..." : stats?.education || 3}
-                </span>
-              </div>
-              <span style={{ color: COLORS.muted, fontSize: "12px" }}>~0.5k</span>
-            </div>
-
-            {/* Journal Entries */}
-            <div className="flex items-center gap-3 group">
-              <Switch
-                checked={config.journalEntries}
-                onCheckedChange={() => toggleSection("journalEntries")}
-                style={{ backgroundColor: config.journalEntries ? COLORS.teal : COLORS.switchOff }}
-              />
-              <div className="flex-1">
-                <span style={{ color: config.journalEntries ? COLORS.teal : COLORS.muted, fontSize: "14px", transition: "color 0.2s" }}>
-                  Journal Entries
-                </span>
-                <span style={{ color: COLORS.muted, fontSize: "12px", marginLeft: "8px" }}>
-                  {loading ? "..." : stats?.journalEntries || 30}
-                </span>
-              </div>
-              <span style={{ color: COLORS.muted, fontSize: "12px" }}>~15k</span>
             </div>
           </div>
 
-          {/* Token estimate */}
-          <div style={{ paddingTop: "12px", borderTop: `1px solid ${COLORS.border}` }}>
-            <div className="flex items-center justify-between" style={{ fontSize: "14px" }}>
-              <span style={{ color: COLORS.muted }}>Estimated tokens:</span>
-              <span style={{
-                fontFamily: "monospace",
-                color: estimatedTokens > MODEL_CONTEXT_LIMIT * CONTEXT_WARNING_THRESHOLD
-                  ? COLORS.gold
-                  : COLORS.teal
-              }}>
-                ~{Math.round(estimatedTokens / 1000)}k / {MODEL_CONTEXT_LIMIT / 1000}k
+          {/* Footer - Token Estimate */}
+          <div
+            className="px-4 py-3"
+            style={{ borderTop: `1px solid ${TARTARUS.borderSubtle}`, backgroundColor: TARTARUS.surface }}
+          >
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-[12px]" style={{ color: TARTARUS.textMuted }}>
+                Estimated context
               </span>
+              <div className="flex items-center gap-2">
+                <span
+                  className="text-[13px] font-mono font-medium"
+                  style={{ color: isHighContext ? TARTARUS.gold : TARTARUS.teal }}
+                >
+                  ~{formatNumber(estimatedTokens)}
+                </span>
+                <span className="text-[11px]" style={{ color: TARTARUS.textDim }}>
+                  / {formatNumber(MODEL_CONTEXT_LIMIT)}
+                </span>
+              </div>
             </div>
-            {estimatedTokens > MODEL_CONTEXT_LIMIT * CONTEXT_WARNING_THRESHOLD && (
-              <p style={{
-                fontSize: "12px",
-                color: COLORS.gold,
-                marginTop: "8px",
-                padding: "8px",
-                backgroundColor: "rgba(212, 175, 55, 0.1)",
-                borderRadius: "6px",
-                borderLeft: `3px solid ${COLORS.gold}`
-              }}>
-                💡 Using &gt;50% of context. Less context often means better focus and responses.
+
+            {/* Progress bar */}
+            <div
+              className="h-1.5 rounded-full overflow-hidden"
+              style={{ backgroundColor: TARTARUS.border }}
+            >
+              <div
+                className="h-full rounded-full transition-all duration-300"
+                style={{
+                  width: `${Math.min(contextPercentage, 100)}%`,
+                  backgroundColor: isHighContext ? TARTARUS.gold : TARTARUS.teal,
+                  boxShadow: `0 0 8px ${isHighContext ? TARTARUS.gold : TARTARUS.teal}40`,
+                }}
+              />
+            </div>
+
+            {isHighContext && (
+              <p
+                className="text-[11px] mt-2 px-2 py-1.5 rounded"
+                style={{
+                  color: TARTARUS.gold,
+                  backgroundColor: TARTARUS.goldGlow,
+                  borderLeft: `2px solid ${TARTARUS.gold}`,
+                }}
+              >
+                High context usage. Consider disabling some sections.
               </p>
             )}
           </div>

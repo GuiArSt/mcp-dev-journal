@@ -65,4 +65,17 @@ export interface UpdateProjectInput {
   name?: string;
   description?: string;
   content?: string; // Rich text content (markdown/Prosemirror) with images and formatting
+  leadId?: string; // Project lead user ID
+  targetDate?: string; // Target completion date (ISO 8601)
+  startDate?: string; // Project start date (ISO 8601)
+}
+
+export interface CreateProjectInput {
+  name: string;
+  teamIds: string[]; // At least one team ID required
+  description?: string;
+  content?: string; // Rich text content (markdown/Prosemirror)
+  leadId?: string; // Project lead user ID
+  targetDate?: string; // Target completion date (ISO 8601)
+  startDate?: string; // Project start date (ISO 8601)
 }

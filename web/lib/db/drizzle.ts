@@ -15,20 +15,32 @@ import * as schema from "./schema";
 let db: BetterSQLite3Database<typeof schema> | null = null;
 let sqlite: Database.Database | null = null;
 
-function getProjectRoot(): string {
+function findDatabasePath(): string {
+  // Search upwards from cwd to find the database
   let currentDir = process.cwd();
 
-  // If we're in the web folder, go up one level
-  if (path.basename(currentDir) === "web") {
-    currentDir = path.dirname(currentDir);
+  // Try up to 5 levels up
+  for (let i = 0; i < 5; i++) {
+    // Check ./data/journal.db (new structure)
+    const dataPath = path.join(currentDir, "data", "journal.db");
+    if (fs.existsSync(dataPath)) {
+      return dataPath;
+    }
+
+    // Check ./journal.db (legacy)
+    const rootPath = path.join(currentDir, "journal.db");
+    if (fs.existsSync(rootPath)) {
+      return rootPath;
+    }
+
+    // Go up one level
+    const parentDir = path.dirname(currentDir);
+    if (parentDir === currentDir) break; // Reached root
+    currentDir = parentDir;
   }
 
-  // Check if journal.db exists here
-  if (fs.existsSync(path.join(currentDir, "journal.db"))) {
-    return currentDir;
-  }
-
-  return currentDir;
+  // Fallback - return expected path for error message
+  return path.join(process.cwd(), "data", "journal.db");
 }
 
 /**
@@ -39,10 +51,9 @@ export function getDrizzleDb(): BetterSQLite3Database<typeof schema> {
     return db;
   }
 
-  const projectRoot = getProjectRoot();
   const dbPath = process.env.JOURNAL_DB_PATH
     ? path.resolve(process.env.JOURNAL_DB_PATH.replace(/^~/, os.homedir()))
-    : path.join(projectRoot, "journal.db");
+    : findDatabasePath();
 
   if (!fs.existsSync(dbPath)) {
     throw new Error(`Database not found at ${dbPath}. Please ensure the journal database exists.`);

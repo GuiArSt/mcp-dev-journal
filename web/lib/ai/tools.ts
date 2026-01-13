@@ -193,6 +193,19 @@ export const toolSpecs = {
     }),
   },
 
+  linear_create_project: {
+    description: "Create a new project in Linear. Projects help organize related issues and track progress toward goals.",
+    inputSchema: z.object({
+      name: z.string().min(1).describe("Project name"),
+      teamIds: z.array(z.string()).min(1).describe("Array of team IDs to associate with the project (at least one required)"),
+      description: z.string().optional().describe("Project description (plain text)"),
+      content: z.string().optional().describe("Project content (rich text markdown)"),
+      leadId: z.string().optional().describe("User ID for the project lead"),
+      targetDate: z.string().optional().describe("Target completion date (ISO 8601 format)"),
+      startDate: z.string().optional().describe("Project start date (ISO 8601 format)"),
+    }),
+  },
+
   linear_update_project: {
     description: "Update an existing Linear project.",
     inputSchema: z.object({
@@ -200,6 +213,9 @@ export const toolSpecs = {
       name: z.string().optional().describe("New name"),
       description: z.string().optional().describe("New description"),
       content: z.string().optional().describe("New content (rich text)"),
+      leadId: z.string().optional().describe("User ID for the project lead"),
+      targetDate: z.string().optional().describe("Target completion date (ISO 8601 format, e.g., \"2026-03-01\")"),
+      startDate: z.string().optional().describe("Project start date (ISO 8601 format, e.g., \"2026-01-15\")"),
     }),
   },
   // NOTE: Old document_*, skill_*, experience_*, education_* tools removed

@@ -1,7 +1,7 @@
 import { streamText, convertToModelMessages } from "ai";
-import { anthropic } from "@ai-sdk/anthropic";
+import { anthropic, type AnthropicProviderOptions } from "@ai-sdk/anthropic";
 import { openai } from "@ai-sdk/openai";
-import { google } from "@ai-sdk/google";
+import { google, type GoogleGenerativeAIProviderOptions } from "@ai-sdk/google";
 import { z } from "zod";
 import { getKronusSystemPrompt, SoulConfig, DEFAULT_SOUL_CONFIG } from "@/lib/ai/kronus";
 
@@ -30,34 +30,126 @@ export const DEFAULT_TOOLS_CONFIG: ToolsConfig = {
 };
 
 /**
- * Get the AI model - Anthropic is preferred for Kronus
- * 
- * Models:
- * - claude-sonnet-4-5-20250929 (default) - Claude Sonnet 4.5, best for coding/agents
- * - claude-opus-4-20250514 - Maximum capability
- * 
- * Override via ANTHROPIC_MODEL env var
+ * Available model selections - each has a provider and model ID
+ * Models with reasoning support will have thinking enabled automatically
  */
-function getModel() {
-  // Anthropic - PREFERRED for Kronus chat
+export type ModelSelection =
+  | "gemini-3-flash"      // Google - fast, has thinking
+  | "gemini-3-pro"        // Google - most capable, deep reasoning
+  | "claude-opus-4.5"     // Anthropic - powerful, has extended thinking
+  | "claude-haiku-4.5"    // Anthropic - fast, no thinking
+  | "gpt-5.2";            // OpenAI - latest, has reasoning
+
+/**
+ * Model configuration - maps selection to provider and model ID
+ */
+const MODEL_CONFIG: Record<ModelSelection, {
+  provider: "google" | "anthropic" | "openai";
+  modelId: string;
+  hasThinking: boolean;
+}> = {
+  "gemini-3-flash": {
+    provider: "google",
+    modelId: "gemini-3-flash-preview",
+    hasThinking: true,
+  },
+  "gemini-3-pro": {
+    provider: "google",
+    modelId: "gemini-3-pro-preview",
+    hasThinking: true,
+  },
+  "claude-opus-4.5": {
+    provider: "anthropic",
+    modelId: "claude-opus-4-5-20251101",
+    hasThinking: true,
+  },
+  "claude-haiku-4.5": {
+    provider: "anthropic",
+    modelId: "claude-haiku-4-5-20251001",
+    hasThinking: false, // Haiku is optimized for speed, no extended thinking
+  },
+  "gpt-5.2": {
+    provider: "openai",
+    modelId: "gpt-5.2",
+    hasThinking: true,
+  },
+};
+
+/**
+ * Get the AI model based on selected model
+ *
+ * Models:
+ * - gemini-3-flash: Gemini 3 Flash (1M context, fast with thinking)
+ * - claude-opus-4.5: Claude Opus 4.5 (200K context, most capable)
+ * - claude-haiku-4.5: Claude Haiku 4.5 (200K context, fast)
+ * - gpt-5.2: GPT-5.2 (400K context, reasoning)
+ */
+function getModel(selectedModel?: ModelSelection) {
+  const defaultModel: ModelSelection = "gemini-3-flash";
+  const modelKey = selectedModel || defaultModel;
+  const config = MODEL_CONFIG[modelKey];
+
+  if (!config) {
+    console.warn(`Unknown model: ${modelKey}, falling back to ${defaultModel}`);
+    return getModel(defaultModel);
+  }
+
+  // Check if the required API key is available
+  switch (config.provider) {
+    case "google":
+      if (process.env.GOOGLE_GENERATIVE_AI_API_KEY || process.env.GOOGLE_API_KEY) {
+        console.log(`Using Google model: ${config.modelId}`);
+        return {
+          model: google(config.modelId),
+          provider: config.provider,
+          hasThinking: config.hasThinking,
+        };
+      }
+      console.warn("Google API key not configured");
+      break;
+    case "anthropic":
+      if (process.env.ANTHROPIC_API_KEY) {
+        console.log(`Using Anthropic model: ${config.modelId}`);
+        return {
+          model: anthropic(config.modelId),
+          provider: config.provider,
+          hasThinking: config.hasThinking,
+        };
+      }
+      console.warn("Anthropic API key not configured");
+      break;
+    case "openai":
+      if (process.env.OPENAI_API_KEY) {
+        console.log(`Using OpenAI model: ${config.modelId}`);
+        return {
+          model: openai(config.modelId),
+          provider: config.provider,
+          hasThinking: config.hasThinking,
+        };
+      }
+      console.warn("OpenAI API key not configured");
+      break;
+  }
+
+  // Fallback: try any available provider
+  if (process.env.GOOGLE_GENERATIVE_AI_API_KEY || process.env.GOOGLE_API_KEY) {
+    const fallback = MODEL_CONFIG["gemini-3-flash"];
+    console.log(`Falling back to Google: ${fallback.modelId}`);
+    return { model: google(fallback.modelId), provider: "google" as const, hasThinking: fallback.hasThinking };
+  }
   if (process.env.ANTHROPIC_API_KEY) {
-    // Default to Claude Sonnet 4.5 - the latest and best for agents
-    const model = process.env.ANTHROPIC_MODEL || "claude-sonnet-4-5-20250929";
-    console.log(`Using Anthropic model: ${model}`);
-    return anthropic(model);
+    const fallback = MODEL_CONFIG["claude-haiku-4.5"];
+    console.log(`Falling back to Anthropic: ${fallback.modelId}`);
+    return { model: anthropic(fallback.modelId), provider: "anthropic" as const, hasThinking: fallback.hasThinking };
   }
-  // Fallback: OpenAI
   if (process.env.OPENAI_API_KEY) {
-    console.log("Using OpenAI model: gpt-4o");
-    return openai("gpt-4o");
+    const fallback = MODEL_CONFIG["gpt-5.2"];
+    console.log(`Falling back to OpenAI: ${fallback.modelId}`);
+    return { model: openai(fallback.modelId), provider: "openai" as const, hasThinking: fallback.hasThinking };
   }
-  // Fallback: Google
-  if (process.env.GOOGLE_API_KEY) {
-    console.log("Using Google model: gemini-2.0-flash");
-    return google("gemini-2.0-flash");
-  }
+
   throw new Error(
-    "No AI API key configured. Set ANTHROPIC_API_KEY (preferred), OPENAI_API_KEY, or GOOGLE_API_KEY"
+    "No AI API key configured. Set GOOGLE_GENERATIVE_AI_API_KEY, ANTHROPIC_API_KEY, or OPENAI_API_KEY"
   );
 }
 
@@ -205,6 +297,18 @@ const tools = {
       teamId: z.string().optional(),
     }),
   },
+  linear_create_project: {
+    description: "Create a new project in Linear. Projects help organize related issues and track progress toward goals.",
+    inputSchema: z.object({
+      name: z.string().min(1).describe("Project name"),
+      teamIds: z.array(z.string()).min(1).describe("Array of team IDs to associate with the project"),
+      description: z.string().optional().describe("Project description (plain text)"),
+      content: z.string().optional().describe("Project content (rich text markdown)"),
+      leadId: z.string().optional().describe("User ID for the project lead"),
+      targetDate: z.string().optional().describe("Target completion date (ISO 8601)"),
+      startDate: z.string().optional().describe("Project start date (ISO 8601)"),
+    }),
+  },
   linear_update_project: {
     description: "Update a Linear project",
     inputSchema: z.object({
@@ -212,6 +316,9 @@ const tools = {
       name: z.string().optional(),
       description: z.string().optional(),
       content: z.string().optional(),
+      leadId: z.string().optional(),
+      targetDate: z.string().optional(),
+      startDate: z.string().optional(),
     }),
   },
   // ===== Image Generation Tool =====
@@ -515,6 +622,7 @@ function buildTools(toolsConfig: ToolsConfig): Record<string, any> {
       linear_create_issue: tools.linear_create_issue,
       linear_update_issue: tools.linear_update_issue,
       linear_list_projects: tools.linear_list_projects,
+      linear_create_project: tools.linear_create_project,
       linear_update_project: tools.linear_update_project,
     });
   }
@@ -574,7 +682,7 @@ function buildTools(toolsConfig: ToolsConfig): Record<string, any> {
 
 export async function POST(req: Request) {
   try {
-    const { messages, soulConfig, toolsConfig } = await req.json();
+    const { messages, soulConfig, toolsConfig, modelConfig } = await req.json();
 
     // Parse soul config from request, default to all sections enabled
     const config: SoulConfig = soulConfig ? {
@@ -584,6 +692,10 @@ export async function POST(req: Request) {
       workExperience: soulConfig.workExperience ?? true,
       education: soulConfig.education ?? true,
       journalEntries: soulConfig.journalEntries ?? true,
+      // Linear context
+      linearProjects: soulConfig.linearProjects ?? true,
+      linearIssues: soulConfig.linearIssues ?? true,
+      linearIncludeCompleted: soulConfig.linearIncludeCompleted ?? false,
     } : DEFAULT_SOUL_CONFIG;
 
     // Parse tools config from request
@@ -596,26 +708,183 @@ export async function POST(req: Request) {
       webSearch: toolsConfig.webSearch ?? false,
     } : DEFAULT_TOOLS_CONFIG;
 
-    const model = getModel();
-    const systemPrompt = getKronusSystemPrompt(config);
+    // Get model based on selected model (default: gemini-3-flash)
+    const selectedModel = modelConfig?.model as ModelSelection | undefined;
+    const { model, provider: actualProvider, hasThinking } = getModel(selectedModel);
+    const systemPrompt = await getKronusSystemPrompt(config);
     const enabledTools = buildTools(enabledToolsConfig);
 
-    // Convert UI messages to model format for proper streaming
-    const modelMessages = convertToModelMessages(messages);
+    // Convert UI messages to model format for proper streaming (async in AI SDK 6)
+    let modelMessages = await convertToModelMessages(messages);
+
+    // Gemini 3 Pro requires thoughtSignature for multi-turn tool calling
+    // When signatures aren't preserved in message conversion, inject dummy signature
+    // See: https://ai.google.dev/gemini-api/docs/thought-signatures
+    const isGemini3 = actualProvider === "google" &&
+                      (process.env.GOOGLE_MODEL?.includes("gemini-3") || !process.env.GOOGLE_MODEL);
+    if (isGemini3) {
+      modelMessages = modelMessages.map((msg: any) => {
+        if (msg.role === "assistant" && msg.content) {
+          // Add thoughtSignature to tool-call parts that don't have one
+          const updatedContent = msg.content.map((part: any) => {
+            if (part.type === "tool-call" && !part.providerMetadata?.google?.thoughtSignature) {
+              return {
+                ...part,
+                providerMetadata: {
+                  ...part.providerMetadata,
+                  google: {
+                    ...part.providerMetadata?.google,
+                    thoughtSignature: "skip_thought_signature_validator",
+                  },
+                },
+              };
+            }
+            return part;
+          });
+          return { ...msg, content: updatedContent };
+        }
+        return msg;
+      });
+    }
+
+    // Build provider options for thinking/reasoning based on provider and model capability
+    const providerOptions: Record<string, any> = {};
+    if (hasThinking) {
+      if (actualProvider === "anthropic") {
+        // Enable extended thinking for Claude models (Opus 4.5)
+        providerOptions.anthropic = {
+          thinking: { type: "enabled", budgetTokens: 10000 },
+        } satisfies AnthropicProviderOptions;
+      } else if (actualProvider === "google") {
+        // Enable thinking for Gemini models
+        providerOptions.google = {
+          thinkingConfig: {
+            includeThoughts: true,
+          },
+        } satisfies GoogleGenerativeAIProviderOptions;
+      } else if (actualProvider === "openai") {
+        // Enable reasoning summaries for GPT-5.2
+        providerOptions.openai = {
+          reasoningSummary: "detailed",
+        };
+      }
+    }
 
     const result = streamText({
       model,
       system: systemPrompt,
       messages: modelMessages,
       tools: enabledTools as any,
+      providerOptions,
+      onError: (event) => {
+        // Log streaming errors with full details
+        console.error("[Chat Stream Error]", {
+          error: event.error,
+          message: event.error instanceof Error ? event.error.message : String(event.error),
+          stack: event.error instanceof Error ? event.error.stack : undefined,
+        });
+      },
+      onFinish: (event) => {
+        // Log completion with full details for debugging
+        const isError = event.finishReason === "error" || event.finishReason === "other";
+        const logFn = isError ? console.error : console.log;
+        const label = isError ? "[Chat Finish Warning]" : "[Chat Complete]";
+
+        logFn(label, {
+          finishReason: event.finishReason,
+          usage: event.usage,
+          // Log response content for debugging empty responses
+          textLength: event.text?.length || 0,
+          textPreview: event.text?.slice(0, 200) || "(empty)",
+          toolCallsCount: event.response?.messages?.filter((m: any) => m.role === "assistant" && m.toolCalls)?.length || 0,
+          // Raw provider response for debugging
+          rawResponse: (event.response as any)?.rawResponse ? JSON.stringify((event.response as any).rawResponse).slice(0, 500) : "(no raw response)",
+        });
+
+        // Specifically flag zero-output issues
+        if (event.usage?.outputTokens === 0) {
+          console.error("[Chat Zero Output]", {
+            finishReason: event.finishReason,
+            inputTokens: event.usage?.inputTokens,
+            possibleCauses: [
+              "Context too large for model",
+              "Safety filter triggered",
+              "Model returned empty response",
+              "Rate limit or quota issue",
+            ],
+          });
+        }
+      },
     });
 
     return result.toUIMessageStreamResponse();
   } catch (error: any) {
-    console.error("Chat error:", error);
-    return new Response(JSON.stringify({ error: error.message || "Chat failed" }), {
-      status: 500,
+    // Categorize and log errors with context
+    const errorType = categorizeError(error);
+    console.error(`[Chat Error: ${errorType}]`, {
+      message: error.message,
+      code: error.code,
+      status: error.status,
+      stack: error.stack,
+    });
+
+    return new Response(JSON.stringify({
+      error: error.message || "Chat failed",
+      type: errorType,
+      code: error.code,
+    }), {
+      status: error.status || 500,
       headers: { "Content-Type": "application/json" },
     });
   }
+}
+
+/**
+ * Categorize errors for better debugging
+ */
+function categorizeError(error: any): string {
+  const message = error.message?.toLowerCase() || "";
+  const code = error.code?.toLowerCase() || "";
+
+  // API/Auth errors
+  if (message.includes("api key") || message.includes("unauthorized") || error.status === 401) {
+    return "AUTH_ERROR";
+  }
+
+  // Rate limiting
+  if (message.includes("rate limit") || message.includes("quota") || error.status === 429) {
+    return "RATE_LIMIT";
+  }
+
+  // Token/context limits
+  if (message.includes("token") || message.includes("context") || message.includes("too long")) {
+    return "TOKEN_LIMIT";
+  }
+
+  // Network errors
+  if (code.includes("econnrefused") || code.includes("etimedout") || message.includes("network")) {
+    return "NETWORK_ERROR";
+  }
+
+  // Timeout
+  if (message.includes("timeout") || code.includes("timeout")) {
+    return "TIMEOUT";
+  }
+
+  // Model errors
+  if (message.includes("model") || message.includes("not found")) {
+    return "MODEL_ERROR";
+  }
+
+  // Safety/content filters
+  if (message.includes("safety") || message.includes("blocked") || message.includes("filter")) {
+    return "CONTENT_FILTER";
+  }
+
+  // Validation errors
+  if (message.includes("invalid") || message.includes("validation")) {
+    return "VALIDATION_ERROR";
+  }
+
+  return "UNKNOWN_ERROR";
 }

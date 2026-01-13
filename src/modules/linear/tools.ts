@@ -200,26 +200,32 @@ export function registerLinearTools(server: McpServer, client: LinearClient, def
     }
   );
 
-  // Tool 7: Update Project
+  // Tool 7: Create Project
   server.registerTool(
-    'linear_update_project',
+    'linear_create_project',
     {
-      title: 'Update Linear Project',
-      description: 'Update an existing Linear project (name, description, and/or content). Note: Rich content with images is stored in the "content" field, not "description".',
+      title: 'Create Linear Project',
+      description: 'Create a new project in Linear. Projects help organize related issues and track progress toward goals.',
       inputSchema: {
-        projectId: z.string().describe('Project ID to update'),
-        name: z.string().optional().describe('New project name'),
-        description: z.string().optional().describe('New project description (plain text)'),
-        content: z.string().optional().describe('New project content (rich text markdown with images and formatting)'),
+        name: z.string().min(1).describe('Project name'),
+        teamIds: z.array(z.string()).min(1).describe('Array of team IDs to associate with the project (at least one required)'),
+        description: z.string().optional().describe('Project description (plain text)'),
+        content: z.string().optional().describe('Project content (rich text markdown with images and formatting)'),
+        leadId: z.string().optional().describe('User ID for the project lead'),
+        targetDate: z.string().optional().describe('Target completion date (ISO 8601 format, e.g., "2026-03-01")'),
+        startDate: z.string().optional().describe('Project start date (ISO 8601 format, e.g., "2026-01-15")'),
       },
     },
-    async ({ projectId, name, description, content }) => {
+    async ({ name, teamIds, description, content, leadId, targetDate, startDate }) => {
       try {
-        const project = await client.updateProject({
-          projectId,
+        const project = await client.createProject({
           name,
+          teamIds,
           description,
           content,
+          leadId,
+          targetDate,
+          startDate,
         });
         return {
           content: [
@@ -235,5 +241,46 @@ export function registerLinearTools(server: McpServer, client: LinearClient, def
     }
   );
 
-  logger.success('Linear tools registered (6 tools)');
+  // Tool 8: Update Project
+  server.registerTool(
+    'linear_update_project',
+    {
+      title: 'Update Linear Project',
+      description: 'Update an existing Linear project (name, description, content, lead, dates). Note: Rich content with images is stored in the "content" field, not "description".',
+      inputSchema: {
+        projectId: z.string().describe('Project ID to update'),
+        name: z.string().optional().describe('New project name'),
+        description: z.string().optional().describe('New project description (plain text)'),
+        content: z.string().optional().describe('New project content (rich text markdown with images and formatting)'),
+        leadId: z.string().optional().describe('User ID for the project lead'),
+        targetDate: z.string().optional().describe('Target completion date (ISO 8601 format, e.g., "2026-03-01")'),
+        startDate: z.string().optional().describe('Project start date (ISO 8601 format, e.g., "2026-01-15")'),
+      },
+    },
+    async ({ projectId, name, description, content, leadId, targetDate, startDate }) => {
+      try {
+        const project = await client.updateProject({
+          projectId,
+          name,
+          description,
+          content,
+          leadId,
+          targetDate,
+          startDate,
+        });
+        return {
+          content: [
+            {
+              type: 'text' as const,
+              text: JSON.stringify(project, null, 2),
+            },
+          ],
+        };
+      } catch (error) {
+        throw toMcpError(error);
+      }
+    }
+  );
+
+  logger.success('Linear tools registered (7 tools)');
 }

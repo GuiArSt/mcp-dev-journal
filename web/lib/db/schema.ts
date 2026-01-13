@@ -30,10 +30,13 @@ export const journalEntries = sqliteTable("journal_entries", {
   kronusWisdom: text("kronus_wisdom"),
   rawAgentReport: text("raw_agent_report").notNull(),
   createdAt: text("created_at").default("CURRENT_TIMESTAMP"),
+  // File change tracking (JSON array of FileChange objects)
+  filesChanged: text("files_changed"),
 });
 
 /**
- * Project summaries - high-level repository overviews
+ * Project summaries - high-level repository overviews (Entry 0)
+ * Enhanced with Living Project Summary fields for capturing project knowledge
  */
 export const projectSummaries = sqliteTable("project_summaries", {
   repository: text("repository").primaryKey(),
@@ -47,6 +50,21 @@ export const projectSummaries = sqliteTable("project_summaries", {
   linearProjectId: text("linear_project_id"),
   linearIssueId: text("linear_issue_id"),
   updatedAt: text("updated_at").default("CURRENT_TIMESTAMP"),
+  // Living Project Summary (Entry 0) - Enhanced fields
+  fileStructure: text("file_structure"),       // Git-style file tree (agent-provided)
+  techStack: text("tech_stack"),               // Frameworks, libraries, versions (indicative)
+  frontend: text("frontend"),                   // FE patterns, components, state management
+  backend: text("backend"),                     // BE routes, middleware, auth patterns
+  databaseInfo: text("database_info"),         // Schema, ORM patterns, migrations
+  services: text("services"),                   // External APIs, integrations
+  customTooling: text("custom_tooling"),       // Project-specific utilities
+  dataFlow: text("data_flow"),                 // How data is processed
+  patterns: text("patterns"),                   // Naming conventions, code style
+  commands: text("commands"),                   // Dev, deploy, make commands
+  extendedNotes: text("extended_notes"),       // Gotchas, TODOs, historical context
+  // Sync tracking
+  lastSyncedEntry: text("last_synced_entry"),  // Last journal entry hash used for update
+  entriesSynced: integer("entries_synced"),    // Count of entries analyzed
 });
 
 /**
@@ -213,7 +231,7 @@ export const mediaAssets = sqliteTable("media_assets", {
  * 3. New conversation created with summary as context
  * 4. Old conversation archived (isCompressed=true)
  */
-export const conversations = sqliteTable("conversations", {
+export const conversations = sqliteTable("chat_conversations", {
   id: integer("id").primaryKey({ autoIncrement: true }),
   title: text("title").notNull(),
   messages: text("messages").notNull().default("[]"),
@@ -419,6 +437,77 @@ export const portfolioProjects = sqliteTable("portfolio_projects", {
 });
 
 // ============================================================================
+// LINEAR CONTEXT CACHE
+// ============================================================================
+
+/**
+ * Cached Linear projects - local mirror of Linear projects assigned to user
+ * Synced periodically and used for AI context
+ */
+export const linearProjects = sqliteTable("linear_projects", {
+  id: text("id").primaryKey(), // Linear project ID
+  name: text("name").notNull(),
+  description: text("description"),
+  content: text("content"), // Rich markdown content
+  state: text("state"), // 'backlog', 'planned', 'started', 'paused', 'completed', 'canceled'
+  progress: real("progress"), // 0-1 completion percentage
+  targetDate: text("target_date"),
+  startDate: text("start_date"),
+  url: text("url").notNull(),
+  // Lead/owner info
+  leadId: text("lead_id"),
+  leadName: text("lead_name"),
+  // Sync metadata
+  lastSyncedAt: text("last_synced_at").default("CURRENT_TIMESTAMP"),
+  // Context inclusion toggles (user can enable/disable per project)
+  includeInContext: integer("include_in_context", { mode: "boolean" }).default(true),
+});
+
+/**
+ * Cached Linear issues - local mirror of Linear issues assigned to user
+ * Synced periodically and used for AI context
+ */
+export const linearIssues = sqliteTable("linear_issues", {
+  id: text("id").primaryKey(), // Linear issue ID
+  identifier: text("identifier").notNull(), // e.g., 'PROJ-123'
+  title: text("title").notNull(),
+  description: text("description"),
+  priority: integer("priority"), // 0=none, 1=urgent, 2=high, 3=medium, 4=low
+  url: text("url").notNull(),
+  // State info
+  stateId: text("state_id"),
+  stateName: text("state_name"),
+  stateColor: text("state_color"),
+  // Assignee info
+  assigneeId: text("assignee_id"),
+  assigneeName: text("assignee_name"),
+  // Project linkage
+  projectId: text("project_id").references(() => linearProjects.id, { onDelete: "set null" }),
+  projectName: text("project_name"),
+  // Team info
+  teamId: text("team_id"),
+  teamName: text("team_name"),
+  // Sync metadata
+  lastSyncedAt: text("last_synced_at").default("CURRENT_TIMESTAMP"),
+  // Context inclusion toggles
+  includeInContext: integer("include_in_context", { mode: "boolean" }).default(true),
+});
+
+/**
+ * Linear sync metadata - tracks sync status and settings
+ */
+export const linearSyncMeta = sqliteTable("linear_sync_meta", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  lastFullSync: text("last_full_sync"),
+  syncStatus: text("sync_status", { enum: ["idle", "syncing", "error"] }).default("idle"),
+  lastError: text("last_error"),
+  // Settings
+  includeCompleted: integer("include_completed", { mode: "boolean" }).default(false),
+  autoSyncEnabled: integer("auto_sync_enabled", { mode: "boolean" }).default(true),
+  syncIntervalMinutes: integer("sync_interval_minutes").default(30),
+});
+
+// ============================================================================
 // TYPE EXPORTS
 // ============================================================================
 
@@ -484,3 +573,12 @@ export type NewHermesUserStats = typeof hermesStats.$inferInsert;
 
 export type PortfolioProject = typeof portfolioProjects.$inferSelect;
 export type NewPortfolioProject = typeof portfolioProjects.$inferInsert;
+
+export type LinearProject = typeof linearProjects.$inferSelect;
+export type NewLinearProject = typeof linearProjects.$inferInsert;
+
+export type LinearIssue = typeof linearIssues.$inferSelect;
+export type NewLinearIssue = typeof linearIssues.$inferInsert;
+
+export type LinearSyncMeta = typeof linearSyncMeta.$inferSelect;
+export type NewLinearSyncMeta = typeof linearSyncMeta.$inferInsert;

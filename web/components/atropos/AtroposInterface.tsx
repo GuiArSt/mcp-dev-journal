@@ -32,7 +32,7 @@ import {
   GitCompare,
   FileText,
 } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { cn, formatDateShort } from "@/lib/utils";
 import { computeSmartDiff, getDiffSummary, type DiffResult } from "@/lib/diff";
 
 interface IntentQuestion {
@@ -1141,7 +1141,7 @@ export function AtroposInterface() {
                                 )}
                               </div>
                               <span className="text-[10px] text-[var(--tartarus-ivory-faded)]">
-                                {new Date(m.createdAt).toLocaleDateString()}
+                                {formatDateShort(m.createdAt)}
                               </span>
                             </div>
                           </div>

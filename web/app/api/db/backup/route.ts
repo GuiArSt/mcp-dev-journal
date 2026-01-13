@@ -1,8 +1,15 @@
 import { NextResponse } from "next/server";
 import { initDatabase, exportToSQL } from "@/lib/db";
+import { withErrorHandler } from "@/lib/api-handler";
+import { getErrorMessage } from "@/lib/errors";
 import path from "path";
 
-// GET - Download backup as SQL file
+/**
+ * GET /api/db/backup
+ *
+ * Download backup as SQL file.
+ * Note: Can't use withErrorHandler because it returns a plain Response for file download.
+ */
 export async function GET() {
   try {
     initDatabase();
@@ -21,28 +28,30 @@ export async function GET() {
         "Content-Disposition": `attachment; filename="journal_backup_${new Date().toISOString().split("T")[0]}.sql"`,
       },
     });
-  } catch (error: any) {
-    console.error("Backup error:", error);
-    return NextResponse.json({ error: error.message || "Backup failed" }, { status: 500 });
+  } catch (error) {
+    console.error("[API Error] Backup failed:", error);
+    return NextResponse.json(
+      { error: getErrorMessage(error), code: "BACKUP_ERROR" },
+      { status: 500 }
+    );
   }
 }
 
-// POST - Trigger manual backup
-export async function POST() {
-  try {
-    initDatabase();
+/**
+ * POST /api/db/backup
+ *
+ * Trigger manual backup.
+ */
+export const POST = withErrorHandler(async () => {
+  initDatabase();
 
-    const backupPath = path.join(process.cwd(), "..", "journal_backup.sql");
-    exportToSQL(backupPath);
+  const backupPath = path.join(process.cwd(), "..", "journal_backup.sql");
+  exportToSQL(backupPath);
 
-    return NextResponse.json({
-      success: true,
-      message: "Backup completed successfully",
-      path: backupPath,
-      timestamp: new Date().toISOString(),
-    });
-  } catch (error: any) {
-    console.error("Backup error:", error);
-    return NextResponse.json({ error: error.message || "Backup failed" }, { status: 500 });
-  }
-}
+  return NextResponse.json({
+    success: true,
+    message: "Backup completed successfully",
+    path: backupPath,
+    timestamp: new Date().toISOString(),
+  });
+});

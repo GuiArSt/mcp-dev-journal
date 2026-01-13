@@ -14,6 +14,14 @@ export const AgentInputSchema = z.object({
   raw_agent_report: z.string().min(10).describe('Agent\'s full context dump'),
 });
 
+// File change schema for tracking what files were modified
+export const FileChangeSchema = z.object({
+  path: z.string().describe('Full file path'),
+  action: z.enum(['created', 'modified', 'deleted', 'renamed']).describe('Type of change'),
+  diff_summary: z.string().optional().describe('Brief summary of the change (not full diff)'),
+  old_path: z.string().optional().describe('For renames: the previous file path'),
+});
+
 // AI output schema: What Kronus generates from the report
 export const AIOutputSchema = z.object({
   why: z.string().min(10).describe('Why are we doing this change'),
@@ -21,6 +29,7 @@ export const AIOutputSchema = z.object({
   decisions: z.string().min(10).describe('Decisions made and reasoning'),
   technologies: z.string().min(3).describe('Technologies/frameworks discussed'),
   kronus_wisdom: z.string().nullable().optional().describe('Poem, lesson, or wisdom from Kronus'),
+  files_changed: z.array(FileChangeSchema).nullable().optional().describe('STRONGLY REQUESTED: List of files that were created, modified, deleted, or renamed. Extract from the agent report.'),
 });
 
 // Project summary schema: Overview of the entire repository
@@ -49,6 +58,16 @@ export type ProjectSummaryInput = z.infer<typeof ProjectSummaryInputSchema>;
  * Database types
  */
 
+/**
+ * File change tracking for journal entries
+ */
+export interface FileChange {
+  path: string;           // Full file path (required)
+  action: 'created' | 'modified' | 'deleted' | 'renamed';
+  diff_summary?: string;  // Brief summary of change (not full diff)
+  old_path?: string;      // For renames
+}
+
 export interface JournalEntry {
   id: number;
   commit_hash: string;
@@ -63,6 +82,8 @@ export interface JournalEntry {
   kronus_wisdom: string | null;
   raw_agent_report: string;
   created_at: string;
+  // File change tracking (JSON array stored as TEXT)
+  files_changed?: FileChange[] | null;
 }
 
 export interface JournalEntryInsert {
@@ -77,6 +98,7 @@ export interface JournalEntryInsert {
   technologies: string;
   kronus_wisdom: string | null;
   raw_agent_report: string;
+  files_changed?: FileChange[] | null;
 }
 
 export interface ProjectSummary {
@@ -96,6 +118,21 @@ export interface ProjectSummary {
   // Optional Linear integration
   linear_project_id?: string | null; // Linear project ID if linked to a Linear project
   linear_issue_id?: string | null; // Linear issue ID if linked to a Linear issue
+  // Living Project Summary (Entry 0) - Enhanced fields
+  file_structure?: string | null; // Git-style file tree (agent-provided)
+  tech_stack?: string | null; // Frameworks, libraries, versions (indicative)
+  frontend?: string | null; // FE patterns, components, state management
+  backend?: string | null; // BE routes, middleware, auth patterns
+  database_info?: string | null; // Schema, ORM patterns, migrations (renamed to avoid SQL keyword)
+  services?: string | null; // External APIs, integrations
+  custom_tooling?: string | null; // Project-specific utilities
+  data_flow?: string | null; // How data is processed
+  patterns?: string | null; // Naming conventions, code style
+  commands?: string | null; // Dev, deploy, make commands
+  extended_notes?: string | null; // Gotchas, TODOs, historical context
+  // Sync tracking
+  last_synced_entry?: string | null; // Last journal entry hash used for update
+  entries_synced?: number | null; // Count of entries analyzed
 }
 
 export interface ProjectSummaryInsert {
@@ -109,6 +146,20 @@ export interface ProjectSummaryInsert {
   status: string;
   linear_project_id?: string | null;
   linear_issue_id?: string | null;
+  // Living Project Summary (Entry 0) - Enhanced fields
+  file_structure?: string | null;
+  tech_stack?: string | null;
+  frontend?: string | null;
+  backend?: string | null;
+  database_info?: string | null;
+  services?: string | null;
+  custom_tooling?: string | null;
+  data_flow?: string | null;
+  patterns?: string | null;
+  commands?: string | null;
+  extended_notes?: string | null;
+  last_synced_entry?: string | null;
+  entries_synced?: number | null;
 }
 
 /**

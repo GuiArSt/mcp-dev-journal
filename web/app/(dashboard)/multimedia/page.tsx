@@ -31,6 +31,7 @@ import {
   BookOpen,
   Filter,
 } from "lucide-react";
+import { formatDateShort } from "@/lib/utils";
 
 interface StorageImage {
   name: string;
@@ -323,7 +324,7 @@ export default function MultimediaPage() {
                       <p className="text-xs text-muted-foreground truncate">{asset.description || asset.prompt?.substring(0, 40) || "No description"}</p>
                       <div className="mt-2 flex items-center justify-between">
                         <span className="text-xs text-muted-foreground">{Math.round(asset.file_size / 1024)} KB</span>
-                        <span className="text-xs text-muted-foreground">{new Date(asset.created_at).toLocaleDateString()}</span>
+                        <span className="text-xs text-muted-foreground">{formatDateShort(asset.created_at)}</span>
                       </div>
                     </CardContent>
                   </Card>
@@ -423,7 +424,7 @@ export default function MultimediaPage() {
                     </div>
                     <CardContent className="p-3">
                       <p className="truncate text-sm font-medium">{image.name}</p>
-                      <p className="text-xs text-muted-foreground">{new Date(image.created_at).toLocaleDateString()}</p>
+                      <p className="text-xs text-muted-foreground">{formatDateShort(image.created_at)}</p>
                     </CardContent>
                   </Card>
                 ))}

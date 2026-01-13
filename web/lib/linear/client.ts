@@ -255,6 +255,42 @@ export async function listProjects(options: { teamId?: string; showAll?: boolean
   };
 }
 
+// Create project (linear_create_project)
+export async function createProject(input: {
+  name: string;
+  teamIds: string[];
+  description?: string;
+  content?: string;
+  leadId?: string;
+  targetDate?: string;
+  startDate?: string;
+}) {
+  const mutation = `
+    mutation CreateProject($input: ProjectCreateInput!) {
+      projectCreate(input: $input) {
+        success
+        project {
+          id
+          name
+          description
+          content
+          url
+        }
+      }
+    }
+  `;
+
+  const data = await linearQuery<{ projectCreate: { success: boolean; project: any } }>(mutation, {
+    input,
+  });
+
+  if (!data.projectCreate?.success || !data.projectCreate.project) {
+    throw new Error("Failed to create project: No project returned");
+  }
+
+  return data.projectCreate.project;
+}
+
 // Update project (linear_update_project)
 export async function updateProject(
   projectId: string,
@@ -262,6 +298,9 @@ export async function updateProject(
     name?: string;
     description?: string;
     content?: string;
+    leadId?: string;
+    targetDate?: string;
+    startDate?: string;
   }
 ) {
   const mutation = `

@@ -24,7 +24,7 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
 
   // Load conversation
   const conversation = db
-    .prepare("SELECT * FROM conversations WHERE id = ?")
+    .prepare("SELECT * FROM chat_conversations WHERE id = ?")
     .get(conversationId) as {
       id: number;
       title: string;
@@ -100,7 +100,7 @@ Be concise but thorough. Focus on information that would be useful for continuin
 
   // Update conversation with compression summary
   db.prepare(`
-    UPDATE conversations
+    UPDATE chat_conversations
     SET
       is_compressed = 1,
       compression_summary = ?,
@@ -133,7 +133,7 @@ export async function GET(request: NextRequest) {
 
   const db = getDatabase();
   const conversation = db
-    .prepare("SELECT compression_summary, is_compressed FROM conversations WHERE id = ?")
+    .prepare("SELECT compression_summary, is_compressed FROM chat_conversations WHERE id = ?")
     .get(parseInt(conversationId)) as {
       compression_summary: string | null;
       is_compressed: number;

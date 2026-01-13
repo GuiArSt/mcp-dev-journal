@@ -16,6 +16,9 @@ import {
 } from "@/components/ui/collapsible";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import remarkMath from "remark-math";
+import rehypeKatex from "rehype-katex";
+import "katex/dist/katex.min.css";
 import {
   Search,
   GitBranch,
@@ -34,9 +37,18 @@ import {
   Image as ImageIcon,
   FileCode,
   File,
+  Brain,
+  Loader2,
+  Code,
+  Database,
+  Server,
+  Workflow,
+  Terminal,
+  AlertCircle,
 } from "lucide-react";
 import { MermaidPreview } from "@/components/multimedia/MermaidPreview";
 import { useRouter } from "next/navigation";
+import { formatDateShort } from "@/lib/utils";
 
 // Helper to clean technology strings from markdown formatting
 function cleanTechnologies(techString: string): string[] {
@@ -77,6 +89,20 @@ interface ProjectSummary {
   linear_issue_id?: string;
   entry_count: number;
   last_entry_date?: string;
+  // Living Project Summary (Entry 0) fields
+  file_structure?: string;
+  tech_stack?: string;
+  frontend?: string;
+  backend?: string;
+  database_info?: string;
+  services?: string;
+  custom_tooling?: string;
+  data_flow?: string;
+  patterns?: string;
+  commands?: string;
+  extended_notes?: string;
+  last_synced_entry?: string;
+  entries_synced?: number;
 }
 
 interface JournalEntry {
@@ -122,6 +148,7 @@ export default function ReaderPage() {
   const [attachmentsLoading, setAttachmentsLoading] = useState<Record<string, boolean>>({});
   const [showAttachments, setShowAttachments] = useState<Set<string>>(new Set());
   const [activeTab, setActiveTab] = useState("projects");
+  const [analyzingProject, setAnalyzingProject] = useState<string | null>(null);
 
   useEffect(() => {
     fetchProjects();
@@ -312,7 +339,7 @@ What would you like to change? You can update any field using the journal_update
 
 **Commit Hash:** ${entry.commit_hash}
 **Repository:** ${entry.repository}/${entry.branch}
-**Date:** ${new Date(entry.date).toLocaleDateString()}
+**Date:** ${formatDateShort(entry.date)}
 **Author:** ${entry.author}
 
 **Why:**
@@ -329,6 +356,34 @@ What changes would you like to make? You can update any field using the journal_
 
     sessionStorage.setItem("kronusPrefill", context);
     router.push("/chat");
+  };
+
+  // Analyze project entries with AI to update Entry 0
+  const analyzeProject = async (repository: string, e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    setAnalyzingProject(repository);
+    try {
+      const response = await fetch("/api/project-summaries/analyze", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ repository, entries_to_analyze: 10 }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || "Analysis failed");
+      }
+
+      // Refresh projects to show updated Entry 0
+      await fetchProjects();
+    } catch (error) {
+      console.error("Failed to analyze project:", error);
+      alert(error instanceof Error ? error.message : "Analysis failed");
+    } finally {
+      setAnalyzingProject(null);
+    }
   };
 
   const filteredProjects = searchQuery
@@ -454,6 +509,11 @@ What changes would you like to make? You can update any field using the journal_
                               <Badge className="bg-[var(--tartarus-teal-soft)] text-[var(--tartarus-teal)] ml-2">
                                 {project.entry_count} entries
                               </Badge>
+                              {project.id === -1 && (
+                                <Badge className="bg-[var(--tartarus-gold-soft)] text-[var(--tartarus-gold)] ml-1">
+                                  New
+                                </Badge>
+                              )}
                             </div>
                             <CardDescription className="mt-1 ml-10 line-clamp-2 text-[var(--tartarus-ivory-muted)]">
                               {project.summary?.substring(0, 200)}...
@@ -473,6 +533,20 @@ What changes would you like to make? You can update any field using the journal_
                                 </a>
                               </Button>
                             )}
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={(e) => analyzeProject(project.repository, e)}
+                              disabled={analyzingProject === project.repository || project.entry_count === 0}
+                              className={`${project.id === -1 ? "text-[var(--tartarus-gold)] hover:text-[var(--tartarus-gold-bright)] hover:bg-[var(--tartarus-gold-soft)]" : "text-[var(--tartarus-teal)] hover:text-[var(--tartarus-teal-bright)] hover:bg-[var(--tartarus-teal-soft)]"}`}
+                            >
+                              {analyzingProject === project.repository ? (
+                                <Loader2 className="h-4 w-4 mr-1.5 animate-spin" />
+                              ) : (
+                                <Brain className="h-4 w-4 mr-1.5" />
+                              )}
+                              {analyzingProject === project.repository ? "Analyzing..." : project.id === -1 ? "Initialize" : "Analyze"}
+                            </Button>
                             <Button
                               variant="ghost"
                               size="sm"
@@ -504,7 +578,7 @@ What changes would you like to make? You can update any field using the journal_
                           <div className="mb-4">
                             <h4 className="text-sm font-medium text-[var(--tartarus-teal)] mb-2">Purpose</h4>
                             <div className="prose prose-sm max-w-none text-[var(--tartarus-ivory-muted)] prose-strong:text-[var(--tartarus-ivory)]">
-                              <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                              <ReactMarkdown remarkPlugins={[remarkGfm, remarkMath]} rehypePlugins={[rehypeKatex]}>
                                 {project.purpose}
                               </ReactMarkdown>
                             </div>
@@ -515,7 +589,7 @@ What changes would you like to make? You can update any field using the journal_
                           <div className="mb-4">
                             <h4 className="text-sm font-medium text-[var(--tartarus-teal)] mb-2">Architecture</h4>
                             <div className="prose prose-sm max-w-none text-[var(--tartarus-ivory-muted)] prose-strong:text-[var(--tartarus-ivory)] prose-headings:text-[var(--tartarus-ivory)] prose-h2:text-base prose-h3:text-sm">
-                              <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                              <ReactMarkdown remarkPlugins={[remarkGfm, remarkMath]} rehypePlugins={[rehypeKatex]}>
                                 {project.architecture}
                               </ReactMarkdown>
                             </div>
@@ -526,7 +600,7 @@ What changes would you like to make? You can update any field using the journal_
                           <div className="mb-4">
                             <h4 className="text-sm font-medium text-[var(--tartarus-teal)] mb-2">Key Decisions</h4>
                             <div className="prose prose-sm max-w-none text-[var(--tartarus-ivory-muted)] prose-strong:text-[var(--tartarus-ivory)]">
-                              <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                              <ReactMarkdown remarkPlugins={[remarkGfm, remarkMath]} rehypePlugins={[rehypeKatex]}>
                                 {project.key_decisions}
                               </ReactMarkdown>
                             </div>
@@ -537,7 +611,7 @@ What changes would you like to make? You can update any field using the journal_
                           <div className="mb-4">
                             <h4 className="text-sm font-medium text-[var(--tartarus-teal)] mb-2">Status</h4>
                             <div className="prose prose-sm max-w-none text-[var(--tartarus-ivory-muted)] prose-strong:text-[var(--tartarus-gold)]">
-                              <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                              <ReactMarkdown remarkPlugins={[remarkGfm, remarkMath]} rehypePlugins={[rehypeKatex]}>
                                 {project.status}
                               </ReactMarkdown>
                             </div>
@@ -558,12 +632,128 @@ What changes would you like to make? You can update any field using the journal_
                           </div>
                         )}
 
+                        {/* Living Project Summary (Entry 0) */}
+                        {(project.file_structure || project.tech_stack || project.frontend || project.backend || project.database_info || project.services || project.commands || project.patterns || project.extended_notes) && (
+                          <div className="mb-4 border-t border-[var(--tartarus-border)] pt-4">
+                            <div className="flex items-center gap-2 mb-3">
+                              <Brain className="h-4 w-4 text-[var(--tartarus-teal)]" />
+                              <h4 className="text-sm font-medium text-[var(--tartarus-teal)]">Living Project Summary</h4>
+                              {project.entries_synced && (
+                                <Badge variant="outline" className="text-xs border-[var(--tartarus-teal-dim)] text-[var(--tartarus-teal)]">
+                                  {project.entries_synced} entries analyzed
+                                </Badge>
+                              )}
+                            </div>
+
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                              {project.file_structure && (
+                                <div className="col-span-2">
+                                  <h5 className="text-xs font-medium text-[var(--tartarus-ivory-muted)] mb-1 flex items-center gap-1">
+                                    <FolderGit2 className="h-3 w-3" /> File Structure
+                                  </h5>
+                                  <pre className="text-xs text-[var(--tartarus-ivory-muted)] bg-[var(--tartarus-elevated)] p-2 rounded overflow-x-auto">
+                                    {project.file_structure}
+                                  </pre>
+                                </div>
+                              )}
+
+                              {project.tech_stack && (
+                                <div>
+                                  <h5 className="text-xs font-medium text-[var(--tartarus-ivory-muted)] mb-1 flex items-center gap-1">
+                                    <Code className="h-3 w-3" /> Tech Stack
+                                  </h5>
+                                  <div className="prose prose-sm max-w-none text-[var(--tartarus-ivory-muted)] prose-strong:text-[var(--tartarus-ivory)]">
+                                    <ReactMarkdown remarkPlugins={[remarkGfm, remarkMath]} rehypePlugins={[rehypeKatex]}>{project.tech_stack}</ReactMarkdown>
+                                  </div>
+                                </div>
+                              )}
+
+                              {project.frontend && (
+                                <div>
+                                  <h5 className="text-xs font-medium text-[var(--tartarus-ivory-muted)] mb-1 flex items-center gap-1">
+                                    <Layers className="h-3 w-3" /> Frontend
+                                  </h5>
+                                  <div className="prose prose-sm max-w-none text-[var(--tartarus-ivory-muted)]">
+                                    <ReactMarkdown remarkPlugins={[remarkGfm, remarkMath]} rehypePlugins={[rehypeKatex]}>{project.frontend}</ReactMarkdown>
+                                  </div>
+                                </div>
+                              )}
+
+                              {project.backend && (
+                                <div>
+                                  <h5 className="text-xs font-medium text-[var(--tartarus-ivory-muted)] mb-1 flex items-center gap-1">
+                                    <Server className="h-3 w-3" /> Backend
+                                  </h5>
+                                  <div className="prose prose-sm max-w-none text-[var(--tartarus-ivory-muted)]">
+                                    <ReactMarkdown remarkPlugins={[remarkGfm, remarkMath]} rehypePlugins={[rehypeKatex]}>{project.backend}</ReactMarkdown>
+                                  </div>
+                                </div>
+                              )}
+
+                              {project.database_info && (
+                                <div>
+                                  <h5 className="text-xs font-medium text-[var(--tartarus-ivory-muted)] mb-1 flex items-center gap-1">
+                                    <Database className="h-3 w-3" /> Database
+                                  </h5>
+                                  <div className="prose prose-sm max-w-none text-[var(--tartarus-ivory-muted)]">
+                                    <ReactMarkdown remarkPlugins={[remarkGfm, remarkMath]} rehypePlugins={[rehypeKatex]}>{project.database_info}</ReactMarkdown>
+                                  </div>
+                                </div>
+                              )}
+
+                              {project.services && (
+                                <div>
+                                  <h5 className="text-xs font-medium text-[var(--tartarus-ivory-muted)] mb-1 flex items-center gap-1">
+                                    <Workflow className="h-3 w-3" /> Services
+                                  </h5>
+                                  <div className="prose prose-sm max-w-none text-[var(--tartarus-ivory-muted)]">
+                                    <ReactMarkdown remarkPlugins={[remarkGfm, remarkMath]} rehypePlugins={[rehypeKatex]}>{project.services}</ReactMarkdown>
+                                  </div>
+                                </div>
+                              )}
+
+                              {project.commands && (
+                                <div>
+                                  <h5 className="text-xs font-medium text-[var(--tartarus-ivory-muted)] mb-1 flex items-center gap-1">
+                                    <Terminal className="h-3 w-3" /> Commands
+                                  </h5>
+                                  <pre className="text-xs text-[var(--tartarus-ivory-muted)] bg-[var(--tartarus-elevated)] p-2 rounded">
+                                    {project.commands}
+                                  </pre>
+                                </div>
+                              )}
+
+                              {project.patterns && (
+                                <div>
+                                  <h5 className="text-xs font-medium text-[var(--tartarus-ivory-muted)] mb-1 flex items-center gap-1">
+                                    <FileCode className="h-3 w-3" /> Patterns
+                                  </h5>
+                                  <div className="prose prose-sm max-w-none text-[var(--tartarus-ivory-muted)]">
+                                    <ReactMarkdown remarkPlugins={[remarkGfm, remarkMath]} rehypePlugins={[rehypeKatex]}>{project.patterns}</ReactMarkdown>
+                                  </div>
+                                </div>
+                              )}
+
+                              {project.extended_notes && (
+                                <div className="col-span-2">
+                                  <h5 className="text-xs font-medium text-[var(--tartarus-ivory-muted)] mb-1 flex items-center gap-1">
+                                    <AlertCircle className="h-3 w-3" /> Notes & Gotchas
+                                  </h5>
+                                  <div className="prose prose-sm max-w-none text-[var(--tartarus-ivory-muted)]">
+                                    <ReactMarkdown remarkPlugins={[remarkGfm, remarkMath]} rehypePlugins={[rehypeKatex]}>{project.extended_notes}</ReactMarkdown>
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        )}
+
                         {/* Metadata */}
                         <div className="mb-4 flex items-center gap-4 text-xs text-[var(--tartarus-ivory-muted)]">
                           {project.last_entry_date && (
                             <span className="flex items-center gap-1">
                               <Calendar className="h-3 w-3" />
-                              Last entry: {new Date(project.last_entry_date).toLocaleDateString()}
+                              Last entry: {formatDateShort(project.last_entry_date)}
                             </span>
                           )}
                           <span className="flex items-center gap-1">
@@ -732,7 +922,7 @@ What changes would you like to make? You can update any field using the journal_
                                           </span>
                                           <span className="flex items-center gap-1">
                                             <Calendar className="h-3 w-3" />
-                                            {new Date(entry.date).toLocaleDateString()}
+                                            {formatDateShort(entry.date)}
                                           </span>
                                           {entry.attachment_count > 0 && (
                                             <span className="flex items-center gap-1">
@@ -911,7 +1101,7 @@ function TimelineEntries({
                       </span>
                       <span className="flex items-center gap-1">
                         <Calendar className="h-3 w-3" />
-                        {new Date(entry.date).toLocaleDateString()}
+                        {formatDateShort(entry.date)}
                       </span>
                       {entry.attachment_count > 0 && (
                         <span className="flex items-center gap-1">

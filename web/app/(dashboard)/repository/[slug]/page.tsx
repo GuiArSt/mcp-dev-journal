@@ -19,9 +19,13 @@ import {
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import remarkBreaks from "remark-breaks";
+import remarkMath from "remark-math";
+import rehypeKatex from "rehype-katex";
+import "katex/dist/katex.min.css";
 import { Edit, Save, X, ArrowLeft, Tag, Plus, FileText, Settings, Check, ImagePlus, Trash2, Image, Loader2 } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { compressImage, formatBytes } from "@/lib/image-compression";
+import { formatFlexibleDate } from "@/lib/utils";
 
 interface MediaAsset {
   id: number;
@@ -54,35 +58,6 @@ interface DocumentType {
   color: string;
   icon: string;
   sortOrder: number;
-}
-
-/**
- * Format a written date for display
- * Accepts: "2024", "2024-03", "2024-03-15", or full ISO date
- * Returns: "2024", "March 2024", "March 15, 2024"
- */
-function formatWrittenDate(dateStr: string): string {
-  if (!dateStr) return "";
-
-  // Just a year (e.g., "2024")
-  if (/^\d{4}$/.test(dateStr)) {
-    return dateStr;
-  }
-
-  // Year-month (e.g., "2024-03")
-  if (/^\d{4}-\d{2}$/.test(dateStr)) {
-    const [year, month] = dateStr.split("-");
-    const date = new Date(parseInt(year), parseInt(month) - 1);
-    return date.toLocaleDateString("en-US", { month: "long", year: "numeric" });
-  }
-
-  // Full date (e.g., "2024-03-15" or ISO)
-  const date = new Date(dateStr);
-  if (!isNaN(date.getTime())) {
-    return date.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
-  }
-
-  return dateStr;
 }
 
 export default function DocumentDetailPage() {
@@ -394,12 +369,12 @@ export default function DocumentDetailPage() {
                   {/* Written date - when the piece was originally created (gold) */}
                   {(document.metadata?.writtenDate || document.metadata?.year) && (
                     <span className="text-[var(--tartarus-gold)]">
-                      Written: {formatWrittenDate(document.metadata?.writtenDate || document.metadata?.year)}
+                      Written: {formatFlexibleDate(document.metadata?.writtenDate || document.metadata?.year)}
                     </span>
                   )}
                   {/* Added date - when it was added to the system (muted) */}
                   <span className="text-[var(--tartarus-ivory-faded)] text-xs">
-                    Added: {new Date(document.created_at).toLocaleDateString()}
+                    Added: {formatFlexibleDate(document.created_at)}
                   </span>
                 </div>
               </div>
@@ -633,7 +608,7 @@ export default function DocumentDetailPage() {
                   {document.type === "prompt" ? (
                     <pre className="whitespace-pre-wrap break-words bg-[var(--tartarus-deep)] text-[var(--tartarus-ivory)] p-4 rounded-lg border border-[var(--tartarus-border)] font-mono text-sm leading-relaxed">{document.content}</pre>
                   ) : (
-                    <ReactMarkdown remarkPlugins={[remarkGfm, remarkBreaks]}>{document.content}</ReactMarkdown>
+                    <ReactMarkdown remarkPlugins={[remarkGfm, remarkBreaks, remarkMath]} rehypePlugins={[rehypeKatex]}>{document.content}</ReactMarkdown>
                   )}
                 </div>
               )}

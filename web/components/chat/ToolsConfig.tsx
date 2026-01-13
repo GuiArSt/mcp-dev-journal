@@ -4,21 +4,23 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Switch } from "@/components/ui/switch";
-import { Wrench, BookOpen, GitBranch, Briefcase, Image, Search } from "lucide-react";
+import {
+  Wrench,
+  BookOpen,
+  GitBranch,
+  Briefcase,
+  Image,
+  Search,
+  Sparkles,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
-
-// Explicit colors for the Tools config popover (Tartarus palette)
-const COLORS = {
-  bg: "#0a0a0f",
-  border: "#2a2a3a",
-  text: "#e8e6e3",
-  muted: "#888",
-  teal: "#00CED1",
-  tealDim: "#008B8B",
-  gold: "#D4AF37",
-  purple: "#9B59B6",
-  switchOff: "#1a1a1a",
-};
+import {
+  TARTARUS,
+  popoverStyles,
+  headerStyles,
+  sectionStyles,
+  formatNumber,
+} from "./config-styles";
 
 // ToolsConfigState - controls which tool categories are enabled
 export interface ToolsConfigState {
@@ -45,59 +47,23 @@ const DEFAULT_CONFIG: ToolsConfigState = {
 };
 
 // Tool category metadata
-const TOOL_CATEGORIES = {
-  journal: {
-    name: "Journal",
-    icon: BookOpen,
-    description: "Entries, summaries, backups",
-    toolCount: 12,
-    heavy: false,
-  },
-  repository: {
-    name: "Repository",
-    icon: GitBranch,
-    description: "Documents, skills, CV",
-    toolCount: 11,
-    heavy: false,
-  },
-  linear: {
-    name: "Linear",
-    icon: Briefcase,
-    description: "Issues, projects",
-    toolCount: 6,
-    heavy: false,
-  },
-  media: {
-    name: "Media",
-    icon: Image,
-    description: "Save, list, update images",
-    toolCount: 3,
-    heavy: false,
-  },
-  imageGeneration: {
-    name: "Image Gen",
-    icon: Image,
-    description: "FLUX, Gemini, Imagen",
-    toolCount: 1,
-    heavy: true,
-    apiRequired: "REPLICATE_API_TOKEN",
-  },
-  webSearch: {
-    name: "Web Search",
-    icon: Search,
-    description: "Perplexity search & research",
-    toolCount: 4,
-    heavy: true,
-    apiRequired: "PERPLEXITY_API_KEY",
-  },
-} as const;
+const CORE_TOOLS = [
+  { key: "journal", name: "Journal", icon: BookOpen, description: "Entries & summaries", count: 12 },
+  { key: "repository", name: "Repository", icon: GitBranch, description: "Docs, skills, CV", count: 11 },
+  { key: "linear", name: "Linear", icon: Briefcase, description: "Issues & projects", count: 7 },
+  { key: "media", name: "Media", icon: Image, description: "Asset management", count: 3 },
+] as const;
+
+const MULTIMODAL_TOOLS = [
+  { key: "imageGeneration", name: "Image Gen", icon: Sparkles, description: "FLUX, Gemini, Imagen", count: 1 },
+  { key: "webSearch", name: "Web Search", icon: Search, description: "Perplexity AI", count: 4 },
+] as const;
 
 export function ToolsConfig({ config, onChange }: ToolsConfigProps) {
   const [open, setOpen] = useState(false);
 
   const toggleCategory = (category: keyof ToolsConfigState) => {
-    const newConfig = { ...config, [category]: !config[category] };
-    onChange(newConfig);
+    onChange({ ...config, [category]: !config[category] });
   };
 
   const enableAll = () => {
@@ -123,15 +89,16 @@ export function ToolsConfig({ config, onChange }: ToolsConfigProps) {
   };
 
   // Count enabled tools
-  const enabledToolCount = Object.entries(config).reduce((sum, [key, enabled]) => {
-    if (enabled) {
-      const category = TOOL_CATEGORIES[key as keyof typeof TOOL_CATEGORIES];
-      return sum + category.toolCount;
-    }
-    return sum;
-  }, 0);
+  const enabledToolCount = [
+    ...(config.journal ? [12] : []),
+    ...(config.repository ? [11] : []),
+    ...(config.linear ? [7] : []),
+    ...(config.media ? [3] : []),
+    ...(config.imageGeneration ? [1] : []),
+    ...(config.webSearch ? [4] : []),
+  ].reduce((a, b) => a + b, 0);
 
-  const hasHeavyTools = config.imageGeneration || config.webSearch;
+  const hasMultimodal = config.imageGeneration || config.webSearch;
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -139,164 +106,173 @@ export function ToolsConfig({ config, onChange }: ToolsConfigProps) {
         <Button
           variant="ghost"
           size="sm"
-          className={cn("gap-1", hasHeavyTools && "text-[var(--kronus-purple)]")}
+          className={cn(
+            "gap-1.5 transition-colors",
+            hasMultimodal ? "text-[#9B59B6]" : "text-[#888899]"
+          )}
         >
           <Wrench className="h-4 w-4" />
-          Tools
+          <span className="hidden sm:inline">Tools</span>
           <span
-            className={cn(
-              "text-xs px-1.5 py-0.5 rounded",
-              hasHeavyTools
-                ? "bg-[var(--kronus-purple)]/20"
-                : "bg-muted/20"
-            )}
+            className="text-[10px] px-1.5 py-0.5 rounded-full font-mono"
+            style={{
+              backgroundColor: hasMultimodal ? TARTARUS.purpleGlow : TARTARUS.surface,
+              color: hasMultimodal ? TARTARUS.purple : TARTARUS.textMuted,
+            }}
           >
             {enabledToolCount}
           </span>
         </Button>
       </PopoverTrigger>
       <PopoverContent
-        className="w-80 z-[100] shadow-2xl rounded-lg"
+        className="w-[320px] z-[100] shadow-2xl rounded-xl p-0 overflow-hidden"
         align="start"
         sideOffset={8}
-        style={{
-          backgroundColor: COLORS.bg,
-          border: `1px solid ${COLORS.border}`,
-          color: COLORS.text,
-        }}
+        style={popoverStyles.container}
       >
-        <div className="space-y-4 p-1" style={{ backgroundColor: COLORS.bg }}>
-          <div className="flex items-center justify-between">
-            <h4 style={{ fontWeight: 600, color: COLORS.text, fontSize: "14px" }}>
-              Tool Categories
-            </h4>
+        <div style={popoverStyles.inner}>
+          {/* Header */}
+          <div
+            className="px-4 py-3 flex items-center justify-between"
+            style={{ borderBottom: `1px solid ${TARTARUS.borderSubtle}` }}
+          >
+            <div>
+              <h4 style={headerStyles.title}>Tool Categories</h4>
+              <p style={headerStyles.subtitle}>Available capabilities</p>
+            </div>
             <div className="flex gap-1">
               <button
                 onClick={enableCore}
-                style={{
-                  fontSize: "12px",
-                  padding: "2px 8px",
-                  color: COLORS.muted,
-                  background: "transparent",
-                  border: "none",
-                  cursor: "pointer",
-                }}
+                className="hover:bg-white/5 rounded"
+                style={headerStyles.actionButton}
               >
                 Core
               </button>
               <button
                 onClick={enableAll}
-                style={{
-                  fontSize: "12px",
-                  padding: "2px 8px",
-                  color: COLORS.muted,
-                  background: "transparent",
-                  border: "none",
-                  cursor: "pointer",
-                }}
+                className="hover:bg-white/5 rounded"
+                style={headerStyles.actionButton}
               >
                 All
               </button>
             </div>
           </div>
 
-          <p style={{ fontSize: "12px", color: COLORS.muted }}>
-            Changes apply to your next new chat.
-          </p>
-
-          <div className="space-y-3">
+          {/* Content */}
+          <div className="px-4 py-3 space-y-4">
             {/* Core Tools */}
-            <div style={{ fontSize: "11px", color: COLORS.muted, textTransform: "uppercase", letterSpacing: "0.5px" }}>
-              Core
+            <div>
+              <div style={sectionStyles.label}>Core</div>
+              <div className="space-y-1">
+                {CORE_TOOLS.map(({ key, name, icon: Icon, description, count }) => {
+                  const enabled = config[key as keyof ToolsConfigState];
+                  return (
+                    <div
+                      key={key}
+                      className="flex items-center gap-3 px-2 py-2 rounded-lg hover:bg-white/[0.03] transition-colors cursor-pointer"
+                      onClick={() => toggleCategory(key as keyof ToolsConfigState)}
+                    >
+                      <Switch
+                        checked={enabled}
+                        onCheckedChange={() => toggleCategory(key as keyof ToolsConfigState)}
+                        className="data-[state=checked]:bg-[#00CED1] data-[state=unchecked]:bg-[#12121a]"
+                        onClick={(e) => e.stopPropagation()}
+                      />
+                      <Icon
+                        className="h-4 w-4 transition-colors"
+                        style={{ color: enabled ? TARTARUS.teal : TARTARUS.textDim }}
+                      />
+                      <div className="flex-1 min-w-0">
+                        <span
+                          className="text-[13px] font-medium transition-colors block"
+                          style={{ color: enabled ? TARTARUS.text : TARTARUS.textMuted }}
+                        >
+                          {name}
+                        </span>
+                        <span className="text-[11px]" style={{ color: TARTARUS.textDim }}>
+                          {description}
+                        </span>
+                      </div>
+                      <span
+                        className="text-[11px] font-mono px-2 py-0.5 rounded"
+                        style={{
+                          color: TARTARUS.textDim,
+                          backgroundColor: TARTARUS.surface,
+                        }}
+                      >
+                        {count}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
             </div>
 
-            {(["journal", "repository", "linear", "media"] as const).map((key) => {
-              const category = TOOL_CATEGORIES[key];
-              const Icon = category.icon;
-              return (
-                <div key={key} className="flex items-center gap-3">
-                  <Switch
-                    checked={config[key]}
-                    onCheckedChange={() => toggleCategory(key)}
-                    style={{ backgroundColor: config[key] ? COLORS.teal : COLORS.switchOff }}
-                  />
-                  <Icon className="h-4 w-4" style={{ color: config[key] ? COLORS.teal : COLORS.muted }} />
-                  <div className="flex-1">
-                    <span
-                      style={{
-                        color: config[key] ? COLORS.teal : COLORS.muted,
-                        fontSize: "14px",
-                        transition: "color 0.2s",
-                      }}
+            {/* Multimodal Tools */}
+            <div style={sectionStyles.divider}>
+              <div style={{ ...sectionStyles.label, color: TARTARUS.purple }}>
+                Multimodal
+              </div>
+              <div className="space-y-1">
+                {MULTIMODAL_TOOLS.map(({ key, name, icon: Icon, description, count }) => {
+                  const enabled = config[key as keyof ToolsConfigState];
+                  return (
+                    <div
+                      key={key}
+                      className="flex items-center gap-3 px-2 py-2 rounded-lg hover:bg-white/[0.03] transition-colors cursor-pointer"
+                      onClick={() => toggleCategory(key as keyof ToolsConfigState)}
                     >
-                      {category.name}
-                    </span>
-                    <span style={{ color: COLORS.muted, fontSize: "12px", marginLeft: "8px" }}>
-                      {category.description}
-                    </span>
-                  </div>
-                  <span style={{ color: COLORS.muted, fontSize: "12px" }}>{category.toolCount}</span>
-                </div>
-              );
-            })}
-
-            {/* Multimodal Capabilities */}
-            <div
-              style={{
-                fontSize: "11px",
-                color: COLORS.purple,
-                textTransform: "uppercase",
-                letterSpacing: "0.5px",
-                marginTop: "12px",
-              }}
-            >
-              Multimodal Capabilities
+                      <Switch
+                        checked={enabled}
+                        onCheckedChange={() => toggleCategory(key as keyof ToolsConfigState)}
+                        className="data-[state=checked]:bg-[#9B59B6] data-[state=unchecked]:bg-[#12121a]"
+                        onClick={(e) => e.stopPropagation()}
+                      />
+                      <Icon
+                        className="h-4 w-4 transition-colors"
+                        style={{ color: enabled ? TARTARUS.purple : TARTARUS.textDim }}
+                      />
+                      <div className="flex-1 min-w-0">
+                        <span
+                          className="text-[13px] font-medium transition-colors block"
+                          style={{ color: enabled ? TARTARUS.text : TARTARUS.textMuted }}
+                        >
+                          {name}
+                        </span>
+                        <span className="text-[11px]" style={{ color: TARTARUS.textDim }}>
+                          {description}
+                        </span>
+                      </div>
+                      <span
+                        className="text-[11px] font-mono px-2 py-0.5 rounded"
+                        style={{
+                          color: TARTARUS.textDim,
+                          backgroundColor: TARTARUS.surface,
+                        }}
+                      >
+                        {count}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
             </div>
-
-            {(["imageGeneration", "webSearch"] as const).map((key) => {
-              const category = TOOL_CATEGORIES[key];
-              const Icon = category.icon;
-              return (
-                <div key={key} className="flex items-center gap-3">
-                  <Switch
-                    checked={config[key]}
-                    onCheckedChange={() => toggleCategory(key)}
-                    style={{ backgroundColor: config[key] ? COLORS.purple : COLORS.switchOff }}
-                  />
-                  <Icon className="h-4 w-4" style={{ color: config[key] ? COLORS.purple : COLORS.muted }} />
-                  <div className="flex-1">
-                    <span
-                      style={{
-                        color: config[key] ? COLORS.purple : COLORS.muted,
-                        fontSize: "14px",
-                        transition: "color 0.2s",
-                      }}
-                    >
-                      {category.name}
-                    </span>
-                    <span style={{ color: COLORS.muted, fontSize: "12px", marginLeft: "8px" }}>
-                      {category.description}
-                    </span>
-                  </div>
-                  <span style={{ color: COLORS.muted, fontSize: "12px" }}>{category.toolCount}</span>
-                </div>
-              );
-            })}
           </div>
 
-          {/* Summary */}
-          <div style={{ paddingTop: "12px", borderTop: `1px solid ${COLORS.border}` }}>
-            <div className="flex items-center justify-between" style={{ fontSize: "14px" }}>
-              <span style={{ color: COLORS.muted }}>Total tools:</span>
-              <span
-                style={{
-                  fontFamily: "monospace",
-                  color: hasHeavyTools ? COLORS.purple : COLORS.teal,
-                }}
-              >
-                {enabledToolCount}
-              </span>
-            </div>
+          {/* Footer */}
+          <div
+            className="px-4 py-3 flex items-center justify-between"
+            style={{ borderTop: `1px solid ${TARTARUS.borderSubtle}`, backgroundColor: TARTARUS.surface }}
+          >
+            <span className="text-[12px]" style={{ color: TARTARUS.textMuted }}>
+              Total tools enabled
+            </span>
+            <span
+              className="text-[13px] font-mono font-medium"
+              style={{ color: hasMultimodal ? TARTARUS.purple : TARTARUS.teal }}
+            >
+              {enabledToolCount}
+            </span>
           </div>
         </div>
       </PopoverContent>

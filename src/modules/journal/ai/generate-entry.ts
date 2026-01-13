@@ -150,6 +150,7 @@ This journal captures:
 3. **Decisions** - Key decisions made and their reasoning
 4. **Technologies** - Technologies, frameworks, or tools discussed/used
 5. **Kronus Wisdom** - (Optional) A brief poem, lesson, or philosophical reflection on this commit's essence
+6. **Files Changed** - (STRONGLY REQUESTED) List of files that were created, modified, deleted, or renamed
 
 ## Formatting Guidelines
 
@@ -183,6 +184,13 @@ Analyze the agent report${newContext ? ' and new context' : ''} and extract the 
 - Can be a verse, knowing observation, or philosophical reflection
 - Use your Kronus persona's voice (empathetic, wise, with subtle humor)
 - Set to null if no meaningful wisdom arises
+
+**For files_changed (STRONGLY REQUESTED):**
+- Extract ALL file paths mentioned in the agent report that were created, modified, deleted, or renamed
+- For each file, specify: path, action (created/modified/deleted/renamed), and optionally a brief diff_summary
+- If a file was renamed, include old_path
+- This is critical for tracking what changed - always extract this when file paths are mentioned
+- Set to null only if no file paths are mentioned at all
 
 Respond with valid JSON matching the schema.`;
 

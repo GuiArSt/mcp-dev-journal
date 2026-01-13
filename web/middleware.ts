@@ -5,11 +5,12 @@ export function middleware(request: NextRequest) {
   const token = request.cookies.get("auth-token")?.value;
   const isAuthPage = request.nextUrl.pathname === "/login";
   const isApiAuth = request.nextUrl.pathname.startsWith("/api/auth");
+  const isHealthCheck = request.nextUrl.pathname === "/api/health";
   const isMcpResources = request.nextUrl.pathname.startsWith("/api/mcp");
   const isAttachmentDownload = request.nextUrl.pathname.match(/^\/api\/attachments\/\d+\/raw$/);
 
-  // Allow auth API, MCP resources, and attachment downloads (for MCP agents)
-  if (isApiAuth || isMcpResources || isAttachmentDownload) {
+  // Allow auth API, health check, MCP resources, and attachment downloads
+  if (isApiAuth || isHealthCheck || isMcpResources || isAttachmentDownload) {
     return NextResponse.next();
   }
 

@@ -1,44 +1,54 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getDatabase } from "@/lib/db";
+import { withErrorHandler } from "@/lib/api-handler";
+import { requireBody } from "@/lib/validations";
+import { ConflictError } from "@/lib/errors";
+import { z } from "zod";
 
-export async function GET() {
+const createDocumentTypeSchema = z.object({
+  name: z.string().min(1, "Name is required"),
+  description: z.string().default(""),
+  color: z.string().default("emerald"),
+  icon: z.string().default("file-text"),
+});
+
+/**
+ * GET /api/document-types
+ *
+ * List all document types.
+ */
+export const GET = withErrorHandler(async () => {
+  const db = getDatabase();
+  const types = db.prepare("SELECT * FROM document_types ORDER BY sortOrder ASC").all();
+  return NextResponse.json(types);
+});
+
+/**
+ * POST /api/document-types
+ *
+ * Create a new document type.
+ */
+export const POST = withErrorHandler(async (request: NextRequest) => {
+  const db = getDatabase();
+  const body = await requireBody(createDocumentTypeSchema, request);
+
+  // Generate ID from name
+  const id = body.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/-+/g, "-").replace(/^-|-$/g, "");
+
+  // Get max sortOrder
+  const maxOrder = db.prepare("SELECT MAX(sortOrder) as max FROM document_types").get() as { max: number | null };
+  const sortOrder = (maxOrder?.max || 0) + 1;
+
   try {
-    const db = getDatabase();
-    const types = db.prepare("SELECT * FROM document_types ORDER BY sortOrder ASC").all();
-    return NextResponse.json(types);
-  } catch (error) {
-    console.error("Error fetching document types:", error);
-    return NextResponse.json({ error: "Failed to fetch document types" }, { status: 500 });
-  }
-}
-
-export async function POST(request: NextRequest) {
-  try {
-    const db = getDatabase();
-    const body = await request.json();
-    const { name, description, color, icon } = body;
-
-    if (!name) {
-      return NextResponse.json({ error: "Name is required" }, { status: 400 });
-    }
-
-    // Generate ID from name
-    const id = name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/-+/g, "-").replace(/^-|-$/g, "");
-
-    // Get max sortOrder
-    const maxOrder = db.prepare("SELECT MAX(sortOrder) as max FROM document_types").get() as { max: number | null };
-    const sortOrder = (maxOrder?.max || 0) + 1;
-
     db.prepare("INSERT INTO document_types (id, name, description, color, icon, sortOrder) VALUES (?, ?, ?, ?, ?, ?)")
-      .run(id, name, description || "", color || "emerald", icon || "file-text", sortOrder);
-
-    const created = db.prepare("SELECT * FROM document_types WHERE id = ?").get(id);
-    return NextResponse.json(created, { status: 201 });
+      .run(id, body.name, body.description, body.color, body.icon, sortOrder);
   } catch (error: any) {
-    console.error("Error creating document type:", error);
     if (error.message?.includes("UNIQUE constraint")) {
-      return NextResponse.json({ error: "Document type with this name already exists" }, { status: 409 });
+      throw new ConflictError("Document type with this name already exists");
     }
-    return NextResponse.json({ error: "Failed to create document type" }, { status: 500 });
+    throw error;
   }
-}
+
+  const created = db.prepare("SELECT * FROM document_types WHERE id = ?").get(id);
+  return NextResponse.json(created, { status: 201 });
+});

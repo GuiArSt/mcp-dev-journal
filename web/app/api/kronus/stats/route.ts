@@ -9,6 +9,7 @@ import {
   journalEntries,
 } from "@/lib/db/drizzle";
 import { eq, desc } from "drizzle-orm";
+import { listProjects, listIssues } from "@/lib/linear/client";
 
 /**
  * Estimate token count from text (rough: ~4 chars per token for English)
@@ -95,13 +96,43 @@ export async function GET() {
       .select()
       .from(journalEntries)
       .orderBy(desc(journalEntries.date))
-      .limit(30) // Match the limit in kronus.ts
-      .all();
+      .all(); // All entries - no limit
 
     let journalTokens = 0;
     for (const entry of entries) {
       const content = `### ${entry.repository} - ${entry.commitHash.substring(0, 7)}\n**Branch:** ${entry.branch}\n**Author:** ${entry.codeAuthor || entry.author}\n**Why:** ${entry.why || "N/A"}\n**What Changed:** ${entry.whatChanged || "N/A"}\n**Decisions:** ${entry.decisions || "N/A"}\n**Technologies:** ${entry.technologies || "N/A"}`;
       journalTokens += estimateTokens(content);
+    }
+
+    // ===== LINEAR PROJECTS (from live API) =====
+    let linProjects: any[] = [];
+    let linearProjectsTokens = 0;
+    try {
+      const projectsResult = await listProjects({ showAll: false });
+      linProjects = projectsResult.projects || [];
+
+      for (const p of linProjects) {
+        const progress = p.progress ? `${Math.round(p.progress * 100)}%` : "N/A";
+        const content = `### ${p.name}\n**State:** ${p.state || "Unknown"} | **Progress:** ${progress} | **Target:** ${p.targetDate || "No target"}\n**Lead:** ${p.lead?.name || "Unassigned"}\n${p.description || ""}`;
+        linearProjectsTokens += estimateTokens(content);
+      }
+    } catch {
+      // Linear API may not be configured - ignore
+    }
+
+    // ===== LINEAR ISSUES (from live API) =====
+    let linIssues: any[] = [];
+    let linearIssuesTokens = 0;
+    try {
+      const issuesResult = await listIssues({ showAll: false, limit: 100 });
+      linIssues = issuesResult.issues || [];
+
+      for (const issue of linIssues) {
+        const content = `- **${issue.identifier}**: ${issue.title}\n  Priority: ${issue.priority || "None"} | State: ${issue.state?.name || "Unknown"}\n  ${issue.description?.substring(0, 150) || ""}`;
+        linearIssuesTokens += estimateTokens(content);
+      }
+    } catch {
+      // Linear API may not be configured - ignore
     }
 
     // Base overhead: Soul.xml + tool definitions + section headers
@@ -114,7 +145,9 @@ export async function GET() {
       skillsTokens +
       experienceTokens +
       educationTokens +
-      journalTokens;
+      journalTokens +
+      linearProjectsTokens +
+      linearIssuesTokens;
 
     return NextResponse.json({
       writings: writings.length,
@@ -129,6 +162,10 @@ export async function GET() {
       educationTokens,
       journalEntries: entries.length,
       journalEntriesTokens: journalTokens,
+      linearProjects: linProjects.length,
+      linearProjectsTokens,
+      linearIssues: linIssues.length,
+      linearIssuesTokens,
       baseTokens,
       totalTokens,
     });

@@ -151,6 +151,45 @@ const createSchema = (handle: Database.Database) => {
     }
   }
 
+  // Migration: Living Project Summary (Entry 0) - Enhanced fields for project_summaries
+  const entry0Columns = [
+    'file_structure TEXT',      // Git-style file tree (agent-provided)
+    'tech_stack TEXT',          // Frameworks, libraries, versions (indicative)
+    'frontend TEXT',            // FE patterns, components, state management
+    'backend TEXT',             // BE routes, middleware, auth patterns
+    'database_info TEXT',       // Schema, ORM patterns, migrations
+    'services TEXT',            // External APIs, integrations
+    'custom_tooling TEXT',      // Project-specific utilities
+    'data_flow TEXT',           // How data is processed
+    'patterns TEXT',            // Naming conventions, code style
+    'commands TEXT',            // Dev, deploy, make commands
+    'extended_notes TEXT',      // Gotchas, TODOs, historical context
+    'last_synced_entry TEXT',   // Last journal entry hash used for update
+    'entries_synced INTEGER',   // Count of entries analyzed
+  ];
+
+  for (const column of entry0Columns) {
+    const [columnName] = column.split(' ');
+    try {
+      handle.exec(`ALTER TABLE project_summaries ADD COLUMN ${column};`);
+      logger.debug(`Added column ${columnName} to project_summaries`);
+    } catch (error: any) {
+      if (!error.message?.includes('duplicate column')) {
+        logger.warn(`Could not add ${columnName} column (may already exist):`, error.message);
+      }
+    }
+  }
+
+  // Migration: Add files_changed column to journal_entries for tracking file changes
+  try {
+    handle.exec(`ALTER TABLE journal_entries ADD COLUMN files_changed TEXT;`);
+    logger.debug('Added column files_changed to journal_entries');
+  } catch (error: any) {
+    if (!error.message?.includes('duplicate column')) {
+      logger.warn('Could not add files_changed column (may already exist):', error.message);
+    }
+  }
+
   handle.exec(`CREATE INDEX IF NOT EXISTS idx_repository ON journal_entries(repository);`);
   handle.exec(`CREATE INDEX IF NOT EXISTS idx_branch ON journal_entries(repository, branch);`);
   handle.exec(`CREATE INDEX IF NOT EXISTS idx_commit ON journal_entries(commit_hash);`);
@@ -163,13 +202,13 @@ export const initDatabase = (dbPath?: string): Database.Database => {
     return db;
   }
 
-  // Default to MCP server installation directory (journal.db)
+  // Default to MCP server installation directory (data/journal.db)
   // Use the MCP server's location, not process.cwd() (which is where the agent is running)
   const mcpRoot = getMCPInstallationRoot();
 
   const finalPath = dbPath
     ? path.resolve(dbPath.replace(/^~/, os.homedir()))
-    : path.join(mcpRoot, 'journal.db');
+    : path.join(mcpRoot, 'data', 'journal.db');
 
   ensureDirectoryExists(finalPath);
 
@@ -218,6 +257,8 @@ const mapRow = (row: any): JournalEntry => ({
   kronus_wisdom: row.kronus_wisdom ?? null,
   raw_agent_report: row.raw_agent_report,
   created_at: row.created_at,
+  // Parse files_changed JSON if present
+  files_changed: row.files_changed ? JSON.parse(row.files_changed) : null,
 });
 
 export const insertJournalEntry = (entry: JournalEntryInsert): number => {
@@ -237,15 +278,16 @@ export const insertJournalEntry = (entry: JournalEntryInsert): number => {
     technologies: entry.technologies,
     kronus_wisdom: entry.kronus_wisdom ?? null,
     raw_agent_report: entry.raw_agent_report,
+    files_changed: entry.files_changed ? JSON.stringify(entry.files_changed) : null,
   };
 
   const insertStmt = db.prepare(`
     INSERT INTO journal_entries (
       commit_hash, repository, branch, author, date, why, what_changed,
-      decisions, technologies, kronus_wisdom, raw_agent_report
+      decisions, technologies, kronus_wisdom, raw_agent_report, files_changed
     ) VALUES (
       @commit_hash, @repository, @branch, @author, @date, @why, @what_changed,
-      @decisions, @technologies, @kronus_wisdom, @raw_agent_report
+      @decisions, @technologies, @kronus_wisdom, @raw_agent_report, @files_changed
     );
   `);
 
@@ -565,8 +607,22 @@ const mapProjectSummaryRow = (row: any): ProjectSummary => {
     updated_at: row.updated_at,
     linear_project_id: row.linear_project_id || null,
     linear_issue_id: row.linear_issue_id || null,
+    // Living Project Summary (Entry 0) - Enhanced fields
+    file_structure: row.file_structure || null,
+    tech_stack: row.tech_stack || null,
+    frontend: row.frontend || null,
+    backend: row.backend || null,
+    database_info: row.database_info || null,
+    services: row.services || null,
+    custom_tooling: row.custom_tooling || null,
+    data_flow: row.data_flow || null,
+    patterns: row.patterns || null,
+    commands: row.commands || null,
+    extended_notes: row.extended_notes || null,
+    last_synced_entry: row.last_synced_entry || null,
+    entries_synced: row.entries_synced || null,
   };
-  
+
   // Add journal entry stats for this repository
   try {
     const stats = getRepositoryEntryStats(row.repository);
@@ -577,7 +633,7 @@ const mapProjectSummaryRow = (row: any): ProjectSummary => {
     summary.entry_count = 0;
     summary.last_entry_date = null;
   }
-  
+
   return summary;
 };
 
@@ -597,13 +653,35 @@ export const upsertProjectSummary = (summary: ProjectSummaryInsert): number => {
     status: summary.status,
     linear_project_id: summary.linear_project_id || null,
     linear_issue_id: summary.linear_issue_id || null,
+    // Living Project Summary (Entry 0) - Enhanced fields
+    file_structure: summary.file_structure || null,
+    tech_stack: summary.tech_stack || null,
+    frontend: summary.frontend || null,
+    backend: summary.backend || null,
+    database_info: summary.database_info || null,
+    services: summary.services || null,
+    custom_tooling: summary.custom_tooling || null,
+    data_flow: summary.data_flow || null,
+    patterns: summary.patterns || null,
+    commands: summary.commands || null,
+    extended_notes: summary.extended_notes || null,
+    last_synced_entry: summary.last_synced_entry || null,
+    entries_synced: summary.entries_synced || null,
   };
 
   const upsertStmt = db.prepare(`
     INSERT INTO project_summaries (
-      repository, git_url, summary, purpose, architecture, key_decisions, technologies, status, linear_project_id, linear_issue_id
+      repository, git_url, summary, purpose, architecture, key_decisions, technologies, status,
+      linear_project_id, linear_issue_id,
+      file_structure, tech_stack, frontend, backend, database_info, services,
+      custom_tooling, data_flow, patterns, commands, extended_notes,
+      last_synced_entry, entries_synced
     ) VALUES (
-      @repository, @git_url, @summary, @purpose, @architecture, @key_decisions, @technologies, @status, @linear_project_id, @linear_issue_id
+      @repository, @git_url, @summary, @purpose, @architecture, @key_decisions, @technologies, @status,
+      @linear_project_id, @linear_issue_id,
+      @file_structure, @tech_stack, @frontend, @backend, @database_info, @services,
+      @custom_tooling, @data_flow, @patterns, @commands, @extended_notes,
+      @last_synced_entry, @entries_synced
     )
     ON CONFLICT(repository) DO UPDATE SET
       git_url = @git_url,
@@ -615,6 +693,19 @@ export const upsertProjectSummary = (summary: ProjectSummaryInsert): number => {
       status = @status,
       linear_project_id = @linear_project_id,
       linear_issue_id = @linear_issue_id,
+      file_structure = COALESCE(@file_structure, file_structure),
+      tech_stack = COALESCE(@tech_stack, tech_stack),
+      frontend = COALESCE(@frontend, frontend),
+      backend = COALESCE(@backend, backend),
+      database_info = COALESCE(@database_info, database_info),
+      services = COALESCE(@services, services),
+      custom_tooling = COALESCE(@custom_tooling, custom_tooling),
+      data_flow = COALESCE(@data_flow, data_flow),
+      patterns = COALESCE(@patterns, patterns),
+      commands = COALESCE(@commands, commands),
+      extended_notes = COALESCE(@extended_notes, extended_notes),
+      last_synced_entry = COALESCE(@last_synced_entry, last_synced_entry),
+      entries_synced = COALESCE(@entries_synced, entries_synced),
       updated_at = CURRENT_TIMESTAMP
   `);
 

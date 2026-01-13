@@ -27,6 +27,7 @@ import {
 import { Label } from "@/components/ui/label";
 import { Search, FileText, Code, Briefcase, GraduationCap, BookOpen, Calendar, Edit, Tag, Cpu, Palette, Database, Server, PenTool, Users, Plus, Trash2, Settings, X, Layers, ExternalLink, Star } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { formatMonthYear } from "@/lib/utils";
 import { SkillEditForm, ExperienceEditForm, EducationEditForm, PortfolioProjectEditForm } from "@/components/repository/CVEditForms";
 import { getSkillIconUrl } from "@/lib/skill-icons";
 
@@ -1037,7 +1038,7 @@ What project would you like to add?`;
                               )}
                               {doc.created_at && (
                                 <span className="text-muted-foreground/70">
-                                  Added {new Date(doc.created_at).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}
+                                  Added {formatMonthYear(doc.created_at)}
                                 </span>
                               )}
                             </div>
@@ -1154,7 +1155,7 @@ What project would you like to add?`;
                             {doc.created_at && (
                               <div className="text-[10px] text-muted-foreground mb-2">
                                 <Calendar className="h-3 w-3 inline mr-1" />
-                                Added {new Date(doc.created_at).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}
+                                Added {formatMonthYear(doc.created_at)}
                               </div>
                             )}
                             {/* Tags - smaller, subtle */}

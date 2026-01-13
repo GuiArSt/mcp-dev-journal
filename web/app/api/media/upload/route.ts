@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getDatabase } from "@/lib/db";
 
+// Route segment config for App Router - increase body size limit for uploads
+export const maxDuration = 60; // 60 seconds timeout for large uploads
+export const dynamic = "force-dynamic";
+
 /**
  * POST /api/media/upload
  * Upload a file directly (multipart form data)

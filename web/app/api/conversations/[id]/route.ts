@@ -5,105 +5,84 @@ import {
   deleteConversation,
   initConversationsTable,
 } from "@/lib/db-conversations";
+import { withErrorHandler } from "@/lib/api-handler";
+import { requireParams } from "@/lib/validations";
+import { idParamSchema, saveConversationSchema } from "@/lib/validations/schemas";
+import { NotFoundError } from "@/lib/errors";
 
-// GET - Get conversation by ID
-export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  try {
-    initConversationsTable();
-    const { id } = await params;
-    const conversationId = parseInt(id);
+/**
+ * GET /api/conversations/[id]
+ *
+ * Get a conversation by ID.
+ */
+export const GET = withErrorHandler(async (
+  _request: NextRequest,
+  context?: { params: Promise<{ id: string }> }
+) => {
+  initConversationsTable();
+  const resolvedParams = await context?.params;
+  const { id } = requireParams(idParamSchema, resolvedParams);
 
-    if (isNaN(conversationId)) {
-      return NextResponse.json({ error: "Invalid ID" }, { status: 400 });
-    }
-
-    const conversation = getConversation(conversationId);
-
-    if (!conversation) {
-      return NextResponse.json({ error: "Conversation not found" }, { status: 404 });
-    }
-
-    return NextResponse.json(conversation);
-  } catch (error: any) {
-    console.error("Error fetching conversation:", error);
-    return NextResponse.json(
-      { error: error.message || "Failed to fetch conversation" },
-      { status: 500 }
-    );
+  const conversation = getConversation(id);
+  if (!conversation) {
+    throw new NotFoundError("Conversation", String(id));
   }
-}
 
-// PATCH - Update conversation
-// Note: Also handles sendBeacon requests which send as text/plain
-export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  try {
-    initConversationsTable();
-    const { id } = await params;
-    const conversationId = parseInt(id);
+  return NextResponse.json(conversation);
+});
 
-    if (isNaN(conversationId)) {
-      return NextResponse.json({ error: "Invalid ID" }, { status: 400 });
-    }
-
-    // Handle both JSON and text/plain (from sendBeacon)
-    const contentType = request.headers.get("content-type") || "";
-    let body: { title?: string; messages?: any[] };
-
-    if (contentType.includes("text/plain")) {
-      const text = await request.text();
-      body = JSON.parse(text);
-    } else {
-      body = await request.json();
-    }
-
-    const { title, messages } = body;
-
-    if (!title || !messages) {
-      return NextResponse.json({ error: "title and messages are required" }, { status: 400 });
-    }
-
-    updateConversation(conversationId, title, messages);
-
-    return NextResponse.json({
-      message: "Conversation updated successfully",
-    });
-  } catch (error: any) {
-    console.error("Error updating conversation:", error);
-    return NextResponse.json(
-      { error: error.message || "Failed to update conversation" },
-      { status: 500 }
-    );
-  }
-}
-
-// DELETE - Delete conversation
-export async function DELETE(
+/**
+ * PATCH /api/conversations/[id]
+ *
+ * Update a conversation.
+ * Note: Also handles sendBeacon requests which send as text/plain.
+ */
+export const PATCH = withErrorHandler(async (
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  try {
-    initConversationsTable();
-    const { id } = await params;
-    const conversationId = parseInt(id);
+  context?: { params: Promise<{ id: string }> }
+) => {
+  initConversationsTable();
+  const resolvedParams = await context?.params;
+  const { id } = requireParams(idParamSchema, resolvedParams);
 
-    if (isNaN(conversationId)) {
-      return NextResponse.json({ error: "Invalid ID" }, { status: 400 });
-    }
+  // Handle both JSON and text/plain (from sendBeacon)
+  const contentType = request.headers.get("content-type") || "";
+  let body: unknown;
 
-    const deleted = deleteConversation(conversationId);
-
-    if (!deleted) {
-      return NextResponse.json({ error: "Conversation not found" }, { status: 404 });
-    }
-
-    return NextResponse.json({
-      message: "Conversation deleted successfully",
-    });
-  } catch (error: any) {
-    console.error("Error deleting conversation:", error);
-    return NextResponse.json(
-      { error: error.message || "Failed to delete conversation" },
-      { status: 500 }
-    );
+  if (contentType.includes("text/plain")) {
+    const text = await request.text();
+    body = JSON.parse(text);
+  } else {
+    body = await request.json();
   }
-}
+
+  const { title, messages } = saveConversationSchema.parse(body);
+  updateConversation(id, title, messages);
+
+  return NextResponse.json({
+    message: "Conversation updated successfully",
+  });
+});
+
+/**
+ * DELETE /api/conversations/[id]
+ *
+ * Delete a conversation.
+ */
+export const DELETE = withErrorHandler(async (
+  _request: NextRequest,
+  context?: { params: Promise<{ id: string }> }
+) => {
+  initConversationsTable();
+  const resolvedParams = await context?.params;
+  const { id } = requireParams(idParamSchema, resolvedParams);
+
+  const deleted = deleteConversation(id);
+  if (!deleted) {
+    throw new NotFoundError("Conversation", String(id));
+  }
+
+  return NextResponse.json({
+    message: "Conversation deleted successfully",
+  });
+});

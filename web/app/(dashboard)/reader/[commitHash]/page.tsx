@@ -5,6 +5,9 @@ import { useRouter, useParams } from "next/navigation";
 import Link from "next/link";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import remarkMath from "remark-math";
+import rehypeKatex from "rehype-katex";
+import "katex/dist/katex.min.css";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -26,6 +29,7 @@ import {
   X,
   Plus,
 } from "lucide-react";
+import { formatDateShort } from "@/lib/utils";
 
 interface JournalEntry {
   id: number;
@@ -232,7 +236,7 @@ export default function EntryDetailPage() {
       ? `\n\n**Attachments (${entry.attachments.length}):**\n${entry.attachments.map(a => `- ${a.filename} (${a.mime_type}, ${(a.file_size / 1024).toFixed(1)}KB)${a.description ? `: ${a.description}` : ""}`).join("\n")}`
       : "";
 
-    const context = `I want to UPDATE this journal entry. Please help me modify it:\n\n**Commit Hash:** ${entry.commit_hash}\n**Repository:** ${entry.repository}/${entry.branch}\n**Date:** ${new Date(entry.date).toLocaleDateString()}\n**Author:** ${entry.author}\n\n**Why:**\n${entry.why}\n\n**What Changed:**\n${entry.what_changed}\n\n**Decisions:**\n${entry.decisions}\n\n**Technologies:** ${entry.technologies}\n\n**Kronus Wisdom:**\n${entry.kronus_wisdom || "(none)"}\n\n**Raw Agent Report:**\n${entry.raw_agent_report.substring(0, 1500)}${entry.raw_agent_report.length > 1500 ? "..." : ""}${attachmentInfo}\n\nWhat changes would you like to make? You can update any field (why, what_changed, decisions, technologies, kronus_wisdom) using the journal_edit_entry tool, or regenerate the entire entry with new context using journal_regenerate_entry.`;
+    const context = `I want to UPDATE this journal entry. Please help me modify it:\n\n**Commit Hash:** ${entry.commit_hash}\n**Repository:** ${entry.repository}/${entry.branch}\n**Date:** ${formatDateShort(entry.date)}\n**Author:** ${entry.author}\n\n**Why:**\n${entry.why}\n\n**What Changed:**\n${entry.what_changed}\n\n**Decisions:**\n${entry.decisions}\n\n**Technologies:** ${entry.technologies}\n\n**Kronus Wisdom:**\n${entry.kronus_wisdom || "(none)"}\n\n**Raw Agent Report:**\n${entry.raw_agent_report.substring(0, 1500)}${entry.raw_agent_report.length > 1500 ? "..." : ""}${attachmentInfo}\n\nWhat changes would you like to make? You can update any field (why, what_changed, decisions, technologies, kronus_wisdom) using the journal_edit_entry tool, or regenerate the entire entry with new context using journal_regenerate_entry.`;
 
     sessionStorage.setItem("kronusPrefill", context);
     router.push("/chat");
@@ -501,7 +505,7 @@ export default function EntryDetailPage() {
                     />
                   ) : (
                     <div className="prose prose-sm max-w-none text-[#2A2520] prose-headings:text-[#2A2520] prose-p:text-[#3D3833] prose-strong:text-[#1A1510] prose-strong:font-semibold prose-code:text-[#5C5550] prose-code:bg-[#F5F3F0] prose-code:px-1 prose-code:py-0.5 prose-code:rounded prose-code:text-xs prose-code:font-normal prose-pre:bg-[#F0EDE8] prose-pre:text-[#2A2520]">
-                      <ReactMarkdown remarkPlugins={[remarkGfm]}>{entry.why}</ReactMarkdown>
+                      <ReactMarkdown remarkPlugins={[remarkGfm, remarkMath]} rehypePlugins={[rehypeKatex]}>{entry.why}</ReactMarkdown>
                     </div>
                   )}
                 </CardContent>
@@ -521,7 +525,7 @@ export default function EntryDetailPage() {
                     />
                   ) : (
                     <div className="prose prose-sm max-w-none text-[#2A2520] prose-headings:text-[#2A2520] prose-p:text-[#3D3833] prose-strong:text-[#1A1510] prose-strong:font-semibold prose-code:text-[#5C5550] prose-code:bg-[#F5F3F0] prose-code:px-1 prose-code:py-0.5 prose-code:rounded prose-code:text-xs prose-code:font-normal prose-pre:bg-[#F0EDE8] prose-pre:text-[#2A2520]">
-                      <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                      <ReactMarkdown remarkPlugins={[remarkGfm, remarkMath]} rehypePlugins={[rehypeKatex]}>
                         {formatTechnicalContent(entry.what_changed)}
                       </ReactMarkdown>
                     </div>
@@ -543,7 +547,7 @@ export default function EntryDetailPage() {
                     />
                   ) : (
                     <div className="prose prose-sm max-w-none text-[#2A2520] prose-headings:text-[#2A2520] prose-p:text-[#3D3833] prose-strong:text-[#1A1510] prose-strong:font-semibold prose-code:text-[#5C5550] prose-code:bg-[#F5F3F0] prose-code:px-1 prose-code:py-0.5 prose-code:rounded prose-code:text-xs prose-code:font-normal prose-pre:bg-[#F0EDE8] prose-pre:text-[#2A2520] prose-li:text-[#3D3833] prose-li:my-2">
-                      <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                      <ReactMarkdown remarkPlugins={[remarkGfm, remarkMath]} rehypePlugins={[rehypeKatex]}>
                         {formatDecisions(entry.decisions)}
                       </ReactMarkdown>
                     </div>
@@ -566,7 +570,7 @@ export default function EntryDetailPage() {
                     />
                   ) : (
                     <div className="prose prose-sm max-w-none text-[#2A2520] prose-headings:text-[#2A2520] prose-p:text-[#3D3833] prose-strong:text-[#1A1510] prose-strong:font-semibold prose-code:text-[#5C5550] prose-code:bg-[#F5F3F0] prose-code:px-1 prose-code:py-0.5 prose-code:rounded prose-code:text-xs prose-code:font-normal prose-pre:bg-[#F0EDE8] prose-pre:text-[#2A2520]">
-                      <ReactMarkdown remarkPlugins={[remarkGfm]}>{entry.technologies}</ReactMarkdown>
+                      <ReactMarkdown remarkPlugins={[remarkGfm, remarkMath]} rehypePlugins={[rehypeKatex]}>{entry.technologies}</ReactMarkdown>
                     </div>
                   )}
                 </CardContent>
@@ -593,7 +597,7 @@ export default function EntryDetailPage() {
                       />
                     ) : (
                       <div className="prose prose-sm max-w-none prose-headings:text-[var(--tartarus-teal-dim)] prose-p:text-[var(--tartarus-teal-dim)] prose-p:italic prose-strong:text-[var(--tartarus-teal-dim)]">
-                        <ReactMarkdown remarkPlugins={[remarkGfm]}>{entry.kronus_wisdom}</ReactMarkdown>
+                        <ReactMarkdown remarkPlugins={[remarkGfm, remarkMath]} rehypePlugins={[rehypeKatex]}>{entry.kronus_wisdom}</ReactMarkdown>
                       </div>
                     )}
                   </CardContent>

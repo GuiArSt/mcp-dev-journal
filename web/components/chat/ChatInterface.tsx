@@ -43,14 +43,20 @@ import {
   GitCompare,
   Maximize2,
   Minimize2,
+  Brain,
 } from "lucide-react";
 import { cn, formatDateShort } from "@/lib/utils";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import remarkBreaks from "remark-breaks";
+import remarkMath from "remark-math";
+import rehypeKatex from "rehype-katex";
+import "katex/dist/katex.min.css";
 import { SoulConfig, SoulConfigState, DEFAULT_CONFIG } from "./SoulConfig";
 import { FormatConfig, FormatConfigState, DEFAULT_FORMAT_CONFIG, KRONUS_FONTS, KRONUS_FONT_SIZES } from "./FormatConfig";
 import { ToolsConfig, ToolsConfigState, DEFAULT_CONFIG as DEFAULT_TOOLS_CONFIG } from "./ToolsConfig";
+import { ModelConfig, ModelConfigState, DEFAULT_CONFIG as DEFAULT_MODEL_CONFIG } from "./ModelConfig";
+import { isLinearTool, getLinearPreview } from "./LinearPreview";
 import { compressImage, formatBytes, CompressionResult } from "@/lib/image-compression";
 import {
   requiresConfirmation,
@@ -205,7 +211,7 @@ function processKronusTags(text: string): React.ReactNode[] {
       const beforeText = text.slice(lastIndex, match.index);
       if (beforeText.trim()) {
         elements.push(
-          <ReactMarkdown key={`md-${keyIndex++}`} remarkPlugins={[remarkGfm, remarkBreaks]} components={markdownComponents}>
+          <ReactMarkdown key={`md-${keyIndex++}`} remarkPlugins={[remarkGfm, remarkBreaks, remarkMath]} rehypePlugins={[rehypeKatex]} components={markdownComponents}>
             {beforeText}
           </ReactMarkdown>
         );
@@ -224,7 +230,7 @@ function processKronusTags(text: string): React.ReactNode[] {
           <span>{tagName}</span>
         </div>
         <div className="text-[var(--kronus-ivory-dim)] italic">
-          <ReactMarkdown remarkPlugins={[remarkGfm, remarkBreaks]} components={markdownComponents}>
+          <ReactMarkdown remarkPlugins={[remarkGfm, remarkBreaks, remarkMath]} rehypePlugins={[rehypeKatex]} components={markdownComponents}>
             {content.trim()}
           </ReactMarkdown>
         </div>
@@ -239,7 +245,7 @@ function processKronusTags(text: string): React.ReactNode[] {
     const afterText = text.slice(lastIndex);
     if (afterText.trim()) {
       elements.push(
-        <ReactMarkdown key={`md-${keyIndex++}`} remarkPlugins={[remarkGfm, remarkBreaks]} components={markdownComponents}>
+        <ReactMarkdown key={`md-${keyIndex++}`} remarkPlugins={[remarkGfm, remarkBreaks, remarkMath]} rehypePlugins={[rehypeKatex]} components={markdownComponents}>
           {afterText}
         </ReactMarkdown>
       );
@@ -247,7 +253,7 @@ function processKronusTags(text: string): React.ReactNode[] {
   }
 
   return elements.length > 0 ? elements : [
-    <ReactMarkdown key="fallback" remarkPlugins={[remarkGfm, remarkBreaks]} components={markdownComponents}>
+    <ReactMarkdown key="fallback" remarkPlugins={[remarkGfm, remarkBreaks, remarkMath]} rehypePlugins={[rehypeKatex]} components={markdownComponents}>
       {text}
     </ReactMarkdown>
   ];
@@ -266,7 +272,7 @@ const MemoizedMarkdown = memo(function MemoizedMarkdown({ text }: { text: string
   }
 
   return (
-    <ReactMarkdown remarkPlugins={[remarkGfm, remarkBreaks]} components={markdownComponents}>
+    <ReactMarkdown remarkPlugins={[remarkGfm, remarkBreaks, remarkMath]} rehypePlugins={[rehypeKatex]} components={markdownComponents}>
       {text}
     </ReactMarkdown>
   );
@@ -353,6 +359,63 @@ const ConfirmationButtons = memo(function ConfirmationButtons({
   );
 });
 
+// Thinking/Reasoning display component - shows model's thinking process
+const ThinkingDisplay = memo(function ThinkingDisplay({
+  reasoning,
+  isStreaming,
+}: {
+  reasoning: string;
+  isStreaming: boolean;
+}) {
+  const [isExpanded, setIsExpanded] = useState(true); // Auto-expand while streaming
+
+  // Auto-collapse when streaming ends
+  useEffect(() => {
+    if (!isStreaming && reasoning) {
+      // Keep expanded briefly after streaming ends, then collapse
+      const timer = setTimeout(() => setIsExpanded(false), 500);
+      return () => clearTimeout(timer);
+    }
+  }, [isStreaming, reasoning]);
+
+  if (!reasoning) return null;
+
+  return (
+    <div className="mb-3">
+      <button
+        onClick={() => setIsExpanded(!isExpanded)}
+        className={cn(
+          "flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm transition-all",
+          isStreaming
+            ? "bg-[var(--kronus-purple)]/20 text-[var(--kronus-purple)] animate-pulse"
+            : "bg-[var(--kronus-surface)] text-[var(--kronus-ivory-muted)] hover:bg-[var(--kronus-surface)]/80"
+        )}
+      >
+        <Brain className="h-4 w-4" />
+        <span>{isStreaming ? "Thinking..." : "View thinking"}</span>
+        {isExpanded ? (
+          <ChevronUp className="h-3 w-3 ml-1" />
+        ) : (
+          <ChevronDown className="h-3 w-3 ml-1" />
+        )}
+      </button>
+      {isExpanded && (
+        <div
+          className={cn(
+            "mt-2 p-3 rounded-lg border text-sm font-mono whitespace-pre-wrap overflow-x-auto max-h-[300px] overflow-y-auto",
+            isStreaming
+              ? "bg-[var(--kronus-purple)]/5 border-[var(--kronus-purple)]/30 text-[var(--kronus-ivory-dim)]"
+              : "bg-[var(--kronus-deep)] border-[var(--kronus-border)] text-[var(--kronus-ivory-muted)]"
+          )}
+        >
+          {reasoning}
+          {isStreaming && <span className="inline-block w-2 h-4 ml-1 bg-[var(--kronus-purple)] animate-pulse" />}
+        </div>
+      )}
+    </div>
+  );
+});
+
 interface ToolState {
   isLoading: boolean;
   completed?: boolean;
@@ -406,9 +469,12 @@ export function ChatInterface() {
   const [lockedSoulConfig, setLockedSoulConfig] = useState<SoulConfigState | null>(null);
 
   // Tools config - controls which tool categories are enabled
+  // NOT locked - can be changed mid-chat to dynamically enable/disable tools
   const [toolsConfig, setToolsConfig] = useState<ToolsConfigState>(DEFAULT_TOOLS_CONFIG);
-  // Store the tools config that was used when the conversation started (locked after first message)
-  const [lockedToolsConfig, setLockedToolsConfig] = useState<ToolsConfigState | null>(null);
+
+  // Model config - controls which AI provider is used (google, anthropic, openai)
+  // Can be changed mid-chat - applies to next message
+  const [modelConfig, setModelConfig] = useState<ModelConfigState>(DEFAULT_MODEL_CONFIG);
 
   // Format config - controls chat font and size (applies immediately)
   const [formatConfig, setFormatConfig] = useState<FormatConfigState>(DEFAULT_FORMAT_CONFIG);
@@ -430,6 +496,23 @@ export function ChatInterface() {
 
   // Theme state - synced with Sidebar's localStorage
   const [kronusTheme, setKronusTheme] = useState<"dark" | "light">("dark");
+
+  // Auto-respond after tool calls - instance-based (sessionStorage)
+  // Each browser tab/session has its own setting - doesn't affect other users
+  const [autoRespondAfterTools, setAutoRespondAfterTools] = useState(true);
+
+  // Initialize auto-respond from sessionStorage
+  useEffect(() => {
+    const saved = sessionStorage.getItem("autoRespondAfterTools");
+    if (saved !== null) {
+      setAutoRespondAfterTools(saved === "true");
+    }
+  }, []);
+
+  // Save auto-respond to sessionStorage when it changes
+  useEffect(() => {
+    sessionStorage.setItem("autoRespondAfterTools", String(autoRespondAfterTools));
+  }, [autoRespondAfterTools]);
 
   // Initialize theme from localStorage and listen for changes
   useEffect(() => {
@@ -458,7 +541,8 @@ export function ChatInterface() {
 
   const { messages, sendMessage, status, setMessages, addToolResult, error, stop } = useChat({
     transport: chatTransport,
-    sendAutomaticallyWhen: lastAssistantMessageIsCompleteWithToolCalls,
+    // Conditionally auto-respond after tool calls - each browser session controls this independently
+    sendAutomaticallyWhen: autoRespondAfterTools ? lastAssistantMessageIsCompleteWithToolCalls : undefined,
 
     async onToolCall({ toolCall }) {
       const { toolName, input, toolCallId } = toolCall;
@@ -685,6 +769,18 @@ export function ChatInterface() {
             const res = await fetch(`/api/integrations/linear/projects${params}`);
             const data = await res.json();
             output = `Found ${data.projects?.length || 0} projects:\n${JSON.stringify(data.projects, null, 2)}`;
+            break;
+          }
+
+          case "linear_create_project": {
+            const res = await fetch("/api/integrations/linear/projects", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify(typedArgs),
+            });
+            const result = await res.json();
+            if (!res.ok) throw new Error(result.error || "Failed to create project");
+            output = `✅ Created project: ${result.name}\nID: ${result.id}`;
             break;
           }
 
@@ -1441,6 +1537,7 @@ Details: ${data.details}` : "";
               body: {
                 soulConfig,
                 toolsConfig,
+                modelConfig,
               },
             }
           );
@@ -1759,16 +1856,16 @@ Details: ${data.details}` : "";
     e.preventDefault();
     if ((!input.trim() && !selectedFiles) || status === "submitted" || status === "streaming") return;
 
-    // Lock the soul and tools config on first message of a new conversation
+    // Lock soul config on first message of a new conversation (affects system prompt context)
+    // Tools config is NOT locked - can be changed mid-chat to enable/disable tools dynamically
     if (messages.length === 0 && !lockedSoulConfig) {
       setLockedSoulConfig(soulConfig);
-      setLockedToolsConfig(toolsConfig);
     }
 
     // Send message with optional files
-    // Pass config via sendMessage body to avoid stale data issue
+    // Soul config is locked (affects system prompt), tools/model config are always current (dynamic)
     const effectiveSoulConfig = lockedSoulConfig || soulConfig;
-    const effectiveToolsConfig = lockedToolsConfig || toolsConfig;
+    const effectiveToolsConfig = toolsConfig; // Always use current - tools can be toggled mid-chat
     sendMessage(
       {
         text: input || "What do you see in this image?",
@@ -1778,6 +1875,7 @@ Details: ${data.details}` : "";
         body: {
           soulConfig: effectiveSoulConfig,
           toolsConfig: effectiveToolsConfig,
+          modelConfig,
         },
       }
     );
@@ -1820,7 +1918,7 @@ Details: ${data.details}` : "";
 
     // Send the edited message
     const effectiveSoulConfig = lockedSoulConfig || soulConfig;
-    const effectiveToolsConfig = lockedToolsConfig || toolsConfig;
+    const effectiveToolsConfig = toolsConfig; // Always use current - tools can be toggled mid-chat
 
     // Small delay to allow state update
     setTimeout(() => {
@@ -1830,6 +1928,7 @@ Details: ${data.details}` : "";
           body: {
             soulConfig: effectiveSoulConfig,
             toolsConfig: effectiveToolsConfig,
+            modelConfig,
           },
         }
       );
@@ -1871,7 +1970,7 @@ Details: ${data.details}` : "";
 
     // Re-send the user message
     const effectiveSoulConfig = lockedSoulConfig || soulConfig;
-    const effectiveToolsConfig = lockedToolsConfig || toolsConfig;
+    const effectiveToolsConfig = toolsConfig; // Always use current - tools can be toggled mid-chat
 
     setTimeout(() => {
       sendMessage(
@@ -1880,6 +1979,7 @@ Details: ${data.details}` : "";
           body: {
             soulConfig: effectiveSoulConfig,
             toolsConfig: effectiveToolsConfig,
+            modelConfig,
           },
         }
       );
@@ -2038,8 +2138,8 @@ Details: ${data.details}` : "";
     setCurrentConversationId(null);
     setToolStates({});
     setShowHistory(false);
-    setLockedSoulConfig(null); // Unlock config for new conversation
-    setLockedToolsConfig(null);
+    setLockedSoulConfig(null); // Unlock soul config for new conversation
+    // Note: toolsConfig is never locked - it's always dynamic
   };
 
   const handleDeleteConversation = async (id: number, e: React.MouseEvent) => {
@@ -2194,6 +2294,11 @@ Details: ${data.details}` : "";
           <ToolsConfig
             config={toolsConfig}
             onChange={setToolsConfig}
+          />
+          {/* Model Config - select AI provider (Gemini, Claude, GPT-4o) */}
+          <ModelConfig
+            config={modelConfig}
+            onChange={setModelConfig}
           />
           {/* Format Config - font/size, applies immediately */}
           <FormatConfig
@@ -2447,6 +2552,23 @@ Details: ${data.details}` : "";
                       </div>
                       {/* Content below header - indented for visual hierarchy */}
                       <div className="max-w-none break-words overflow-wrap-anywhere pl-6 pr-2">
+                        {/* Reasoning/Thinking display - shown above the response */}
+                        {(() => {
+                          const reasoningParts = message.parts?.filter((p: any) => p.type === "reasoning") || [];
+                          const reasoningText = reasoningParts.map((p: any) => p.text).join("\n");
+                          const isLastMessage = message.id === messages[messages.length - 1]?.id;
+                          const isCurrentlyStreaming = status === "streaming" && message.role === "assistant" && isLastMessage;
+
+                          if (reasoningText) {
+                            return (
+                              <ThinkingDisplay
+                                reasoning={reasoningText}
+                                isStreaming={isCurrentlyStreaming}
+                              />
+                            );
+                          }
+                          return null;
+                        })()}
                         {message.parts?.map((part, i) => {
                           // Render image/file parts
                           if (part.type === "file" && (part as any).mediaType?.startsWith("image/")) {
@@ -2459,6 +2581,10 @@ Details: ${data.details}` : "";
                                 />
                               </div>
                             );
+                          }
+                          // Skip reasoning parts - already displayed above
+                          if (part.type === "reasoning") {
+                            return null;
                           }
                           if (part.type === "text") {
                             // Check if this is the last message and still streaming
@@ -2529,23 +2655,21 @@ Details: ${data.details}` : "";
                               onConfirm={() => {
                                 // Send "yes" as user response - include config in body
                                 const effectiveSoulConfig = lockedSoulConfig || soulConfig;
-                                const effectiveToolsConfig = lockedToolsConfig || toolsConfig;
                                 sendMessage(
                                   { text: "Yes, proceed with the changes." },
-                                  { body: { soulConfig: effectiveSoulConfig, toolsConfig: effectiveToolsConfig } }
+                                  { body: { soulConfig: effectiveSoulConfig, toolsConfig, modelConfig } }
                                 );
                               }}
                               onReject={() => {
                                 // Send "no" as user response
                                 const effectiveSoulConfig = lockedSoulConfig || soulConfig;
-                                const effectiveToolsConfig = lockedToolsConfig || toolsConfig;
                                 sendMessage(
                                   { text: "No, cancel. Do not make the changes." },
-                                  { body: { soulConfig: effectiveSoulConfig, toolsConfig: effectiveToolsConfig } }
+                                  { body: { soulConfig: effectiveSoulConfig, toolsConfig, modelConfig } }
                                 );
                               }}
                               proposedChanges={proposedChanges}
-                              disabled={status === "streaming" || status === "submitted"}
+                              disabled={status !== "ready"}
                             />
                           </div>
                         );
@@ -2949,8 +3073,19 @@ Details: ${data.details}` : "";
                 </p>
               </div>
 
-              {/* Diff view - expandable */}
-              {showDiffView ? (
+              {/* Rich preview for Linear tools, diff view for others */}
+              {isLinearTool(pendingToolAction.action.toolName) ? (
+                /* Linear-style rich preview */
+                <div className="space-y-2">
+                  <p className="text-xs font-medium text-[var(--kronus-ivory-muted)] uppercase tracking-wide flex items-center gap-2">
+                    <FileText className="h-3 w-3" />
+                    Preview
+                  </p>
+                  <div className="max-h-[450px] overflow-y-auto">
+                    {getLinearPreview(pendingToolAction.action.toolName, pendingToolAction.action.args)}
+                  </div>
+                </div>
+              ) : showDiffView ? (
                 <div className="space-y-2">
                   <p className="text-xs font-medium text-[var(--kronus-ivory-muted)] uppercase tracking-wide flex items-center gap-2">
                     <GitCompare className="h-3 w-3" />

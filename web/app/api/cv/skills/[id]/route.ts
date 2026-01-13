@@ -1,133 +1,98 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getDatabase } from "@/lib/db";
+import { withErrorHandler } from "@/lib/api-handler";
+import { requireParams, requireBody } from "@/lib/validations";
+import { stringIdParamSchema, updateSkillSchema } from "@/lib/validations/schemas";
+import { NotFoundError, ValidationError } from "@/lib/errors";
 
-export async function GET(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  try {
-    const { id } = await params;
-    const db = getDatabase();
-    const skill = db.prepare("SELECT * FROM skills WHERE id = ?").get(id) as any;
+/**
+ * GET /api/cv/skills/[id]
+ *
+ * Get a skill by ID.
+ */
+export const GET = withErrorHandler(async (
+  _request: NextRequest,
+  context?: { params: Promise<{ id: string }> }
+) => {
+  const resolvedParams = await context?.params;
+  const { id } = requireParams(stringIdParamSchema, resolvedParams);
+  const db = getDatabase();
 
-    if (!skill) {
-      return NextResponse.json({ error: "Skill not found" }, { status: 404 });
-    }
-
-    return NextResponse.json({
-      ...skill,
-      tags: JSON.parse(skill.tags || "[]"),
-    });
-  } catch (error) {
-    console.error("Error fetching skill:", error);
-    return NextResponse.json({ error: "Failed to fetch skill" }, { status: 500 });
+  const skill = db.prepare("SELECT * FROM skills WHERE id = ?").get(id) as any;
+  if (!skill) {
+    throw new NotFoundError("Skill", id);
   }
-}
 
-export async function PUT(
+  return NextResponse.json({
+    ...skill,
+    tags: JSON.parse(skill.tags || "[]"),
+  });
+});
+
+/**
+ * PUT /api/cv/skills/[id]
+ *
+ * Update a skill.
+ */
+export const PUT = withErrorHandler(async (
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  try {
-    const { id } = await params;
-    const db = getDatabase();
-    const body = await request.json();
-    const {
-      name,
-      category,
-      magnitude,
-      description,
-      icon,
-      color,
-      url,
-      tags,
-      firstUsed,
-      lastUsed,
-    } = body;
+  context?: { params: Promise<{ id: string }> }
+) => {
+  const resolvedParams = await context?.params;
+  const { id } = requireParams(stringIdParamSchema, resolvedParams);
+  const db = getDatabase();
+  const body = await requireBody(updateSkillSchema, request);
 
-    const existing = db.prepare("SELECT * FROM skills WHERE id = ?").get(id) as any;
-    if (!existing) {
-      return NextResponse.json({ error: "Skill not found" }, { status: 404 });
-    }
-
-    const updates: string[] = [];
-    const values: any[] = [];
-
-    if (name !== undefined) {
-      updates.push("name = ?");
-      values.push(name);
-    }
-    if (category !== undefined) {
-      updates.push("category = ?");
-      values.push(category);
-    }
-    if (magnitude !== undefined) {
-      updates.push("magnitude = ?");
-      values.push(magnitude);
-    }
-    if (description !== undefined) {
-      updates.push("description = ?");
-      values.push(description);
-    }
-    if (icon !== undefined) {
-      updates.push("icon = ?");
-      values.push(icon || null);
-    }
-    if (color !== undefined) {
-      updates.push("color = ?");
-      values.push(color || null);
-    }
-    if (url !== undefined) {
-      updates.push("url = ?");
-      values.push(url || null);
-    }
-    if (tags !== undefined) {
-      updates.push("tags = ?");
-      values.push(JSON.stringify(tags));
-    }
-    if (firstUsed !== undefined) {
-      updates.push("firstUsed = ?");
-      values.push(firstUsed || null);
-    }
-    if (lastUsed !== undefined) {
-      updates.push("lastUsed = ?");
-      values.push(lastUsed || null);
-    }
-
-    if (updates.length === 0) {
-      return NextResponse.json({ error: "No fields to update" }, { status: 400 });
-    }
-
-    values.push(id);
-    db.prepare(`UPDATE skills SET ${updates.join(", ")} WHERE id = ?`).run(...values);
-
-    const updated = db.prepare("SELECT * FROM skills WHERE id = ?").get(id) as any;
-    return NextResponse.json({
-      ...updated,
-      tags: JSON.parse(updated.tags || "[]"),
-    });
-  } catch (error) {
-    console.error("Error updating skill:", error);
-    return NextResponse.json({ error: "Failed to update skill" }, { status: 500 });
+  const existing = db.prepare("SELECT * FROM skills WHERE id = ?").get(id);
+  if (!existing) {
+    throw new NotFoundError("Skill", id);
   }
-}
 
-export async function DELETE(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  try {
-    const { id } = await params;
-    const db = getDatabase();
-    const result = db.prepare("DELETE FROM skills WHERE id = ?").run(id);
+  const updates: string[] = [];
+  const values: any[] = [];
 
-    if (result.changes === 0) {
-      return NextResponse.json({ error: "Skill not found" }, { status: 404 });
-    }
+  if (body.name !== undefined) { updates.push("name = ?"); values.push(body.name); }
+  if (body.category !== undefined) { updates.push("category = ?"); values.push(body.category); }
+  if (body.magnitude !== undefined) { updates.push("magnitude = ?"); values.push(body.magnitude); }
+  if (body.description !== undefined) { updates.push("description = ?"); values.push(body.description); }
+  if (body.icon !== undefined) { updates.push("icon = ?"); values.push(body.icon || null); }
+  if (body.color !== undefined) { updates.push("color = ?"); values.push(body.color || null); }
+  if (body.url !== undefined) { updates.push("url = ?"); values.push(body.url || null); }
+  if (body.tags !== undefined) { updates.push("tags = ?"); values.push(JSON.stringify(body.tags)); }
+  if (body.firstUsed !== undefined) { updates.push("firstUsed = ?"); values.push(body.firstUsed || null); }
+  if (body.lastUsed !== undefined) { updates.push("lastUsed = ?"); values.push(body.lastUsed || null); }
 
-    return NextResponse.json({ success: true });
-  } catch (error) {
-    console.error("Error deleting skill:", error);
-    return NextResponse.json({ error: "Failed to delete skill" }, { status: 500 });
+  if (updates.length === 0) {
+    throw new ValidationError("No fields to update");
   }
-}
+
+  values.push(id);
+  db.prepare(`UPDATE skills SET ${updates.join(", ")} WHERE id = ?`).run(...values);
+
+  const updated = db.prepare("SELECT * FROM skills WHERE id = ?").get(id) as any;
+  return NextResponse.json({
+    ...updated,
+    tags: JSON.parse(updated.tags || "[]"),
+  });
+});
+
+/**
+ * DELETE /api/cv/skills/[id]
+ *
+ * Delete a skill.
+ */
+export const DELETE = withErrorHandler(async (
+  _request: NextRequest,
+  context?: { params: Promise<{ id: string }> }
+) => {
+  const resolvedParams = await context?.params;
+  const { id } = requireParams(stringIdParamSchema, resolvedParams);
+  const db = getDatabase();
+
+  const result = db.prepare("DELETE FROM skills WHERE id = ?").run(id);
+  if (result.changes === 0) {
+    throw new NotFoundError("Skill", id);
+  }
+
+  return NextResponse.json({ success: true });
+});

@@ -1,19 +1,20 @@
 import { NextResponse } from "next/server";
 import { getDatabase } from "@/lib/db";
+import { withErrorHandler } from "@/lib/api-handler";
 
-export async function GET() {
-  try {
-    const db = getDatabase();
-    const repositories = db
-      .prepare("SELECT DISTINCT repository FROM journal_entries ORDER BY repository ASC")
-      .all() as Array<{ repository: string }>;
+/**
+ * GET /api/repositories
+ *
+ * List all distinct repositories with journal entries.
+ */
+export const GET = withErrorHandler(async () => {
+  const db = getDatabase();
+  const repositories = db
+    .prepare("SELECT DISTINCT repository FROM journal_entries ORDER BY repository ASC")
+    .all() as Array<{ repository: string }>;
 
-    return NextResponse.json(repositories.map((r) => r.repository));
-  } catch (error) {
-    console.error("Error fetching repositories:", error);
-    return NextResponse.json({ error: "Failed to fetch repositories" }, { status: 500 });
-  }
-}
+  return NextResponse.json(repositories.map((r) => r.repository));
+});
 
 
 

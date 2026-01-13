@@ -10,7 +10,9 @@ import {
   education,
   journalEntries,
 } from "@/lib/db/drizzle";
-import { eq, desc } from "drizzle-orm";
+import { eq, desc, and } from "drizzle-orm";
+import { formatDateShort } from "@/lib/utils";
+import { listProjects, listIssues } from "@/lib/linear/client";
 
 // Cache the soul only (repository is dynamic based on config)
 let cachedSoul: string | null = null;
@@ -25,6 +27,10 @@ export interface SoulConfig {
   workExperience: boolean;
   education: boolean;
   journalEntries: boolean;
+  // Linear context - mirrored from Linear API
+  linearProjects: boolean;
+  linearIssues: boolean;
+  linearIncludeCompleted: boolean; // Include done/completed items
 }
 
 export const DEFAULT_SOUL_CONFIG: SoulConfig = {
@@ -34,6 +40,10 @@ export const DEFAULT_SOUL_CONFIG: SoulConfig = {
   workExperience: true,
   education: true,
   journalEntries: true,
+  // Linear context - enabled by default
+  linearProjects: true,
+  linearIssues: true,
+  linearIncludeCompleted: false, // Only active items by default
 };
 
 /**
@@ -97,7 +107,7 @@ function estimateTokens(text: string): number {
  * The Repository IS the soul's flesh - it defines who the creator is,
  * what they've built, what they know, and what they've expressed.
  */
-export function loadRepositoryForSoul(config: SoulConfig = DEFAULT_SOUL_CONFIG): { content: string; tokenEstimate: number } {
+export async function loadRepositoryForSoul(config: SoulConfig = DEFAULT_SOUL_CONFIG): Promise<{ content: string; tokenEstimate: number }> {
   try {
     const db = getDrizzleDb();
     const sections: string[] = [];
@@ -123,8 +133,8 @@ export function loadRepositoryForSoul(config: SoulConfig = DEFAULT_SOUL_CONFIG):
 
           // Date formatting: writtenDate (or legacy year) and updated_at
           const writtenDate = (meta.writtenDate as string) || (meta.year as string) || null;
-          const addedDate = doc.createdAt ? new Date(doc.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : null;
-          const updatedDate = doc.updatedAt ? new Date(doc.updatedAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : null;
+          const addedDate = doc.createdAt ? formatDateShort(doc.createdAt) : null;
+          const updatedDate = doc.updatedAt ? formatDateShort(doc.updatedAt) : null;
 
           // Build date line
           const dateParts: string[] = [];
@@ -292,14 +302,13 @@ ${eduSection.join("\n\n---\n\n")}`;
         .select()
         .from(journalEntries)
         .orderBy(desc(journalEntries.date))
-        .limit(30) // Recent 30 entries
-        .all();
+        .all(); // All entries - no limit
 
       if (entries.length > 0) {
         const entriesSection = entries.map((entry) => {
           const techs = entry.technologies || "N/A";
-          const commitDate = new Date(entry.date).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
-          const addedDate = entry.createdAt ? new Date(entry.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : null;
+          const commitDate = formatDateShort(entry.date);
+          const addedDate = entry.createdAt ? formatDateShort(entry.createdAt) : null;
           const dateStr = addedDate && addedDate !== commitDate
             ? `Committed: ${commitDate} | Documented: ${addedDate}`
             : `Date: ${commitDate}`;
@@ -329,6 +338,120 @@ ${entriesSection.join("\n\n---\n\n")}`;
       }
     }
 
+    // ===== LINEAR PROJECTS (from live API) =====
+    if (config.linearProjects) {
+      try {
+        const projectsResult = await listProjects({ showAll: false });
+        const projects = projectsResult.projects || [];
+
+        // Filter by completion status if needed
+        const filteredProjects = config.linearIncludeCompleted
+          ? projects
+          : projects.filter(
+              (p: any) => p.state !== "completed" && p.state !== "canceled"
+            );
+
+        if (filteredProjects.length > 0) {
+          const projectsSection = filteredProjects.map((project: any) => {
+            const progress = project.progress
+              ? `${Math.round(project.progress * 100)}%`
+              : "N/A";
+            const targetDate = project.targetDate || "No target";
+            const lead = project.lead?.name || "Unassigned";
+
+            return `### ${project.name}
+**State:** ${project.state || "Unknown"} | **Progress:** ${progress} | **Target:** ${targetDate}
+**Lead:** ${lead}
+**URL:** ${project.url}
+${project.description ? `\n${project.description}` : ""}`;
+          });
+
+          const linearProjectsText = `## Linear Projects (${filteredProjects.length})
+
+Active projects from Linear that you're working on or leading.
+These represent current initiatives and their progress.
+
+${projectsSection.join("\n\n---\n\n")}`;
+
+          sections.push(linearProjectsText);
+          totalChars += linearProjectsText.length;
+        }
+      } catch {
+        // Linear API may not be configured - ignore
+      }
+    }
+
+    // ===== LINEAR ISSUES (from live API) =====
+    if (config.linearIssues) {
+      try {
+        const issuesResult = await listIssues({ showAll: false, limit: 100 });
+        const issues = issuesResult.issues || [];
+
+        // Filter by completion status if needed
+        const filteredIssues = config.linearIncludeCompleted
+          ? issues
+          : issues.filter((i: any) => {
+              const stateName = i.state?.name?.toLowerCase() || "";
+              return (
+                !stateName.includes("done") &&
+                !stateName.includes("completed") &&
+                !stateName.includes("canceled")
+              );
+            });
+
+        if (filteredIssues.length > 0) {
+          // Group by project
+          const byProject: Record<string, any[]> = {};
+          for (const issue of filteredIssues) {
+            const projectName = issue.project?.name || "No Project";
+            if (!byProject[projectName]) byProject[projectName] = [];
+            byProject[projectName].push(issue);
+          }
+
+          const priorityLabel = (p: number | null) => {
+            switch (p) {
+              case 1:
+                return "🔴 Urgent";
+              case 2:
+                return "🟠 High";
+              case 3:
+                return "🟡 Medium";
+              case 4:
+                return "🟢 Low";
+              default:
+                return "○ None";
+            }
+          };
+
+          const issuesSection = Object.entries(byProject)
+            .map(([projectName, projectIssues]) => {
+              const issueList = projectIssues
+                .map((issue: any) => {
+                  return `- **${issue.identifier}**: ${issue.title}
+  Priority: ${priorityLabel(issue.priority)} | State: ${issue.state?.name || "Unknown"}
+  ${issue.description ? `${issue.description.substring(0, 150)}${issue.description.length > 150 ? "..." : ""}` : ""}`;
+                })
+                .join("\n\n");
+
+              return `### ${projectName}\n${issueList}`;
+            })
+            .join("\n\n---\n\n");
+
+          const linearIssuesText = `## Linear Issues Assigned to Me (${filteredIssues.length})
+
+Active issues and tasks from Linear that are assigned to you.
+Organized by project for context.
+
+${issuesSection}`;
+
+          sections.push(linearIssuesText);
+          totalChars += linearIssuesText.length;
+        }
+      } catch {
+        // Linear API may not be configured - ignore
+      }
+    }
+
     // ===== ASSEMBLE REPOSITORY =====
     if (sections.length === 0) {
       return { content: "", tokenEstimate: 0 };
@@ -355,26 +478,24 @@ ${sections.join("\n\n" + "=".repeat(60) + "\n\n")}
 }
 
 /**
- * Format today's date for system prompt
+ * Format today's date for system prompt (European format: "Thursday, 2 January 2025")
  */
 function formatTodayDate(): string {
   const now = new Date();
-  const options: Intl.DateTimeFormatOptions = {
-    weekday: "long",
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-  };
-  return now.toLocaleDateString("en-US", options);
+  const weekday = now.toLocaleDateString("en-GB", { weekday: "long" });
+  const day = now.getDate();
+  const month = now.toLocaleDateString("en-GB", { month: "long" });
+  const year = now.getFullYear();
+  return `${weekday}, ${day} ${month} ${year}`;
 }
 
 /**
  * Get the system prompt for Kronus chat
  * Generated fresh based on soul config - NOT cached
  */
-export function getKronusSystemPrompt(config: SoulConfig = DEFAULT_SOUL_CONFIG): string {
+export async function getKronusSystemPrompt(config: SoulConfig = DEFAULT_SOUL_CONFIG): Promise<string> {
   const soul = loadKronusSoul();
-  const { content: repository, tokenEstimate } = loadRepositoryForSoul(config);
+  const { content: repository, tokenEstimate } = await loadRepositoryForSoul(config);
   const todayDate = formatTodayDate();
 
   const systemPrompt = `${soul}
@@ -443,62 +564,67 @@ You have access to tools for:
 - **Speed**: FLUX Schnell or Gemini 2.0 Flash - faster generation
 - **Consistency**: Imagen 3 - good balance of quality and reliability
 
-## CRITICAL: Integration Action Protocol
+## CRITICAL: Write Action Protocol - ALWAYS ASK FIRST
 
-**For ANY write/create/update action on integrations (Linear, Slack, Notion, etc.), you MUST follow this protocol:**
+**For ANY write/create/update action, you MUST ask for confirmation first. This applies to ALL data modifications:**
 
-### Step 1: Draft First, Never Execute Directly
-When the user asks you to create or modify something in an integration:
-1. First, compose a DRAFT and present it clearly in your message
-2. Format the draft so the user can review all details
-3. Explicitly ask for permission: "Should I create/update this?"
+### REQUIRES CONFIRMATION (Present draft → Wait for approval → Execute):
 
-### Step 2: Wait for Explicit Approval
-- Do NOT call the tool until the user explicitly confirms
-- Valid confirmations: "yes", "go ahead", "do it", "create it", "looks good", "approved", etc.
-- If user wants changes: modify the draft and ask again
-- If user says "no" or "cancel": acknowledge and do NOT execute
+**Journal:**
+- journal_edit_entry (editing why, what_changed, decisions, technologies, kronus_wisdom)
+- journal_regenerate_entry (regenerating with AI)
+- journal_upsert_project_summary (creating/updating project summaries)
 
-### Step 3: Execute Only After Approval
-Only call the actual tool (linear_create_issue, linear_update_issue, linear_update_project, etc.) AFTER receiving clear user approval.
+**Repository:**
+- repository_create_document (new writings, prompts, notes)
+- repository_update_document (editing title, content, tags, metadata)
+- repository_create_skill / repository_update_skill
+- repository_create_experience / repository_update_experience
+- repository_create_education / repository_update_education
+- repository_create_portfolio_project / repository_update_portfolio_project
 
-### Example Flow:
-User: "Create an issue for the login bug"
-You: "Here's my draft for the Linear issue:
+**Media:**
+- save_image (saving to library)
+- update_media (changing filename, description, tags, links)
 
-**Title:** Fix login authentication bug
-**Description:** Users are experiencing intermittent login failures...
-**Priority:** 🟠 High
-**Team:** Engineering
+**Linear:**
+- linear_create_issue / linear_update_issue / linear_update_project
 
-Should I create this issue?"
-
-User: "Change priority to urgent"
-You: "Updated draft:
-
-**Title:** Fix login authentication bug
-**Description:** Users are experiencing intermittent login failures...
-**Priority:** 🔴 Urgent
-**Team:** Engineering
-
-Ready to create. Confirm?"
-
-User: "Yes"
-You: *NOW calls linear_create_issue tool*
-
-### What you CAN do automatically (no confirmation needed):
-- Read/list operations (list issues, list projects, get viewer info)
-- Journal operations (create entries, edit entries, list repositories)
-- Database backups
+### NO CONFIRMATION NEEDED (Read operations):
+- All list/get operations (journal_list_*, repository_list_*, list_media, get_media)
+- journal_backup (creates backup file)
 - Searching and querying
 
-### What REQUIRES confirmation:
-- Creating Linear issues
-- Updating Linear issues
-- Updating Linear projects
-- Any future integration writes (Slack messages, Notion pages, etc.)
+### Protocol:
 
-This protocol ensures the user always has final control over external actions.
+**Step 1: Draft First**
+Present what you're about to change:
+\`\`\`
+📝 **Proposed Changes:**
+- Field: current value → new value
+- Field2: current value → new value
+
+**Accept these changes?** [Yes/No]
+\`\`\`
+
+**Step 2: Wait for Explicit Approval**
+- Valid: "yes", "go ahead", "do it", "looks good", "approved", "y"
+- Changes requested: modify draft and ask again
+- Rejected: "no", "cancel" → acknowledge and do NOT execute
+
+**Step 3: Execute Only After "Yes"**
+Only call the write tool AFTER user confirms.
+
+### Example:
+User: "Update my TypeScript skill to expert level"
+You: "📝 **Proposed Changes to Skill: TypeScript**
+- magnitude: 3 (Professional) → 4 (Expert)
+
+**Accept this change?**"
+User: "yes"
+You: *NOW calls repository_update_skill*
+
+This ensures the user ALWAYS has final control over their data.
 
 ---
 
@@ -506,6 +632,22 @@ When the user provides commit information or agent reports, use the journal tool
 When discussing project management, use Linear tools to help manage their workflow.
 
 Always be helpful, insightful, and true to your Kronus persona.
+
+## Formatting Guidelines
+
+Use GitHub-flavored markdown for all responses. The chat interface renders markdown but NOT LaTeX.
+
+**DO NOT use LaTeX math notation** like \`$\\rightarrow$\` or \`$\\times$\`. Instead use Unicode symbols:
+- Arrows: → ← ↔ ⇒ ⇐ ⇔ ↑ ↓
+- Math: × ÷ ± ≈ ≠ ≤ ≥ ∞ √
+- Bullets: • ◦ ▪ ▫
+- Checkmarks: ✓ ✗ ☐ ☑
+- Stars: ★ ☆ ⭐
+
+For code and technical content, use fenced code blocks with language hints:
+\`\`\`typescript
+const example = "code";
+\`\`\`
 
 ${repository}`;
 

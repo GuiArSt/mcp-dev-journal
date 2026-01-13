@@ -3,19 +3,14 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Type } from "lucide-react";
+import { Type, Check } from "lucide-react";
 import { cn } from "@/lib/utils";
-
-// Explicit colors for the Format config popover (avoids CSS variable issues)
-const COLORS = {
-  bg: "#0a0a0f",
-  border: "#2a2a3a",
-  text: "#e8e6e3",
-  muted: "#888",
-  teal: "#00CED1",
-  tealDim: "#008B8B",
-  gold: "#D4AF37",
-};
+import {
+  TARTARUS,
+  popoverStyles,
+  headerStyles,
+  sectionStyles,
+} from "./config-styles";
 
 // Font options for Kronus chat - mystical/oracle aesthetic
 // Uses CSS variables from Next.js font loader (defined in layout.tsx)
@@ -68,117 +63,147 @@ export function FormatConfig({ config, onChange }: FormatConfigProps) {
     onChange({ ...config, fontSize });
   };
 
+  const currentFont = KRONUS_FONTS[config.font || "inter"];
+  const currentSize = KRONUS_FONT_SIZES[config.fontSize || "base"];
+
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
         <Button
           variant="ghost"
           size="sm"
-          className="gap-1"
+          className="gap-1.5 transition-colors"
+          style={{ color: TARTARUS.textMuted }}
         >
           <Type className="h-4 w-4" />
-          Format
+          <span className="hidden sm:inline">Format</span>
         </Button>
       </PopoverTrigger>
       <PopoverContent
-        className="w-72 z-[100] shadow-2xl rounded-lg"
+        className="w-[340px] z-[100] shadow-2xl rounded-xl p-0 overflow-hidden"
         align="start"
         sideOffset={8}
-        style={{
-          backgroundColor: COLORS.bg,
-          border: `1px solid ${COLORS.border}`,
-          color: COLORS.text
-        }}
+        style={popoverStyles.container}
       >
-        <div className="space-y-4 p-1" style={{ backgroundColor: COLORS.bg }}>
-          {/* Font selector */}
-          <div>
-            <div className="flex items-center justify-between" style={{ marginBottom: "8px" }}>
-              <span style={{ color: COLORS.text, fontSize: "14px", fontWeight: 600 }}>Chat Font</span>
-              <span style={{ color: COLORS.muted, fontSize: "12px" }}>
-                {KRONUS_FONTS[config.font || "inter"].style}
-              </span>
+        <div style={popoverStyles.inner}>
+          {/* Header */}
+          <div
+            className="px-4 py-3 flex items-center justify-between"
+            style={{ borderBottom: `1px solid ${TARTARUS.borderSubtle}` }}
+          >
+            <div>
+              <h4 style={headerStyles.title}>Typography</h4>
+              <p style={headerStyles.subtitle}>Customize chat appearance</p>
             </div>
-            <div className="grid grid-cols-2 gap-2">
-              {(Object.keys(KRONUS_FONTS) as KronusFontKey[]).map((fontKey) => {
-                const font = KRONUS_FONTS[fontKey];
-                const isSelected = (config.font || "inter") === fontKey;
-                return (
-                  <button
-                    key={fontKey}
-                    onClick={() => setFont(fontKey)}
-                    style={{
-                      padding: "8px 10px",
-                      borderRadius: "6px",
-                      border: `1px solid ${isSelected ? COLORS.teal : COLORS.border}`,
-                      backgroundColor: isSelected ? "rgba(0, 206, 209, 0.1)" : "transparent",
-                      cursor: "pointer",
-                      textAlign: "left",
-                      transition: "all 0.15s ease",
-                    }}
-                  >
-                    <span style={{
-                      fontFamily: font.family,
-                      fontSize: "13px",
-                      color: isSelected ? COLORS.teal : COLORS.text,
-                      display: "block",
-                    }}>
-                      {font.name}
-                    </span>
-                    <span style={{
-                      fontSize: "10px",
-                      color: COLORS.muted,
-                    }}>
-                      {font.style}
-                    </span>
-                  </button>
-                );
-              })}
+            <span
+              className="text-[11px] px-2 py-1 rounded"
+              style={{
+                color: TARTARUS.textMuted,
+                backgroundColor: TARTARUS.surface,
+              }}
+            >
+              {currentFont.style}
+            </span>
+          </div>
+
+          {/* Content */}
+          <div className="px-4 py-3 space-y-4">
+            {/* Font Family Section */}
+            <div>
+              <div style={sectionStyles.label}>Font Family</div>
+              <div className="grid grid-cols-2 gap-2">
+                {(Object.keys(KRONUS_FONTS) as KronusFontKey[]).map((fontKey) => {
+                  const font = KRONUS_FONTS[fontKey];
+                  const isSelected = (config.font || "inter") === fontKey;
+
+                  return (
+                    <button
+                      key={fontKey}
+                      onClick={() => setFont(fontKey)}
+                      className="text-left px-3 py-2.5 rounded-lg transition-all hover:bg-white/[0.03]"
+                      style={{
+                        border: isSelected
+                          ? `1px solid ${TARTARUS.teal}40`
+                          : `1px solid ${TARTARUS.border}`,
+                        backgroundColor: isSelected ? TARTARUS.tealGlow : "transparent",
+                        cursor: "pointer",
+                      }}
+                    >
+                      <span
+                        className="block text-[13px] font-medium"
+                        style={{
+                          fontFamily: font.family,
+                          color: isSelected ? TARTARUS.teal : TARTARUS.text,
+                        }}
+                      >
+                        {font.name}
+                      </span>
+                      <span
+                        className="block text-[10px] mt-0.5"
+                        style={{ color: TARTARUS.textDim }}
+                      >
+                        {font.style}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Font Size Section */}
+            <div style={sectionStyles.divider}>
+              <div className="flex items-center justify-between mb-2">
+                <span style={sectionStyles.label} className="mb-0">Font Size</span>
+                <span className="text-[11px]" style={{ color: TARTARUS.textMuted }}>
+                  {currentSize.label}
+                </span>
+              </div>
+              <div className="flex gap-1.5">
+                {(Object.keys(KRONUS_FONT_SIZES) as KronusFontSizeKey[]).map((sizeKey) => {
+                  const sizeOption = KRONUS_FONT_SIZES[sizeKey];
+                  const isSelected = (config.fontSize || "base") === sizeKey;
+
+                  return (
+                    <button
+                      key={sizeKey}
+                      onClick={() => setFontSize(sizeKey)}
+                      className="flex-1 py-2 rounded-lg transition-all hover:bg-white/[0.03]"
+                      style={{
+                        border: isSelected
+                          ? `1px solid ${TARTARUS.teal}40`
+                          : `1px solid ${TARTARUS.border}`,
+                        backgroundColor: isSelected ? TARTARUS.tealGlow : "transparent",
+                        cursor: "pointer",
+                      }}
+                    >
+                      <span
+                        className="font-mono font-medium"
+                        style={{
+                          fontSize: sizeOption.size,
+                          color: isSelected ? TARTARUS.teal : TARTARUS.text,
+                        }}
+                      >
+                        {sizeOption.name}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
             </div>
           </div>
 
-          {/* Font Size selector */}
-          <div style={{ paddingTop: "12px", borderTop: `1px solid ${COLORS.border}` }}>
-            <div className="flex items-center justify-between" style={{ marginBottom: "6px" }}>
-              <span style={{ color: COLORS.text, fontSize: "14px", fontWeight: 600 }}>Font Size</span>
-              <span style={{ color: COLORS.muted, fontSize: "12px" }}>
-                {KRONUS_FONT_SIZES[config.fontSize || "base"].label}
-              </span>
-            </div>
-            <div className="flex gap-1">
-              {(Object.keys(KRONUS_FONT_SIZES) as KronusFontSizeKey[]).map((sizeKey) => {
-                const sizeOption = KRONUS_FONT_SIZES[sizeKey];
-                const isSelected = (config.fontSize || "base") === sizeKey;
-                return (
-                  <button
-                    key={sizeKey}
-                    onClick={() => setFontSize(sizeKey)}
-                    style={{
-                      flex: 1,
-                      padding: "6px 4px",
-                      borderRadius: "4px",
-                      border: `1px solid ${isSelected ? COLORS.teal : COLORS.border}`,
-                      backgroundColor: isSelected ? "rgba(0, 206, 209, 0.15)" : "transparent",
-                      cursor: "pointer",
-                      transition: "all 0.15s ease",
-                    }}
-                  >
-                    <span style={{
-                      fontSize: sizeOption.size,
-                      color: isSelected ? COLORS.teal : COLORS.text,
-                      fontWeight: isSelected ? 600 : 400,
-                    }}>
-                      {sizeOption.name}
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
+          {/* Footer */}
+          <div
+            className="px-4 py-3"
+            style={{
+              borderTop: `1px solid ${TARTARUS.borderSubtle}`,
+              backgroundColor: TARTARUS.surface,
+            }}
+          >
+            <p className="text-[11px]" style={{ color: TARTARUS.textDim }}>
+              Changes apply immediately to the chat interface.
+            </p>
           </div>
-
-          <p style={{ fontSize: "11px", color: COLORS.muted, paddingTop: "8px" }}>
-            Format changes apply immediately to the chat.
-          </p>
         </div>
       </PopoverContent>
     </Popover>

@@ -85,6 +85,8 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
     raw_agent_report: entry.rawAgentReport,
     created_at: entry.createdAt,
     attachment_count: attachmentCounts.get(entry.commitHash) || 0,
+    // File change tracking (JSON string from DB, parse if present)
+    files_changed: entry.filesChanged ? JSON.parse(entry.filesChanged) : null,
   }));
 
   return NextResponse.json({

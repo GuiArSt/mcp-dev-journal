@@ -1,9 +1,17 @@
-# Tartarus - Kronus Web Docker Compose
+# Developer Journal Workspace - Docker Compose
+#
+# Services:
+#   - tartarus: Web UI (Next.js) - http://localhost:3777
+#   - mcp-server: HTTP API for journal operations - http://localhost:3333
+#
 # Run with: docker compose up -d
 # Stop with: docker compose down
-# View logs: docker compose logs -f tartarus
+# View logs: docker compose logs -f
 
 services:
+  # ============================================
+  # Tartarus - Web UI (Next.js)
+  # ============================================
   tartarus:
     build:
       context: ./web
@@ -14,21 +22,18 @@ services:
       # Fixed port 3777 for Tartarus (MCP uses this for attachment download URLs)
       - "3777:3000"
     volumes:
-      # Mount the SQLite database (read/write)
-      - ./journal.db:/app/journal.db
+      # Mount the data directory (includes journal.db + WAL files)
+      - ./data:/app/data
       # Mount Soul.xml (read-only)
       - ./Soul.xml:/app/Soul.xml:ro
-      # Optional: Mount local soul for dev
-      # - ./Soul.xml.local:/app/Soul.xml:ro
     environment:
-      # Database path inside container
-      - JOURNAL_DB_PATH=/app/journal.db
+      # Database path inside container (in mounted data dir)
+      - JOURNAL_DB_PATH=/app/data/journal.db
       # Soul.xml path inside container
       - SOUL_XML_PATH=/app/Soul.xml
       # Node environment
       - NODE_ENV=production
     env_file:
-      # Load API keys and other secrets from .env
       - .env
     healthcheck:
       test: ["CMD", "wget", "-q", "--spider", "http://localhost:3000/api/health"]
@@ -36,3 +41,42 @@ services:
       timeout: 10s
       retries: 3
       start_period: 40s
+    depends_on:
+      mcp-server:
+        condition: service_healthy
+
+  # ============================================
+  # MCP Server - HTTP API for Journal Operations
+  # ============================================
+  # Simple, focused API for journal entries:
+  #   POST /api/journal/entries - Create entry (with AI generation)
+  #   GET  /api/journal/entries/:hash - Get entry
+  #   GET  /api/journal/repositories - List repos
+  #   GET  /api/health - Health check
+  mcp-server:
+    build:
+      context: .
+      dockerfile: mcp-server/Dockerfile
+    container_name: mcp-server
+    restart: unless-stopped
+    ports:
+      # HTTP API port
+      - "3333:3333"
+    volumes:
+      # Shared data directory with Tartarus (same database!)
+      - ./data:/app/data
+    environment:
+      # Database path (same as Tartarus for consistency)
+      - JOURNAL_DB_PATH=/app/data/journal.db
+      # Tartarus URL for attachment download links
+      - TARTARUS_URL=http://tartarus:3000
+      # Node environment
+      - NODE_ENV=production
+    env_file:
+      - .env
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:3333/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s

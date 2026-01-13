@@ -9,12 +9,15 @@ export async function PATCH(
   try {
     const { projectId } = await params;
     const body = await request.json();
-    const { name, description, content } = body;
+    const { name, description, content, leadId, targetDate, startDate } = body;
 
     const project = await updateProject(projectId, {
       name,
       description,
       content,
+      leadId,
+      targetDate,
+      startDate,
     });
 
     return NextResponse.json(project);

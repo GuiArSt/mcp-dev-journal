@@ -99,9 +99,9 @@ export function loadConfig(): UnifiedConfig {
       aiApiKey = env.GOOGLE_API_KEY!;
     }
 
-    // Database path: always project root (journal.db)
-    // No environment variable override - always uses project root for simplicity
-    const defaultDbPath = path.join(PROJECT_ROOT, 'journal.db');
+    // Database path: data directory (data/journal.db)
+    // Allows JOURNAL_DB_PATH override for Docker/custom deployments
+    const defaultDbPath = env.JOURNAL_DB_PATH || path.join(PROJECT_ROOT, 'data', 'journal.db');
     
     config.journal = {
       dbPath: defaultDbPath,

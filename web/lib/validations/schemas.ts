@@ -285,3 +285,178 @@ export const compressRequestSchema = z.object({
 });
 
 export type CompressRequest = z.infer<typeof compressRequestSchema>;
+
+// ============================================================================
+// CONVERSATION SCHEMAS
+// ============================================================================
+
+/**
+ * Query params for listing conversations
+ */
+export const conversationQuerySchema = paginationSchema.extend({
+  query: z.string().optional(),
+});
+
+export type ConversationQueryParams = z.infer<typeof conversationQuerySchema>;
+
+/**
+ * Create/update conversation
+ */
+export const saveConversationSchema = z.object({
+  title: z.string().min(1, "Title is required"),
+  messages: z.array(z.any()).min(1, "Messages are required"),
+});
+
+export type SaveConversation = z.infer<typeof saveConversationSchema>;
+
+/**
+ * ID parameter (numeric)
+ */
+export const idParamSchema = z.object({
+  id: z.coerce.number().int().positive("ID must be a positive integer"),
+});
+
+export type IdParam = z.infer<typeof idParamSchema>;
+
+/**
+ * String ID parameter (for portfolio projects, skills, etc.)
+ */
+export const stringIdParamSchema = z.object({
+  id: z.string().min(1, "ID is required"),
+});
+
+export type StringIdParam = z.infer<typeof stringIdParamSchema>;
+
+// ============================================================================
+// PORTFOLIO PROJECT SCHEMAS
+// ============================================================================
+
+/**
+ * Query params for listing portfolio projects
+ */
+export const portfolioQuerySchema = z.object({
+  category: z.string().optional(),
+  status: z.enum(["shipped", "wip", "archived"]).optional(),
+  featured: z.coerce.boolean().optional(),
+});
+
+export type PortfolioQueryParams = z.infer<typeof portfolioQuerySchema>;
+
+/**
+ * Create portfolio project
+ */
+export const createPortfolioProjectSchema = z.object({
+  id: z.string().min(1).regex(/^[a-z0-9-]+$/, "ID must be lowercase alphanumeric with dashes"),
+  title: z.string().min(1, "Title is required"),
+  category: z.string().min(1, "Category is required"),
+  company: z.string().optional(),
+  dateCompleted: z.string().optional(),
+  status: z.enum(["shipped", "wip", "archived"]).default("shipped"),
+  featured: z.boolean().default(false),
+  image: z.string().optional(),
+  excerpt: z.string().optional(),
+  description: z.string().optional(),
+  role: z.string().optional(),
+  technologies: z.array(z.string()).default([]),
+  metrics: z.record(z.string(), z.unknown()).default({}),
+  links: z.record(z.string(), z.string()).default({}),
+  tags: z.array(z.string()).default([]),
+  sortOrder: z.number().default(0),
+});
+
+export type CreatePortfolioProject = z.infer<typeof createPortfolioProjectSchema>;
+
+/**
+ * Update portfolio project
+ */
+export const updatePortfolioProjectSchema = createPortfolioProjectSchema.partial().omit({ id: true });
+
+export type UpdatePortfolioProject = z.infer<typeof updatePortfolioProjectSchema>;
+
+// ============================================================================
+// EXPERIENCE SCHEMAS
+// ============================================================================
+
+/**
+ * Create work experience
+ */
+export const createExperienceSchema = z.object({
+  id: z.string().min(1).regex(/^[a-z0-9-]+$/, "ID must be lowercase alphanumeric with dashes"),
+  title: z.string().min(1, "Title is required"),
+  company: z.string().min(1, "Company is required"),
+  department: z.string().optional(),
+  location: z.string().min(1, "Location is required"),
+  dateStart: z.string().min(1, "Start date is required"),
+  dateEnd: z.string().optional(),
+  tagline: z.string().min(1, "Tagline is required"),
+  note: z.string().optional(),
+  achievements: z.array(z.string()).default([]),
+  logo: z.string().optional(),
+});
+
+export type CreateExperience = z.infer<typeof createExperienceSchema>;
+
+/**
+ * Update work experience
+ */
+export const updateExperienceSchema = createExperienceSchema.partial().omit({ id: true });
+
+export type UpdateExperience = z.infer<typeof updateExperienceSchema>;
+
+// ============================================================================
+// EDUCATION SCHEMAS
+// ============================================================================
+
+/**
+ * Create education
+ */
+export const createEducationSchema = z.object({
+  id: z.string().min(1).regex(/^[a-z0-9-]+$/, "ID must be lowercase alphanumeric with dashes"),
+  degree: z.string().min(1, "Degree is required"),
+  field: z.string().min(1, "Field is required"),
+  institution: z.string().min(1, "Institution is required"),
+  location: z.string().min(1, "Location is required"),
+  dateStart: z.string().min(1, "Start date is required"),
+  dateEnd: z.string().min(1, "End date is required"),
+  tagline: z.string().min(1, "Tagline is required"),
+  note: z.string().optional(),
+  focusAreas: z.array(z.string()).default([]),
+  achievements: z.array(z.string()).default([]),
+  logo: z.string().optional(),
+});
+
+export type CreateEducation = z.infer<typeof createEducationSchema>;
+
+/**
+ * Update education
+ */
+export const updateEducationSchema = createEducationSchema.partial().omit({ id: true });
+
+export type UpdateEducation = z.infer<typeof updateEducationSchema>;
+
+// ============================================================================
+// CATEGORY SCHEMAS
+// ============================================================================
+
+/**
+ * Create skill category
+ */
+export const createCategorySchema = z.object({
+  name: z.string().min(1, "Name is required"),
+  color: z.string().default("gray"),
+  icon: z.string().default("tag"),
+});
+
+export type CreateCategory = z.infer<typeof createCategorySchema>;
+
+/**
+ * Update skill category
+ */
+export const updateCategorySchema = z.object({
+  name: z.string().min(1).optional(),
+  color: z.string().optional(),
+  icon: z.string().optional(),
+  sortOrder: z.number().optional(),
+});
+
+export type UpdateCategory = z.infer<typeof updateCategorySchema>;

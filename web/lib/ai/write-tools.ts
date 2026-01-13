@@ -37,6 +37,7 @@ export const WRITE_TOOLS = new Set([
   // Linear write operations
   "linear_create_issue",
   "linear_update_issue",
+  "linear_create_project",
   "linear_update_project",
 ]);
 
@@ -144,6 +145,8 @@ export function getToolActionDescription(toolName: string, args: Record<string, 
       return `Create Linear issue: "${args.title}"`;
     case "linear_update_issue":
       return `Update Linear issue ${args.issueId}`;
+    case "linear_create_project":
+      return `Create Linear project: "${args.name}"`;
     case "linear_update_project":
       return `Update Linear project ${args.projectId}`;
 

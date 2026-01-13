@@ -1,8 +1,14 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import fs from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { z } from 'zod';
+
 import { toMcpError } from '../../shared/errors.js';
 import { logger } from '../../shared/logger.js';
 import type { JournalConfig } from '../../shared/types.js';
 import { generateJournalEntry } from './ai/generate-entry.js';
+import { normalizeReport, mergeSummaryUpdates } from './ai/normalize-report.js';
 import {
   commitHasEntry,
   exportToSQL,
@@ -13,16 +19,15 @@ import {
   listBranches,
   listRepositories,
   getProjectSummary,
+  upsertProjectSummary,
   listAllProjectSummariesPaginated,
   getAttachmentMetadataByCommit,
   getAttachmentById,
   getAttachmentStats,
   getAttachmentCountsForCommits,
+  initDatabase,
 } from './db/database.js';
 import { AgentInputSchema, ProjectSummaryInputSchema, AttachmentInputSchema } from './types.js';
-import path from 'node:path';
-import { fileURLToPath } from 'node:url';
-import { z } from 'zod';
 
 /**
  * Get MCP server installation directory (where the code is located)
@@ -117,9 +122,10 @@ function formatEntrySummary(entry: any, includeRawReport: boolean = false): any 
     decisions: entry.decisions,
     technologies: entry.technologies,
     kronus_wisdom: entry.kronus_wisdom,
+    files_changed: entry.files_changed || null,
     created_at: entry.created_at,
   };
-  
+
   if (includeRawReport) {
     summary.raw_agent_report = entry.raw_agent_report;
   } else {
@@ -127,7 +133,7 @@ function formatEntrySummary(entry: any, includeRawReport: boolean = false): any 
       ? `[${entry.raw_agent_report.length} chars - use include_raw_report=true to see full]`
       : null;
   }
-  
+
   return summary;
 }
 
@@ -197,8 +203,34 @@ export function registerJournalTools(server: McpServer, journalConfig?: JournalC
     'journal_create_entry',
     {
       title: 'Create Journal Entry',
-      description:
-        'Create a journal entry for a commit. Agent provides git metadata and raw report. Kronus (Haiku 4.5) analyzes and generates structured entry.',
+      description: `Create a developer journal entry for a git commit. This tool documents the work done, decisions made, and context behind code changes.
+
+## What You Provide (Required Metadata)
+- commit_hash: The git commit SHA (at least 7 chars)
+- repository: Project/repo name (e.g., "my-app", "Developer Journal Workspace")
+- branch: Git branch name (e.g., "main", "feature/auth")
+- author: Commit author name
+- date: Commit date in ISO 8601 format (e.g., "2026-01-12T10:30:00Z")
+- raw_agent_report: Your detailed report of what was done (see below)
+
+## What Kronus Generates From Your Report
+Kronus (AI) analyzes your raw_agent_report and extracts:
+- **why**: Motivation behind the change
+- **what_changed**: Concrete changes made
+- **decisions**: Key decisions and reasoning
+- **technologies**: Tech stack involved
+- **kronus_wisdom**: Optional philosophical reflection
+- **files_changed**: Structured list of file modifications
+
+## IMPORTANT: Include File Paths!
+Your raw_agent_report should mention ALL files created, modified, deleted, or renamed.
+Kronus extracts these into a structured files_changed array.
+
+Example file mentions in report:
+- "Created src/components/Button.tsx with click handler"
+- "Modified lib/utils.ts to add parseDate helper"
+- "Deleted old/deprecated-file.js (no longer needed)"
+- "Renamed config.json to config.yaml for YAML support"`,
       inputSchema: {
         commit_hash: AgentInputSchema.shape.commit_hash,
         repository: AgentInputSchema.shape.repository,
@@ -245,6 +277,7 @@ export function registerJournalTools(server: McpServer, journalConfig?: JournalC
           technologies: aiOutput.technologies,
           kronus_wisdom: aiOutput.kronus_wisdom ?? null,
           raw_agent_report,
+          files_changed: aiOutput.files_changed ?? null,
         });
 
         // Auto-backup to SQL
@@ -261,6 +294,7 @@ export function registerJournalTools(server: McpServer, journalConfig?: JournalC
           decisions: aiOutput.decisions,
           technologies: aiOutput.technologies,
           kronus_wisdom: aiOutput.kronus_wisdom || null,
+          files_changed: aiOutput.files_changed || null,
         };
 
         const text = `✅ Journal entry created for ${repository}/${branch} (${commit_hash})\n\n${JSON.stringify(summary, null, 2)}`;
@@ -605,7 +639,133 @@ export function registerJournalTools(server: McpServer, journalConfig?: JournalC
     }
   );
 
-  // Tool 11: List All Project Summaries
+  // Tool 8: Submit Summary Report (Entry 0 Update)
+  server.registerTool(
+    'journal_submit_summary_report',
+    {
+      title: 'Submit Project Summary Report',
+      description: `Submit a chaotic report about a project to update Entry 0 (Living Project Summary).
+Kronus (Sonnet 4.5) normalizes messy observations into structured sections.
+
+Can include:
+- File structure discoveries
+- Code patterns and conventions
+- Tech stack info (frameworks, libraries, versions)
+- Dev/deploy commands
+- Gotchas and historical context
+- Anything relevant to the project
+
+Be as detailed or messy as needed - Kronus will structure it.`,
+      inputSchema: {
+        repository: z.string().min(1).describe('Repository name (must have an existing project summary)'),
+        raw_report: z.string().min(50).describe('Unstructured report - file structure, patterns, stack, commands, gotchas, etc. Be detailed!'),
+        include_recent_entries: z.number().optional().default(5).describe('Also analyze N recent journal entries for additional context (default: 5)'),
+      },
+    },
+    async ({ repository, raw_report, include_recent_entries }) => {
+      try {
+        // 1. Get existing Entry 0 (project summary)
+        const existingSummary = getProjectSummary(repository);
+
+        if (!existingSummary) {
+          return {
+            content: [
+              {
+                type: 'text' as const,
+                text: `❌ No project summary found for "${repository}". Create a project summary first using the web UI or API before submitting Entry 0 reports.`,
+              },
+            ],
+          };
+        }
+
+        // 2. Get recent journal entries for context
+        const entriesLimit = Math.min(include_recent_entries || 5, 20); // Cap at 20
+        const { entries: recentEntries } = getEntriesByRepositoryPaginated(repository, entriesLimit, 0);
+
+        logger.info(`Normalizing report for ${repository} (${recentEntries.length} recent entries for context)`);
+
+        // 3. Call Kronus (Sonnet 4.5) to normalize the chaotic report
+        const normalizedUpdates = await normalizeReport(
+          raw_report,
+          existingSummary,
+          recentEntries,
+          journalConfig
+        );
+
+        // 4. Merge updates with existing summary
+        const mergedUpdates = mergeSummaryUpdates(existingSummary, normalizedUpdates);
+
+        // 5. Track what fields were updated
+        const updatedFields: string[] = [];
+        for (const [key, value] of Object.entries(mergedUpdates)) {
+          if (value !== null && value !== undefined) {
+            updatedFields.push(key);
+          }
+        }
+
+        // 6. Save updated Entry 0
+        const latestCommitHash = recentEntries.length > 0 ? recentEntries[0].commit_hash : null;
+
+        upsertProjectSummary({
+          repository: existingSummary.repository,
+          git_url: existingSummary.git_url,
+          summary: mergedUpdates.summary || existingSummary.summary,
+          purpose: mergedUpdates.purpose || existingSummary.purpose,
+          architecture: mergedUpdates.architecture || existingSummary.architecture,
+          key_decisions: mergedUpdates.key_decisions || existingSummary.key_decisions,
+          technologies: mergedUpdates.technologies || existingSummary.technologies,
+          status: mergedUpdates.status || existingSummary.status,
+          linear_project_id: existingSummary.linear_project_id,
+          linear_issue_id: existingSummary.linear_issue_id,
+          // Living Project Summary fields
+          file_structure: mergedUpdates.file_structure || existingSummary.file_structure,
+          tech_stack: mergedUpdates.tech_stack || existingSummary.tech_stack,
+          frontend: mergedUpdates.frontend || existingSummary.frontend,
+          backend: mergedUpdates.backend || existingSummary.backend,
+          database_info: mergedUpdates.database_info || existingSummary.database_info,
+          services: mergedUpdates.services || existingSummary.services,
+          custom_tooling: mergedUpdates.custom_tooling || existingSummary.custom_tooling,
+          data_flow: mergedUpdates.data_flow || existingSummary.data_flow,
+          patterns: mergedUpdates.patterns || existingSummary.patterns,
+          commands: mergedUpdates.commands || existingSummary.commands,
+          extended_notes: mergedUpdates.extended_notes || existingSummary.extended_notes,
+          last_synced_entry: latestCommitHash,
+          entries_synced: (existingSummary.entries_synced || 0) + recentEntries.length,
+        });
+
+        // Auto-backup
+        autoBackup();
+
+        // 7. Return summary of what changed
+        const output = {
+          success: true,
+          repository,
+          updated_fields: updatedFields,
+          fields_count: updatedFields.length,
+          entries_analyzed: recentEntries.length,
+          last_synced_entry: latestCommitHash,
+          message: updatedFields.length > 0
+            ? `Entry 0 updated with ${updatedFields.length} field(s): ${updatedFields.join(', ')}`
+            : 'No fields were updated (existing content was better or no new info)',
+        };
+
+        const text = `✅ Entry 0 (Living Project Summary) processed for ${repository}\n\n${JSON.stringify(output, null, 2)}`;
+
+        return {
+          content: [
+            {
+              type: 'text' as const,
+              text: truncateOutput(text),
+            },
+          ],
+        };
+      } catch (error) {
+        throw toMcpError(error);
+      }
+    }
+  );
+
+  // Tool 9: List All Project Summaries
   server.registerTool(
     'journal_list_project_summaries',
     {
@@ -813,5 +973,5 @@ export function registerJournalTools(server: McpServer, journalConfig?: JournalC
     }
   );
 
-  logger.success('Journal tools registered (10 tools)');
+  logger.success('Journal tools registered (11 tools)');
 }
