@@ -324,14 +324,14 @@ const tools = {
   // ===== Image Generation Tool =====
   replicate_generate_image: {
     description:
-      "Generate an image using FLUX, Nano Banana Pro, or other models. Use this when the user wants to create images from text prompts.",
+      "Generate an image using Gemini 3 Pro Image (Nano Banana Pro), FLUX, or other models. Use this when the user wants to create images from text prompts. Gemini 3 Pro has 4K support and excellent text rendering.",
     inputSchema: z.object({
       prompt: z.string().min(1).describe("Text prompt describing the image to generate"),
       model: z
         .string()
         .optional()
-        .default("black-forest-labs/flux-2-pro")
-        .describe("Model identifier. Options: 'black-forest-labs/flux-2-pro' (default, best quality), 'black-forest-labs/flux-schnell' (fast), 'nano-banana-pro' (Google, great for text in images), 'gemini-2.0-flash-exp' (Google fast), 'imagen-3.0-generate-002' (Google Imagen)"),
+        .default("gemini-3-pro-image-preview")
+        .describe("Model identifier. Options: 'gemini-3-pro-image-preview' or 'nano-banana-pro' (default, 4K, best text rendering), 'gemini-2.5-flash-image-preview' (fast), 'black-forest-labs/flux-2-pro' (FLUX best quality), 'black-forest-labs/flux-schnell' (FLUX fast), 'imagen-3.0-generate-002' (Google Imagen)"),
       width: z.number().optional().default(1024).describe("Image width in pixels"),
       height: z.number().optional().default(1024).describe("Image height in pixels"),
       num_outputs: z.number().optional().default(1).describe("Number of images to generate"),
@@ -382,11 +382,13 @@ const tools = {
   },
 
   // ===== Repository Tools =====
-  repository_list_documents: {
-    description: "List documents from the Repository. Can filter by type (writing, prompt, note).",
+  repository_search_documents: {
+    description: "Search and query documents from the Repository. Can filter by type (writing, prompt, note), search by keywords, and control pagination.",
     inputSchema: z.object({
       type: z.enum(["writing", "prompt", "note"]).optional().describe("Filter by document type"),
+      search: z.string().optional().describe("Search in title and content"),
       limit: z.number().optional().default(50).describe("Maximum results"),
+      offset: z.number().optional().default(0).describe("Pagination offset"),
     }),
   },
   repository_get_document: {
@@ -631,7 +633,7 @@ function buildTools(toolsConfig: ToolsConfig): Record<string, any> {
   if (toolsConfig.repository) {
     Object.assign(enabledTools, {
       // Documents (writings, prompts, notes)
-      repository_list_documents: tools.repository_list_documents,
+      repository_search_documents: tools.repository_search_documents,
       repository_get_document: tools.repository_get_document,
       repository_create_document: tools.repository_create_document,
       repository_update_document: tools.repository_update_document,

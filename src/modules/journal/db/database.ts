@@ -196,6 +196,69 @@ const createSchema = (handle: Database.Database) => {
     }
   }
 
+  // Migration: Linear cache tables (005_linear_cache)
+  try {
+    handle.exec(`
+      CREATE TABLE IF NOT EXISTS linear_projects (
+        id TEXT PRIMARY KEY,
+        name TEXT NOT NULL,
+        description TEXT,
+        content TEXT,
+        state TEXT,
+        progress REAL,
+        target_date TEXT,
+        start_date TEXT,
+        url TEXT NOT NULL,
+        lead_id TEXT,
+        lead_name TEXT,
+        team_ids TEXT DEFAULT '[]',
+        member_ids TEXT DEFAULT '[]',
+        synced_at TEXT DEFAULT CURRENT_TIMESTAMP,
+        deleted_at TEXT,
+        is_deleted INTEGER DEFAULT 0,
+        created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+        updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+      );
+
+      CREATE TABLE IF NOT EXISTS linear_issues (
+        id TEXT PRIMARY KEY,
+        identifier TEXT NOT NULL,
+        title TEXT NOT NULL,
+        description TEXT,
+        url TEXT NOT NULL,
+        priority INTEGER,
+        state_id TEXT,
+        state_name TEXT,
+        assignee_id TEXT,
+        assignee_name TEXT,
+        team_id TEXT,
+        team_name TEXT,
+        team_key TEXT,
+        project_id TEXT,
+        project_name TEXT,
+        parent_id TEXT,
+        synced_at TEXT DEFAULT CURRENT_TIMESTAMP,
+        deleted_at TEXT,
+        is_deleted INTEGER DEFAULT 0,
+        created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+        updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_linear_projects_state ON linear_projects(state);
+      CREATE INDEX IF NOT EXISTS idx_linear_projects_deleted ON linear_projects(is_deleted);
+      CREATE INDEX IF NOT EXISTS idx_linear_projects_synced ON linear_projects(synced_at DESC);
+
+      CREATE INDEX IF NOT EXISTS idx_linear_issues_assignee ON linear_issues(assignee_id);
+      CREATE INDEX IF NOT EXISTS idx_linear_issues_project ON linear_issues(project_id);
+      CREATE INDEX IF NOT EXISTS idx_linear_issues_state ON linear_issues(state_name);
+      CREATE INDEX IF NOT EXISTS idx_linear_issues_deleted ON linear_issues(is_deleted);
+      CREATE INDEX IF NOT EXISTS idx_linear_issues_synced ON linear_issues(synced_at DESC);
+    `);
+    logger.info('Linear cache tables migrated');
+  } catch (error: any) {
+    logger.warn('Could not migrate Linear cache tables:', error.message);
+  }
+
   // Migration: Living Project Summary (Entry 0) - Enhanced fields for project_summaries
   const entry0Columns = [
     'file_structure TEXT',      // Git-style file tree (agent-provided)
@@ -1194,4 +1257,469 @@ export const restoreFromSQL = (sqlPath: string): void => {
     `Restored ${restoredEntries} entries, ${restoredSummaries} project summaries. ` +
     `Skipped ${skippedEntries} duplicate entries, ${skippedSummaries} duplicate summaries.`
   );
+};
+
+/**
+ * Unified Media Library - Query both entry_attachments and media_assets
+ */
+export interface MediaLibraryFilters {
+  repository?: string;
+  commit_hash?: string;
+  destination?: 'journal' | 'repository' | 'media' | 'portfolio' | 'all';
+  mime_type_prefix?: string;
+  tags?: string[];
+}
+
+export interface UnifiedMediaRow {
+  source: 'entry_attachments' | 'media_assets';
+  source_id: number;
+  filename: string;
+  mime_type: string;
+  file_size: number;
+  description: string | null;
+  commit_hash: string | null;
+  repository: string | null;
+  document_id: number | null;
+  destination: string | null;
+  alt: string | null;
+  prompt: string | null;
+  model: string | null;
+  tags: string | null;
+  width: number | null;
+  height: number | null;
+  drive_url: string | null;
+  supabase_url: string | null;
+  created_at: string;
+}
+
+export const getUnifiedMediaLibrary = (
+  filters: MediaLibraryFilters,
+  limit: number = 50,
+  offset: number = 0
+): { items: UnifiedMediaRow[]; total: number; sources: { entry_attachments: number; media_assets: number } } => {
+  if (!db) {
+    throw new Error('Database not initialized');
+  }
+
+  // Clamp limit
+  const safeLimit = Math.min(Math.max(1, limit), 100);
+
+  // Build WHERE clauses
+  const attachmentConditions: string[] = ['1=1'];
+  const mediaConditions: string[] = ['1=1'];
+  const params: any[] = [];
+
+  if (filters.commit_hash) {
+    attachmentConditions.push('ea.commit_hash = ?');
+    mediaConditions.push('ma.commit_hash = ?');
+    params.push(filters.commit_hash, filters.commit_hash);
+  }
+
+  if (filters.repository) {
+    // For attachments, join with journal_entries to get repository
+    attachmentConditions.push('je.repository = ?');
+    // For media_assets, need to join with journal_entries if commit_hash present
+    mediaConditions.push('(je2.repository = ? OR ma.commit_hash IS NULL)');
+    params.push(filters.repository, filters.repository);
+  }
+
+  if (filters.mime_type_prefix) {
+    attachmentConditions.push('ea.mime_type LIKE ?');
+    mediaConditions.push('ma.mime_type LIKE ?');
+    const prefix = filters.mime_type_prefix + '%';
+    params.push(prefix, prefix);
+  }
+
+  if (filters.destination && filters.destination !== 'all') {
+    // Only applies to media_assets
+    mediaConditions.push('ma.destination = ?');
+    params.push(filters.destination);
+  }
+
+  // Get counts for each source
+  const attachmentCountQuery = `
+    SELECT COUNT(*) as count
+    FROM entry_attachments ea
+    LEFT JOIN journal_entries je ON ea.commit_hash = je.commit_hash
+    WHERE ${attachmentConditions.join(' AND ')}
+  `;
+
+  const mediaCountQuery = `
+    SELECT COUNT(*) as count
+    FROM media_assets ma
+    LEFT JOIN journal_entries je2 ON ma.commit_hash = je2.commit_hash
+    WHERE ${mediaConditions.join(' AND ')}
+  `;
+
+  // Note: params order matters - attachment conditions first, then media conditions
+  const attachmentParams = params.filter((_, i) => i % 2 === 0 || !filters.commit_hash && !filters.repository && !filters.mime_type_prefix);
+  const mediaParams = params.filter((_, i) => i % 2 === 1 || !filters.commit_hash && !filters.repository && !filters.mime_type_prefix);
+
+  // Simplified approach: build params for each query separately
+  const buildParams = (forMedia: boolean): any[] => {
+    const p: any[] = [];
+    if (filters.commit_hash) p.push(filters.commit_hash);
+    if (filters.repository) p.push(filters.repository);
+    if (filters.mime_type_prefix) p.push(filters.mime_type_prefix + '%');
+    if (forMedia && filters.destination && filters.destination !== 'all') {
+      p.push(filters.destination);
+    }
+    return p;
+  };
+
+  const attachmentCount = (db.prepare(attachmentCountQuery).get(...buildParams(false)) as { count: number }).count;
+  const mediaCount = (db.prepare(mediaCountQuery).get(...buildParams(true)) as { count: number }).count;
+
+  // UNION query for actual data
+  const query = `
+    SELECT
+      'entry_attachments' as source,
+      ea.id as source_id,
+      ea.filename,
+      ea.mime_type,
+      ea.file_size,
+      ea.description,
+      ea.commit_hash,
+      je.repository,
+      NULL as document_id,
+      'journal' as destination,
+      NULL as alt,
+      NULL as prompt,
+      NULL as model,
+      NULL as tags,
+      NULL as width,
+      NULL as height,
+      NULL as drive_url,
+      NULL as supabase_url,
+      ea.uploaded_at as created_at
+    FROM entry_attachments ea
+    LEFT JOIN journal_entries je ON ea.commit_hash = je.commit_hash
+    WHERE ${attachmentConditions.join(' AND ')}
+
+    UNION ALL
+
+    SELECT
+      'media_assets' as source,
+      ma.id as source_id,
+      ma.filename,
+      ma.mime_type,
+      ma.file_size,
+      ma.description,
+      ma.commit_hash,
+      je2.repository,
+      ma.document_id,
+      ma.destination,
+      ma.alt,
+      ma.prompt,
+      ma.model,
+      ma.tags,
+      ma.width,
+      ma.height,
+      ma.drive_url,
+      ma.supabase_url,
+      ma.created_at
+    FROM media_assets ma
+    LEFT JOIN journal_entries je2 ON ma.commit_hash = je2.commit_hash
+    WHERE ${mediaConditions.join(' AND ')}
+
+    ORDER BY created_at DESC
+    LIMIT ? OFFSET ?
+  `;
+
+  const allParams = [...buildParams(false), ...buildParams(true), safeLimit, offset];
+  const items = db.prepare(query).all(...allParams) as UnifiedMediaRow[];
+
+  return {
+    items,
+    total: attachmentCount + mediaCount,
+    sources: {
+      entry_attachments: attachmentCount,
+      media_assets: mediaCount,
+    },
+  };
+};
+
+// ============================================
+// Linear Cache - Read Operations
+// These functions read from the locally cached Linear data
+// (synced from Linear API via Tartarus web app)
+// ============================================
+
+export interface LinearProject {
+  id: string;
+  name: string;
+  description: string | null;
+  content: string | null;
+  state: string | null;
+  progress: number | null;
+  target_date: string | null;
+  start_date: string | null;
+  url: string;
+  lead_id: string | null;
+  lead_name: string | null;
+  team_ids: string[];
+  member_ids: string[];
+  synced_at: string;
+  is_deleted: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface LinearIssue {
+  id: string;
+  identifier: string;
+  title: string;
+  description: string | null;
+  url: string;
+  priority: number | null;
+  state_id: string | null;
+  state_name: string | null;
+  assignee_id: string | null;
+  assignee_name: string | null;
+  team_id: string | null;
+  team_name: string | null;
+  team_key: string | null;
+  project_id: string | null;
+  project_name: string | null;
+  parent_id: string | null;
+  synced_at: string;
+  is_deleted: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+const mapLinearProjectRow = (row: any): LinearProject => ({
+  id: row.id,
+  name: row.name,
+  description: row.description,
+  content: row.content,
+  state: row.state,
+  progress: row.progress,
+  target_date: row.target_date,
+  start_date: row.start_date,
+  url: row.url,
+  lead_id: row.lead_id,
+  lead_name: row.lead_name,
+  team_ids: row.team_ids ? JSON.parse(row.team_ids) : [],
+  member_ids: row.member_ids ? JSON.parse(row.member_ids) : [],
+  synced_at: row.synced_at,
+  is_deleted: row.is_deleted === 1,
+  created_at: row.created_at,
+  updated_at: row.updated_at,
+});
+
+const mapLinearIssueRow = (row: any): LinearIssue => ({
+  id: row.id,
+  identifier: row.identifier,
+  title: row.title,
+  description: row.description,
+  url: row.url,
+  priority: row.priority,
+  state_id: row.state_id,
+  state_name: row.state_name,
+  assignee_id: row.assignee_id,
+  assignee_name: row.assignee_name,
+  team_id: row.team_id,
+  team_name: row.team_name,
+  team_key: row.team_key,
+  project_id: row.project_id,
+  project_name: row.project_name,
+  parent_id: row.parent_id,
+  synced_at: row.synced_at,
+  is_deleted: row.is_deleted === 1,
+  created_at: row.created_at,
+  updated_at: row.updated_at,
+});
+
+/**
+ * List cached Linear projects - HISTORICAL BUFFER
+ *
+ * By default shows ALL projects (including deleted) to preserve historical context.
+ * Linear cache is a BUFFER - we keep everything for rich context and history.
+ * Even if Linear deletes a project, our cache preserves it with is_deleted=true.
+ *
+ * Set includeDeleted=false to filter out deleted projects.
+ */
+export const listLinearProjects = (
+  options: {
+    includeDeleted?: boolean;
+    state?: string;
+    limit?: number;
+    offset?: number;
+  } = {}
+): { projects: LinearProject[]; total: number } => {
+  if (!db) {
+    throw new Error('Database not initialized');
+  }
+
+  const { includeDeleted = true, state, limit = 50, offset = 0 } = options;
+
+  const conditions: string[] = [];
+  const params: any[] = [];
+
+  if (!includeDeleted) {
+    conditions.push('is_deleted = 0');
+  }
+  if (state) {
+    conditions.push('state = ?');
+    params.push(state);
+  }
+
+  const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
+
+  const rows = db.prepare(`
+    SELECT * FROM linear_projects
+    ${whereClause}
+    ORDER BY is_deleted ASC, name ASC
+    LIMIT ? OFFSET ?
+  `).all(...params, limit, offset);
+
+  const totalRow = db.prepare(
+    `SELECT COUNT(*) as count FROM linear_projects ${whereClause}`
+  ).get(...params) as { count: number };
+
+  return {
+    projects: rows.map(mapLinearProjectRow),
+    total: totalRow.count,
+  };
+};
+
+/**
+ * Get a specific Linear project by ID
+ */
+export const getLinearProject = (id: string): LinearProject | null => {
+  if (!db) {
+    throw new Error('Database not initialized');
+  }
+
+  const row = db.prepare('SELECT * FROM linear_projects WHERE id = ?').get(id);
+  return row ? mapLinearProjectRow(row) : null;
+};
+
+/**
+ * List cached Linear issues - HISTORICAL BUFFER
+ *
+ * By default shows ALL issues (including deleted) to preserve historical context.
+ * Linear cache is a BUFFER - we keep everything for rich context and history.
+ * Even if Linear deletes an issue, our cache preserves it with is_deleted=true.
+ *
+ * Rich descriptions and context are preserved forever - great material for AI context.
+ */
+export const listLinearIssues = (
+  options: {
+    projectId?: string;
+    assigneeId?: string;
+    stateName?: string;
+    includeDeleted?: boolean;
+    limit?: number;
+    offset?: number;
+  } = {}
+): { issues: LinearIssue[]; total: number } => {
+  if (!db) {
+    throw new Error('Database not initialized');
+  }
+
+  const { projectId, assigneeId, stateName, includeDeleted = true, limit = 50, offset = 0 } = options;
+
+  const conditions: string[] = [];
+  const params: any[] = [];
+
+  if (!includeDeleted) {
+    conditions.push('is_deleted = 0');
+  }
+  if (projectId) {
+    conditions.push('project_id = ?');
+    params.push(projectId);
+  }
+  if (assigneeId) {
+    conditions.push('assignee_id = ?');
+    params.push(assigneeId);
+  }
+  if (stateName) {
+    conditions.push('state_name = ?');
+    params.push(stateName);
+  }
+
+  const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
+
+  const rows = db.prepare(`
+    SELECT * FROM linear_issues
+    ${whereClause}
+    ORDER BY is_deleted ASC, identifier ASC
+    LIMIT ? OFFSET ?
+  `).all(...params, limit, offset);
+
+  const totalRow = db.prepare(
+    `SELECT COUNT(*) as count FROM linear_issues ${whereClause}`
+  ).get(...params) as { count: number };
+
+  return {
+    issues: rows.map(mapLinearIssueRow),
+    total: totalRow.count,
+  };
+};
+
+/**
+ * Get a specific Linear issue by ID or identifier (e.g., "DEV-123")
+ */
+export const getLinearIssue = (idOrIdentifier: string): LinearIssue | null => {
+  if (!db) {
+    throw new Error('Database not initialized');
+  }
+
+  // Try by ID first, then by identifier
+  let row = db.prepare('SELECT * FROM linear_issues WHERE id = ?').get(idOrIdentifier);
+  if (!row) {
+    row = db.prepare('SELECT * FROM linear_issues WHERE identifier = ?').get(idOrIdentifier);
+  }
+  return row ? mapLinearIssueRow(row) : null;
+};
+
+/**
+ * Get Linear cache sync status - shows both active and archived counts
+ *
+ * The cache is a HISTORICAL BUFFER - we track everything including deleted items.
+ */
+export const getLinearCacheStats = (): {
+  projects: { active: number; deleted: number; total: number };
+  issues: { active: number; deleted: number; total: number };
+  lastProjectSync: string | null;
+  lastIssueSync: string | null;
+} => {
+  if (!db) {
+    throw new Error('Database not initialized');
+  }
+
+  const projectStats = db.prepare(`
+    SELECT
+      COUNT(*) as total,
+      SUM(CASE WHEN is_deleted = 0 THEN 1 ELSE 0 END) as active,
+      SUM(CASE WHEN is_deleted = 1 THEN 1 ELSE 0 END) as deleted,
+      MAX(synced_at) as last_sync
+    FROM linear_projects
+  `).get() as { total: number; active: number; deleted: number; last_sync: string | null };
+
+  const issueStats = db.prepare(`
+    SELECT
+      COUNT(*) as total,
+      SUM(CASE WHEN is_deleted = 0 THEN 1 ELSE 0 END) as active,
+      SUM(CASE WHEN is_deleted = 1 THEN 1 ELSE 0 END) as deleted,
+      MAX(synced_at) as last_sync
+    FROM linear_issues
+  `).get() as { total: number; active: number; deleted: number; last_sync: string | null };
+
+  return {
+    projects: {
+      active: projectStats.active || 0,
+      deleted: projectStats.deleted || 0,
+      total: projectStats.total || 0,
+    },
+    issues: {
+      active: issueStats.active || 0,
+      deleted: issueStats.deleted || 0,
+      total: issueStats.total || 0,
+    },
+    lastProjectSync: projectStats.last_sync,
+    lastIssueSync: issueStats.last_sync,
+  };
 };

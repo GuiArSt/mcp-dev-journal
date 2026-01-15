@@ -221,25 +221,23 @@ export const toolSpecs = {
   // NOTE: Old document_*, skill_*, experience_*, education_* tools removed
   // All repository tools now use repository_* prefix - see chat/route.ts
 
-  // ===== Replicate Image Generation =====
-      replicate_generate_image: {
+  // ===== Image Generation =====
+  replicate_generate_image: {
     description:
-      "Generate an image using image generation models. Supports FLUX.2 Pro (default) and other Replicate/Google models (FLUX, Stable Diffusion, etc.). Use this when the user wants to create images from text prompts.",
+      "Generate an image using Gemini 3 Pro Image (Nano Banana Pro), FLUX, or other models. Gemini 3 Pro has 4K support and excellent text rendering. Use this when the user wants to create images from text prompts.",
     inputSchema: z.object({
       prompt: z.string().min(1).describe("Text prompt describing the image to generate"),
       model: z
         .string()
         .optional()
-        .default("black-forest-labs/flux-2-pro")
+        .default("gemini-3-pro-image-preview")
         .describe(
           "Model identifier. " +
-          "FLUX.2 Pro (default): 'black-forest-labs/flux-2-pro'. Google Imagen 4: 'imagen-4.0-generate-001', 'imagen-4.0-fast-generate-001', 'imagen-4.0-ultra-generate-001'. " +
-          "FLUX.2 (best quality): 'black-forest-labs/flux-2-pro', 'black-forest-labs/flux-2-flex', 'black-forest-labs/flux-2-dev'. " +
-          "FLUX.1.1: 'black-forest-labs/flux-1.1-pro-ultra', 'black-forest-labs/flux-1.1-pro'. " +
-          "FLUX.1: 'black-forest-labs/flux-pro', 'black-forest-labs/flux-dev', 'black-forest-labs/flux-schnell' (fastest). " +
-          "Stable Diffusion 3.5: 'stability-ai/stable-diffusion-3.5-large', 'stability-ai/stable-diffusion-3.5-large-turbo', 'stability-ai/stable-diffusion-3.5-medium'. " +
-          "Stable Diffusion XL: 'stability-ai/sdxl', 'stability-ai/sdxl-base', 'stability-ai/stable-diffusion-xl-base-1.0'. " +
-          "Other: 'runwayml/stable-diffusion-v1-5', 'ai-forever/kandinsky-2.2', 'lucataco/sdxl-lightning'."
+          "Gemini 3 Pro Image (default): 'gemini-3-pro-image-preview' or 'nano-banana-pro' (4K, best text rendering). " +
+          "Gemini 2.5 Flash: 'gemini-2.5-flash-image-preview' (fast). " +
+          "FLUX.2: 'black-forest-labs/flux-2-pro' (best quality), 'black-forest-labs/flux-schnell' (fastest). " +
+          "Imagen: 'imagen-3.0-generate-002'. " +
+          "Stable Diffusion: 'stability-ai/stable-diffusion-3.5-large', 'stability-ai/sdxl'."
         ),
       width: z.number().optional().default(1024).describe("Image width in pixels"),
       height: z.number().optional().default(1024).describe("Image height in pixels"),

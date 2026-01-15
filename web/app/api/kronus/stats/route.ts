@@ -7,9 +7,10 @@ import {
   workExperience,
   education,
   journalEntries,
+  linearProjects,
+  linearIssues,
 } from "@/lib/db/drizzle";
 import { eq, desc } from "drizzle-orm";
-import { listProjects, listIssues } from "@/lib/linear/client";
 
 /**
  * Estimate token count from text (rough: ~4 chars per token for English)
@@ -104,41 +105,84 @@ export async function GET() {
       journalTokens += estimateTokens(content);
     }
 
-    // ===== LINEAR PROJECTS (from live API) =====
-    let linProjects: any[] = [];
-    let linearProjectsTokens = 0;
-    try {
-      const projectsResult = await listProjects({ showAll: false });
-      linProjects = projectsResult.projects || [];
+    // ===== LINEAR PROJECTS (from cached database) =====
+    const COMPLETED_PROJECT_STATES = ["completed", "canceled"];
 
-      for (const p of linProjects) {
+    let allLinProjects: any[] = [];
+    let activeLinProjects: any[] = [];
+    let completedLinProjects: any[] = [];
+    let linearProjectsTokensActive = 0;
+    let linearProjectsTokensAll = 0;
+
+    try {
+      // Fetch from cached database
+      allLinProjects = await db.select().from(linearProjects);
+
+      // Separate active vs completed
+      for (const p of allLinProjects) {
+        const isCompleted = COMPLETED_PROJECT_STATES.includes((p.state || "").toLowerCase());
+        if (isCompleted) {
+          completedLinProjects.push(p);
+        } else {
+          activeLinProjects.push(p);
+        }
+
+        // Calculate tokens
         const progress = p.progress ? `${Math.round(p.progress * 100)}%` : "N/A";
-        const content = `### ${p.name}\n**State:** ${p.state || "Unknown"} | **Progress:** ${progress} | **Target:** ${p.targetDate || "No target"}\n**Lead:** ${p.lead?.name || "Unassigned"}\n${p.description || ""}`;
-        linearProjectsTokens += estimateTokens(content);
+        const content = `### ${p.name}\n**State:** ${p.state || "Unknown"} | **Progress:** ${progress} | **Target:** ${p.targetDate || "No target"}\n**Lead:** ${p.leadName || "Unassigned"}\n${p.description || ""}`;
+        const tokens = estimateTokens(content);
+
+        linearProjectsTokensAll += tokens;
+        if (!isCompleted) {
+          linearProjectsTokensActive += tokens;
+        }
       }
     } catch {
-      // Linear API may not be configured - ignore
+      // Linear data may not be synced yet - ignore
     }
 
-    // ===== LINEAR ISSUES (from live API) =====
-    let linIssues: any[] = [];
-    let linearIssuesTokens = 0;
-    try {
-      const issuesResult = await listIssues({ showAll: false, limit: 100 });
-      linIssues = issuesResult.issues || [];
+    // ===== LINEAR ISSUES (from cached database) =====
+    const COMPLETED_ISSUE_STATES = ["done", "completed", "canceled", "cancelled", "closed", "archived"];
 
-      for (const issue of linIssues) {
-        const content = `- **${issue.identifier}**: ${issue.title}\n  Priority: ${issue.priority || "None"} | State: ${issue.state?.name || "Unknown"}\n  ${issue.description?.substring(0, 150) || ""}`;
-        linearIssuesTokens += estimateTokens(content);
+    let allLinIssues: any[] = [];
+    let activeLinIssues: any[] = [];
+    let completedLinIssues: any[] = [];
+    let linearIssuesTokensActive = 0;
+    let linearIssuesTokensAll = 0;
+
+    try {
+      // Fetch from cached database
+      allLinIssues = await db.select().from(linearIssues).where(eq(linearIssues.isDeleted, false));
+
+      // Separate active vs completed
+      for (const issue of allLinIssues) {
+        const stateName = (issue.stateName || "").toLowerCase();
+        const isCompleted = COMPLETED_ISSUE_STATES.some(s => stateName.includes(s));
+
+        if (isCompleted) {
+          completedLinIssues.push(issue);
+        } else {
+          activeLinIssues.push(issue);
+        }
+
+        // Calculate tokens
+        const content = `- **${issue.identifier}**: ${issue.title}\n  Priority: ${issue.priority || "None"} | State: ${issue.stateName || "Unknown"}\n  ${issue.description?.substring(0, 150) || ""}`;
+        const tokens = estimateTokens(content);
+
+        linearIssuesTokensAll += tokens;
+        if (!isCompleted) {
+          linearIssuesTokensActive += tokens;
+        }
       }
     } catch {
-      // Linear API may not be configured - ignore
+      // Linear data may not be synced yet - ignore
     }
 
     // Base overhead: Soul.xml + tool definitions + section headers
     const baseTokens = 6000;
 
-    const totalTokens =
+    // Calculate totals for both scenarios
+    const totalTokensActive =
       baseTokens +
       writingsTokens +
       projectsTokens +
@@ -146,8 +190,19 @@ export async function GET() {
       experienceTokens +
       educationTokens +
       journalTokens +
-      linearProjectsTokens +
-      linearIssuesTokens;
+      linearProjectsTokensActive +
+      linearIssuesTokensActive;
+
+    const totalTokensWithCompleted =
+      baseTokens +
+      writingsTokens +
+      projectsTokens +
+      skillsTokens +
+      experienceTokens +
+      educationTokens +
+      journalTokens +
+      linearProjectsTokensAll +
+      linearIssuesTokensAll;
 
     return NextResponse.json({
       writings: writings.length,
@@ -162,12 +217,32 @@ export async function GET() {
       educationTokens,
       journalEntries: entries.length,
       journalEntriesTokens: journalTokens,
-      linearProjects: linProjects.length,
-      linearProjectsTokens,
-      linearIssues: linIssues.length,
-      linearIssuesTokens,
+      // Enhanced Linear stats with breakdown
+      linear: {
+        projects: {
+          total: allLinProjects.length,
+          active: activeLinProjects.length,
+          completed: completedLinProjects.length,
+          tokensActive: linearProjectsTokensActive,
+          tokensAll: linearProjectsTokensAll,
+        },
+        issues: {
+          total: allLinIssues.length,
+          active: activeLinIssues.length,
+          completed: completedLinIssues.length,
+          tokensActive: linearIssuesTokensActive,
+          tokensAll: linearIssuesTokensAll,
+        },
+      },
+      // Legacy fields for backwards compatibility
+      linearProjects: allLinProjects.length,
+      linearProjectsTokens: linearProjectsTokensActive,
+      linearIssues: allLinIssues.length,
+      linearIssuesTokens: linearIssuesTokensActive,
       baseTokens,
-      totalTokens,
+      // Total tokens depends on include completed setting (client calculates)
+      totalTokens: totalTokensActive,
+      totalTokensWithCompleted,
     });
   } catch (error: any) {
     console.error("Failed to fetch Kronus stats:", error);

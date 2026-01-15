@@ -1,10 +1,17 @@
-import { generateObject } from "ai";
+/**
+ * AI Generate Tool - Dynamic Tool Definition Generator
+ *
+ * Uses AI SDK 6.0 generateText with Output.object() for structured outputs
+ * (generateObject is deprecated in AI SDK 6.0)
+ */
+
+import { generateText, Output } from "ai";
 import { anthropic } from "@ai-sdk/anthropic";
 import { z } from "zod";
 import { NextResponse } from "next/server";
 
 /**
- * Schema for tool generation output - enforced via generateObject
+ * Schema for tool generation output
  */
 const ToolDefinitionSchema = z.object({
   description: z
@@ -36,10 +43,10 @@ export async function POST(req: Request) {
     // Use Claude Haiku 4.5 for fast, cost-effective tool generation
     const model = anthropic("claude-haiku-4-5-20251001");
 
-    // Use generateObject for strict schema enforcement - no parsing needed
-    const { object: parsed } = await generateObject({
+    // AI SDK 6.0 pattern: generateText with Output.object() (generateObject is deprecated)
+    const result = await generateText({
       model,
-      schema: ToolDefinitionSchema,
+      output: Output.object({ schema: ToolDefinitionSchema }),
       system: `You are an expert at creating AI tool definitions with Zod schemas.
 Your task is to generate:
 1. A clear, concise tool description
@@ -63,6 +70,12 @@ ${examples ? `Examples of desired behavior:\n${examples}` : ""}
 
 Generate a complete tool definition with description, inputSchema, and promptTemplate.`,
     });
+
+    const parsed = result.output;
+
+    if (!parsed) {
+      throw new Error("AI generation returned no structured output");
+    }
 
     // Convert the schema strings to actual Zod schema
     const schemaFields: Record<string, z.ZodTypeAny> = {};

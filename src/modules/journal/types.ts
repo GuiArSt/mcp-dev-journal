@@ -198,3 +198,80 @@ export const AttachmentInputSchema = z.object({
 });
 
 export type AttachmentInput = z.infer<typeof AttachmentInputSchema>;
+
+/**
+ * Media Library - Unified access to entry_attachments + media_assets
+ */
+export const MediaLibraryInputSchema = z.object({
+  repository: z.string().optional().describe('Filter by repository name (searches commit_hash links)'),
+  commit_hash: z.string().min(7).optional().describe('Filter by specific commit hash'),
+  destination: z.enum(['journal', 'repository', 'media', 'portfolio', 'all']).optional().default('all')
+    .describe('Filter by asset destination/category'),
+  mime_type_prefix: z.string().optional().describe('Filter by MIME type prefix (e.g., "image/", "application/pdf")'),
+  tags: z.array(z.string()).optional().describe('Filter by tags (media_assets only)'),
+  limit: z.number().optional().default(50).describe('Max items to return (default: 50, max: 100)'),
+  offset: z.number().optional().default(0).describe('Pagination offset'),
+  include_metadata: z.boolean().optional().default(true).describe('Include full metadata (alt, prompt, model, dimensions)'),
+});
+
+export type MediaLibraryInput = z.infer<typeof MediaLibraryInputSchema>;
+
+export interface UnifiedMediaItem {
+  source: 'entry_attachments' | 'media_assets';
+  source_id: number;
+  filename: string;
+  mime_type: string;
+  file_size: number;
+  description: string | null;
+  commit_hash: string | null;
+  repository: string | null;
+  document_id: number | null;
+  destination: string | null;
+  // Extended metadata (from media_assets)
+  alt: string | null;
+  prompt: string | null;
+  model: string | null;
+  tags: string | null; // JSON array
+  width: number | null;
+  height: number | null;
+  drive_url: string | null;
+  supabase_url: string | null;
+  created_at: string;
+}
+
+export interface MediaLibraryResponse {
+  total: number;
+  showing: string;
+  has_more: boolean;
+  sources: {
+    entry_attachments: number;
+    media_assets: number;
+  };
+  base_url: string | null;
+  download_enabled: boolean;
+  items: Array<{
+    id: string; // "attachment:123" or "media:456"
+    source: 'entry_attachments' | 'media_assets';
+    source_id: number;
+    filename: string;
+    mime_type: string;
+    file_size: number;
+    description: string | null;
+    download_url: string | null;
+    commit_hash: string | null;
+    repository: string | null;
+    document_id: number | null;
+    destination: string | null;
+    metadata?: {
+      alt?: string;
+      prompt?: string;
+      model?: string;
+      tags?: string[];
+      width?: number;
+      height?: number;
+      drive_url?: string;
+      supabase_url?: string;
+    };
+    created_at: string;
+  }>;
+}

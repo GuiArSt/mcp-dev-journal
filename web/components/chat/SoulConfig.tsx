@@ -47,6 +47,15 @@ export interface SoulConfigState {
   linearIncludeCompleted: boolean;
 }
 
+// Linear breakdown stats
+interface LinearBreakdown {
+  total: number;
+  active: number;
+  completed: number;
+  tokensActive: number;
+  tokensAll: number;
+}
+
 // Stats returned from API with actual token counts
 interface SectionStats {
   writings: number;
@@ -61,12 +70,19 @@ interface SectionStats {
   educationTokens: number;
   journalEntries: number;
   journalEntriesTokens: number;
+  // Legacy fields for backwards compatibility
   linearProjects: number;
   linearProjectsTokens: number;
   linearIssues: number;
   linearIssuesTokens: number;
+  // Enhanced Linear breakdown
+  linear?: {
+    projects: LinearBreakdown;
+    issues: LinearBreakdown;
+  };
   baseTokens: number;
   totalTokens: number;
+  totalTokensWithCompleted?: number;
 }
 
 interface SoulConfigProps {
@@ -103,8 +119,13 @@ const FALLBACK_STATS: SectionStats = {
   linearProjectsTokens: 0,
   linearIssues: 0,
   linearIssuesTokens: 0,
+  linear: {
+    projects: { total: 0, active: 0, completed: 0, tokensActive: 0, tokensAll: 0 },
+    issues: { total: 0, active: 0, completed: 0, tokensActive: 0, tokensAll: 0 },
+  },
   baseTokens: 6000,
   totalTokens: 78000,
+  totalTokensWithCompleted: 78000,
 };
 
 // Section metadata with icons
@@ -153,6 +174,15 @@ export function SoulConfig({ config, onChange }: SoulConfigProps) {
   }, [open]);
 
   const currentStats = stats || FALLBACK_STATS;
+
+  // Get Linear tokens based on includeCompleted toggle
+  const linearProjectTokens = config.linearIncludeCompleted
+    ? (currentStats.linear?.projects.tokensAll ?? currentStats.linearProjectsTokens ?? 0)
+    : (currentStats.linear?.projects.tokensActive ?? currentStats.linearProjectsTokens ?? 0);
+  const linearIssueTokens = config.linearIncludeCompleted
+    ? (currentStats.linear?.issues.tokensAll ?? currentStats.linearIssuesTokens ?? 0)
+    : (currentStats.linear?.issues.tokensActive ?? currentStats.linearIssuesTokens ?? 0);
+
   const estimatedTokens =
     currentStats.baseTokens +
     (config.writings ? currentStats.writingsTokens : 0) +
@@ -161,8 +191,8 @@ export function SoulConfig({ config, onChange }: SoulConfigProps) {
     (config.workExperience ? currentStats.workExperienceTokens : 0) +
     (config.education ? currentStats.educationTokens : 0) +
     (config.journalEntries ? currentStats.journalEntriesTokens : 0) +
-    (config.linearProjects ? (currentStats.linearProjectsTokens || 0) : 0) +
-    (config.linearIssues ? (currentStats.linearIssuesTokens || 0) : 0);
+    (config.linearProjects ? linearProjectTokens : 0) +
+    (config.linearIssues ? linearIssueTokens : 0);
 
   const contextPercentage = (estimatedTokens / MODEL_CONTEXT_LIMIT) * 100;
   const isHighContext = contextPercentage > CONTEXT_WARNING_THRESHOLD * 100;
@@ -351,10 +381,21 @@ export function SoulConfig({ config, onChange }: SoulConfigProps) {
                 </button>
               </div>
               <div className="space-y-1">
-                {LINEAR_SECTIONS.map(({ key, label, icon: Icon, statsKey, tokensKey }) => {
+                {LINEAR_SECTIONS.map(({ key, label, icon: Icon }) => {
                   const enabled = config[key as keyof SoulConfigState] as boolean;
-                  const count = (currentStats[statsKey as keyof SectionStats] as number) ?? 0;
-                  const tokens = (currentStats[tokensKey as keyof SectionStats] as number) ?? 0;
+                  // Get breakdown from enhanced stats
+                  const breakdown = key === "linearProjects"
+                    ? currentStats.linear?.projects
+                    : currentStats.linear?.issues;
+
+                  // Calculate count and tokens based on includeCompleted toggle
+                  const activeCount = breakdown?.active ?? 0;
+                  const completedCount = breakdown?.completed ?? 0;
+                  const totalCount = breakdown?.total ?? (currentStats[key as keyof SectionStats] as number) ?? 0;
+                  const displayCount = config.linearIncludeCompleted ? totalCount : activeCount;
+                  const tokens = config.linearIncludeCompleted
+                    ? (breakdown?.tokensAll ?? 0)
+                    : (breakdown?.tokensActive ?? 0);
 
                   return (
                     <div
@@ -384,8 +425,16 @@ export function SoulConfig({ config, onChange }: SoulConfigProps) {
                           color: TARTARUS.textDim,
                           backgroundColor: TARTARUS.surface,
                         }}
+                        title={breakdown && !config.linearIncludeCompleted && completedCount > 0
+                          ? `${completedCount} completed excluded`
+                          : undefined}
                       >
-                        {loading ? "..." : count}
+                        {loading ? "..." : displayCount}
+                        {!loading && !config.linearIncludeCompleted && completedCount > 0 && (
+                          <span style={{ color: TARTARUS.gold, marginLeft: 4 }}>
+                            +{completedCount}
+                          </span>
+                        )}
                       </span>
                       <span
                         className="text-[11px] font-mono w-12 text-right"

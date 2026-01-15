@@ -1,6 +1,13 @@
+/**
+ * Atropos Memory Edit - AI-Mediated Memory Management
+ *
+ * Uses AI SDK 6.0 generateText with Output.object() for structured outputs
+ * (generateObject is deprecated in AI SDK 6.0)
+ */
+
 import { NextRequest, NextResponse } from "next/server";
 import { anthropic } from "@ai-sdk/anthropic";
-import { generateObject } from "ai";
+import { generateText, Output } from "ai";
 import { z } from "zod";
 import { getDatabase } from "@/lib/db";
 
@@ -131,13 +138,19 @@ The user wants to modify your memory. Interpret their request and determine:
 
 Be helpful and interpret the user's intent. If they say "remember that I prefer..." add a new memory. If they reference a specific memory, use its index. If they want to protect a word, add it to the dictionary.`;
 
-    // Call Atropos to interpret the request
-    const { object: response } = await generateObject({
+    // AI SDK 6.0 pattern: generateText with Output.object() (generateObject is deprecated)
+    const result = await generateText({
       model: anthropic("claude-haiku-4-5-20251001"),
-      schema: MemoryEditResponseSchema,
+      output: Output.object({ schema: MemoryEditResponseSchema }),
       system: systemPrompt,
       prompt: userMessage,
     });
+
+    const response = result.output;
+
+    if (!response) {
+      throw new Error("AI generation returned no structured output");
+    }
 
     // Apply the action to normalized tables
     let actionTaken = response.action;

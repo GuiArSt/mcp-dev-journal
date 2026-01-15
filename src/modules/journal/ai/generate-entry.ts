@@ -1,7 +1,16 @@
+/**
+ * Generate Journal Entry
+ *
+ * Uses AI SDK 6.0 generateText with Output.object() for structured outputs
+ * (generateObject is deprecated in AI SDK 6.0)
+ * Model: Claude Haiku 4.5 / GPT 5 / Gemini 3 Flash - based on config
+ * Temperature: 0.7 - Creative analysis with schema-enforced structure
+ */
+
 import { anthropic } from '@ai-sdk/anthropic';
 import { openai } from '@ai-sdk/openai';
 import { google } from '@ai-sdk/google';
-import { generateObject } from 'ai';
+import { generateText, Output } from 'ai';
 import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
@@ -240,13 +249,19 @@ Respond with valid JSON matching the schema.`;
 
     logger.debug(`Generating journal entry for ${input.commit_hash} using ${modelName}`);
 
-    // AI SDK 6.0 pattern: generateObject with Zod schema
-    const { object } = await generateObject({
+    // AI SDK 6.0 pattern: generateText with Output.object() (generateObject is deprecated)
+    const result = await generateText({
       model,
-      schema: AIOutputSchema,
+      output: Output.object({ schema: AIOutputSchema }),
       prompt: systemPrompt,
       temperature: 0.7,
     });
+
+    const object = result.output;
+
+    if (!object) {
+      throw new Error('AI generation returned no structured output');
+    }
 
     logger.success(`Generated journal entry for ${input.commit_hash} using ${modelName}`);
 

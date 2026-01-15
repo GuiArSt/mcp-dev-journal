@@ -51,7 +51,7 @@ export class UnifiedMCPServer {
       logger.warn('No journal configuration found. Set JOURNAL_DB_PATH or ANTHROPIC_API_KEY.');
     }
 
-    logger.success('Developer Journal MCP Server initialized (11 tools, 2 resources, 3 prompts)');
+    logger.success('Developer Journal MCP Server initialized (12 tools, 18 resources, 3 prompts)');
   }
 
   async connect() {

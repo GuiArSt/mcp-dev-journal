@@ -437,6 +437,65 @@ export const portfolioProjects = sqliteTable("portfolio_projects", {
 });
 
 // ============================================================================
+// LINEAR INTEGRATION - Cached Data
+// ============================================================================
+
+/**
+ * Linear Projects - cached locally for historical preservation
+ * Stores full project data from Linear API, preserved even if deleted in Linear
+ */
+export const linearProjects = sqliteTable("linear_projects", {
+  id: text("id").primaryKey(), // Linear project ID
+  name: text("name").notNull(),
+  description: text("description"), // Plain text description
+  content: text("content"), // Rich text content (markdown/Prosemirror)
+  state: text("state"), // e.g., "started", "planned", "completed", "canceled"
+  progress: real("progress"), // 0.0 to 1.0
+  targetDate: text("target_date"), // ISO 8601 date
+  startDate: text("start_date"), // ISO 8601 date
+  url: text("url").notNull(), // Linear project URL
+  leadId: text("lead_id"), // User ID of project lead
+  leadName: text("lead_name"), // Name of project lead (cached for context)
+  teamIds: text("team_ids").default("[]"), // JSON array of team IDs
+  memberIds: text("member_ids").default("[]"), // JSON array of member user IDs
+  // Metadata
+  syncedAt: text("synced_at").default("CURRENT_TIMESTAMP"), // Last sync time
+  deletedAt: text("deleted_at"), // If deleted in Linear, when we detected it
+  isDeleted: integer("is_deleted", { mode: "boolean" }).default(false), // Soft delete flag
+  createdAt: text("created_at").default("CURRENT_TIMESTAMP"), // When we first cached it
+  updatedAt: text("updated_at").default("CURRENT_TIMESTAMP"),
+});
+
+/**
+ * Linear Issues - cached locally for historical preservation
+ * Stores full issue data from Linear API, preserved even if deleted in Linear
+ */
+export const linearIssues = sqliteTable("linear_issues", {
+  id: text("id").primaryKey(), // Linear issue ID
+  identifier: text("identifier").notNull(), // e.g., "PROJ-123"
+  title: text("title").notNull(),
+  description: text("description"), // Markdown description
+  url: text("url").notNull(), // Linear issue URL
+  priority: integer("priority"), // 0=None, 1=Urgent, 2=High, 3=Medium, 4=Low
+  stateId: text("state_id"), // Workflow state ID
+  stateName: text("state_name"), // Workflow state name (cached for context)
+  assigneeId: text("assignee_id"), // User ID of assignee
+  assigneeName: text("assignee_name"), // Name of assignee (cached for context)
+  teamId: text("team_id"), // Team ID
+  teamName: text("team_name"), // Team name (cached for context)
+  teamKey: text("team_key"), // Team key (e.g., "PROJ")
+  projectId: text("project_id"), // Project ID if linked
+  projectName: text("project_name"), // Project name (cached for context)
+  parentId: text("parent_id"), // Parent issue ID for sub-issues
+  // Metadata
+  syncedAt: text("synced_at").default("CURRENT_TIMESTAMP"), // Last sync time
+  deletedAt: text("deleted_at"), // If deleted in Linear, when we detected it
+  isDeleted: integer("is_deleted", { mode: "boolean" }).default(false), // Soft delete flag
+  createdAt: text("created_at").default("CURRENT_TIMESTAMP"), // When we first cached it
+  updatedAt: text("updated_at").default("CURRENT_TIMESTAMP"),
+});
+
+// ============================================================================
 // TYPE EXPORTS
 // ============================================================================
 
@@ -502,3 +561,9 @@ export type NewHermesUserStats = typeof hermesStats.$inferInsert;
 
 export type PortfolioProject = typeof portfolioProjects.$inferSelect;
 export type NewPortfolioProject = typeof portfolioProjects.$inferInsert;
+
+export type LinearProject = typeof linearProjects.$inferSelect;
+export type NewLinearProject = typeof linearProjects.$inferInsert;
+
+export type LinearIssue = typeof linearIssues.$inferSelect;
+export type NewLinearIssue = typeof linearIssues.$inferInsert;

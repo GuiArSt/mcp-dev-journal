@@ -28,6 +28,7 @@ export interface JournalConfig {
   aiProvider: 'anthropic' | 'openai' | 'google';
   aiApiKey: string;
   tartarusUrl?: string; // Base URL for Tartarus web app (for attachment download URLs)
+  mcpApiKey?: string; // API key for MCP to access Tartarus repository endpoints
 }
 
 export interface UnifiedConfig {

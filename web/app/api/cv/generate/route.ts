@@ -1,6 +1,13 @@
+/**
+ * CV Generate - Resume Entry AI Generation
+ *
+ * Uses AI SDK 6.0 generateText with Output.object() for structured outputs
+ * (generateObject is deprecated in AI SDK 6.0)
+ */
+
 import { NextRequest, NextResponse } from "next/server";
 import { anthropic } from "@ai-sdk/anthropic";
-import { generateObject } from "ai";
+import { generateText, Output } from "ai";
 import { z } from "zod";
 
 const SkillSchema = z.object({
@@ -107,17 +114,24 @@ Description: ${input.description}
 Create a complete education entry with focus areas and achievements extracted from the description.`;
     }
 
-    const result = await generateObject({
+    // AI SDK 6.0 pattern: generateText with Output.object() (generateObject is deprecated)
+    const result = await generateText({
       model,
-      schema,
+      output: Output.object({ schema }),
       system: systemPrompt,
       prompt,
       temperature: 0.7,
     });
 
+    const object = result.output;
+
+    if (!object) {
+      throw new Error("AI generation returned no structured output");
+    }
+
     return NextResponse.json({
       success: true,
-      data: result.object,
+      data: object,
     });
   } catch (error: any) {
     console.error("CV generation error:", error);

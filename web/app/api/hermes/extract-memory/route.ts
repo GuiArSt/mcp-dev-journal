@@ -1,6 +1,13 @@
+/**
+ * Hermes Extract Memory - Learn from User Translation Edits
+ *
+ * Uses AI SDK 6.0 generateText with Output.object() for structured outputs
+ * (generateObject is deprecated in AI SDK 6.0)
+ */
+
 import { NextRequest, NextResponse } from "next/server";
 import { anthropic } from "@ai-sdk/anthropic";
-import { generateObject } from "ai";
+import { generateText, Output } from "ai";
 import {
   MemoryExtractionSchema,
   buildExtractionUserPrompt,
@@ -59,13 +66,19 @@ export async function POST(request: NextRequest) {
       targetLanguage || "unknown"
     );
 
-    // Call Haiku 4.5 with structured output
-    const { object: extraction } = await generateObject({
+    // AI SDK 6.0 pattern: generateText with Output.object() (generateObject is deprecated)
+    const result = await generateText({
       model: anthropic("claude-haiku-4-5-20251001"),
-      schema: MemoryExtractionSchema,
+      output: Output.object({ schema: MemoryExtractionSchema }),
       system: EXTRACTION_SYSTEM_PROMPT,
       prompt: userPrompt,
     });
+
+    const extraction = result.output;
+
+    if (!extraction) {
+      throw new Error("AI generation returned no structured output");
+    }
 
     return NextResponse.json({
       mainChanges: extraction.mainChanges,

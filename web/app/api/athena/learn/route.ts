@@ -1,6 +1,13 @@
+/**
+ * Athena Learn - AI-Powered Learning Generation
+ *
+ * Uses AI SDK 6.0 generateText with Output.object() for structured outputs
+ * (generateObject is deprecated in AI SDK 6.0)
+ */
+
 import { NextRequest, NextResponse } from "next/server";
 import { anthropic } from "@ai-sdk/anthropic";
-import { generateObject } from "ai";
+import { generateText, Output } from "ai";
 import { z } from "zod";
 import { getDatabase } from "@/lib/db";
 
@@ -165,15 +172,21 @@ Based on these journal entries, create:
 Be practical and concrete - use the actual code patterns and decisions from the journal.
 The learner wrote this code - help them truly understand it.`;
 
-    // Generate learning content
-    const { object: learning } = await generateObject({
+    // AI SDK 6.0 pattern: generateText with Output.object() (generateObject is deprecated)
+    const result = await generateText({
       model: anthropic("claude-sonnet-4-20250514"),
-      schema: AthenaLearningSchema,
+      output: Output.object({ schema: AthenaLearningSchema }),
       system: systemPrompt,
       prompt: `Create a comprehensive learning module based on the journal entries provided.
 Focus on the most important concepts that a vibe coder should understand deeply.
 Make the quiz questions practical - testing real understanding, not trivia.`,
     });
+
+    const learning = result.output;
+
+    if (!learning) {
+      throw new Error("AI generation returned no structured output");
+    }
 
     return NextResponse.json({
       success: true,

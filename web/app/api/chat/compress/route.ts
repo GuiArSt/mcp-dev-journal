@@ -1,5 +1,12 @@
+/**
+ * Chat Compress - Conversation Summarization
+ *
+ * Uses AI SDK 6.0 generateText with Output.object() for structured outputs
+ * (generateObject is deprecated in AI SDK 6.0)
+ */
+
 import { NextRequest, NextResponse } from "next/server";
-import { generateObject } from "ai";
+import { generateText, Output } from "ai";
 import { anthropic } from "@ai-sdk/anthropic";
 import { getDatabase } from "@/lib/db";
 import { withErrorHandler } from "@/lib/api-handler";
@@ -10,7 +17,7 @@ import { NotFoundError } from "@/lib/errors";
  * POST /api/chat/compress
  *
  * Compresses a conversation using Haiku 4.5 to generate a structured summary.
- * Uses AI SDK's generateObject with Zod schema for type-safe structured output.
+ * Uses AI SDK 6.0 generateText with Output.object() for type-safe structured output.
  *
  * Flow:
  * 1. Load conversation messages from DB
@@ -81,12 +88,19 @@ Analyze the conversation and extract:
 
 Be concise but thorough. Focus on information that would be useful for continuing this conversation later.`;
 
-  const { object: summary } = await generateObject({
+  // AI SDK 6.0 pattern: generateText with Output.object() (generateObject is deprecated)
+  const result = await generateText({
     model,
-    schema: compressionSummarySchema,
+    output: Output.object({ schema: compressionSummarySchema }),
     system: systemPrompt,
     prompt: `Summarize this conversation:\n\n${formattedMessages}`,
   });
+
+  const summary = result.output;
+
+  if (!summary) {
+    throw new Error("AI generation returned no structured output");
+  }
 
   // Add metadata
   const compressionSummary = {

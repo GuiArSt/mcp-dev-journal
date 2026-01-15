@@ -60,6 +60,7 @@ const envSchema = z.object({
   LOG_LEVEL: z.enum(['debug', 'info', 'warn', 'error']).optional(),
   SOUL_XML_PATH: z.string().optional(), // Path to Soul.xml (default: Soul.xml in project root)
   TARTARUS_URL: z.string().optional(), // Base URL for Tartarus web app (e.g., http://localhost:3001)
+  MCP_API_KEY: z.string().optional(), // API key for MCP to access Tartarus repository endpoints
 });
 
 /**
@@ -108,6 +109,7 @@ export function loadConfig(): UnifiedConfig {
       aiProvider,
       aiApiKey,
       tartarusUrl: env.TARTARUS_URL,
+      mcpApiKey: env.MCP_API_KEY,
     };
     logger.info(`Journal module enabled (AI provider: ${aiProvider})${env.TARTARUS_URL ? `, Tartarus: ${env.TARTARUS_URL}` : ''}`);
   }

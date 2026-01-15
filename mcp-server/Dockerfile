@@ -27,7 +27,7 @@ COPY --from=deps /app/node_modules ./node_modules
 COPY package.json package-lock.json tsconfig.json ./
 COPY src ./src
 
-# Build TypeScript
+# Build TypeScript with esbuild (fast, single bundle)
 RUN npm run build
 
 # ============================================
@@ -50,7 +50,7 @@ COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/package.json ./
 
-# Copy HTTP server wrapper
+# Copy HTTP server wrapper (standalone, doesn't import from dist)
 COPY mcp-server/http-server.js ./http-server.js
 
 # Create data directory

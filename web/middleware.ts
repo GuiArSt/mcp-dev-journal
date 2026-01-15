@@ -9,8 +9,20 @@ export function middleware(request: NextRequest) {
   const isMcpResources = request.nextUrl.pathname.startsWith("/api/mcp");
   const isAttachmentDownload = request.nextUrl.pathname.match(/^\/api\/attachments\/\d+\/raw$/);
 
-  // Allow auth API, health check, MCP resources, and attachment downloads
-  if (isApiAuth || isHealthCheck || isMcpResources || isAttachmentDownload) {
+  // MCP server access - check for MCP API key header
+  const mcpApiKey = request.headers.get("x-mcp-api-key");
+  const isMcpRequest = mcpApiKey === process.env.MCP_API_KEY && process.env.MCP_API_KEY;
+
+  // Repository endpoints accessible via MCP API key
+  const isMcpRepositoryAccess = isMcpRequest && (
+    request.nextUrl.pathname.startsWith("/api/documents") ||
+    request.nextUrl.pathname.startsWith("/api/cv/") ||
+    request.nextUrl.pathname.startsWith("/api/portfolio-projects") ||
+    request.nextUrl.pathname.startsWith("/api/media")
+  );
+
+  // Allow auth API, health check, MCP resources, attachment downloads, and MCP repository access
+  if (isApiAuth || isHealthCheck || isMcpResources || isAttachmentDownload || isMcpRepositoryAccess) {
     return NextResponse.next();
   }
 

@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { getDatabase } from "@/lib/db";
 import { withErrorHandler } from "@/lib/api-handler";
 
@@ -61,5 +61,60 @@ export const GET = withErrorHandler(async () => {
   return NextResponse.json({
     summaries,
     total: summaries.length,
+  });
+});
+
+/**
+ * DELETE /api/project-summaries?repository=xxx
+ *
+ * Delete a project summary and optionally its journal entries.
+ * Query params:
+ * - repository (required): Repository name
+ * - deleteEntries (optional): If "true", also delete all journal entries for this repo
+ */
+export const DELETE = withErrorHandler(async (request: NextRequest) => {
+  const { searchParams } = new URL(request.url);
+  const repository = searchParams.get("repository");
+  const deleteEntries = searchParams.get("deleteEntries") === "true";
+
+  if (!repository) {
+    return NextResponse.json({ error: "Repository is required" }, { status: 400 });
+  }
+
+  const db = getDatabase();
+
+  // Check if project exists
+  const existing = db
+    .prepare(`SELECT id FROM project_summaries WHERE repository = ?`)
+    .get(repository);
+
+  // Count entries that will be affected
+  const entryCount = db
+    .prepare(`SELECT COUNT(*) as count FROM journal_entries WHERE repository = ?`)
+    .get(repository) as { count: number };
+
+  // Delete attachments for entries in this repo (if deleting entries)
+  if (deleteEntries && entryCount.count > 0) {
+    db.prepare(`
+      DELETE FROM attachments
+      WHERE commit_hash IN (SELECT commit_hash FROM journal_entries WHERE repository = ?)
+    `).run(repository);
+
+    // Delete journal entries
+    db.prepare(`DELETE FROM journal_entries WHERE repository = ?`).run(repository);
+  }
+
+  // Delete project summary (if exists)
+  if (existing) {
+    db.prepare(`DELETE FROM project_summaries WHERE repository = ?`).run(repository);
+  }
+
+  return NextResponse.json({
+    success: true,
+    message: deleteEntries
+      ? `Deleted project "${repository}" and ${entryCount.count} journal entries`
+      : `Deleted project summary for "${repository}" (${entryCount.count} entries preserved)`,
+    entries_deleted: deleteEntries ? entryCount.count : 0,
+    summary_deleted: !!existing,
   });
 });

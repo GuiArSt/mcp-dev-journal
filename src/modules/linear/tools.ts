@@ -6,16 +6,21 @@ import { logger } from '../../shared/logger.js';
 
 /**
  * Register Linear tools with the MCP server
+ *
+ * IMPORTANT: These tools hit the LIVE Linear API and are for MANAGEMENT operations.
+ * - Use these to CREATE, UPDATE, and MANAGE issues/projects in real-time
+ * - For READ-ONLY access to historical data, use the linear:// resources instead
+ * - The linear:// resources read from the local cache (preserves deleted items)
  */
 export function registerLinearTools(server: McpServer, client: LinearClient, defaultUserId?: string) {
-  logger.info('Registering Linear tools...');
+  logger.info('Registering Linear tools (live API - management operations)...');
 
   // Tool 1: Get Viewer (Current User Info)
   server.registerTool(
     'linear_get_viewer',
     {
       title: 'Get Current User Info',
-      description: 'Get your user info including ID, email, all teams and projects you have access to. Use this to get team IDs and project IDs for filtering issues.',
+      description: '[LIVE API] Get your user info including ID, email, all teams and projects you have access to. Use this to get team IDs and project IDs for creating/updating issues.',
       inputSchema: {},
     },
     async () => {
@@ -40,7 +45,7 @@ export function registerLinearTools(server: McpServer, client: LinearClient, def
     'linear_list_issues',
     {
       title: 'List Linear Issues',
-      description: `List issues in Linear with optional filters for assignee, state, team, project, or text search. By default shows issues assigned to you${defaultUserId ? ` (user ID: ${defaultUserId})` : ' (set LINEAR_USER_ID env var to configure)'}.`,
+      description: `[LIVE API] Fetch current issues from Linear API. For reading historical data (including deleted), use linear://issues resource instead. By default shows issues assigned to you${defaultUserId ? ` (user ID: ${defaultUserId})` : ' (set LINEAR_USER_ID env var to configure)'}.`,
       inputSchema: {
         assigneeId: z.string().optional().describe(`Filter by assignee user ID${defaultUserId ? ` (defaults to your user ID: ${defaultUserId})` : ' (set LINEAR_USER_ID env var for default)'}`),
         stateId: z.string().optional().describe('Filter by workflow state ID'),
@@ -88,7 +93,7 @@ export function registerLinearTools(server: McpServer, client: LinearClient, def
     'linear_create_issue',
     {
       title: 'Create Linear Issue',
-      description: 'Create a new issue in Linear',
+      description: '[LIVE API - WRITE] Create a new issue in Linear. This modifies Linear directly.',
       inputSchema: {
         title: z.string().min(1).describe('Issue title'),
         description: z.string().optional().describe('Issue description (markdown supported)'),
@@ -134,7 +139,7 @@ export function registerLinearTools(server: McpServer, client: LinearClient, def
     'linear_update_issue',
     {
       title: 'Update Linear Issue',
-      description: 'Update an existing Linear issue',
+      description: '[LIVE API - WRITE] Update an existing Linear issue. This modifies Linear directly.',
       inputSchema: {
         issueId: z.string().describe('Issue ID to update'),
         title: z.string().optional().describe('New title'),
@@ -178,7 +183,7 @@ export function registerLinearTools(server: McpServer, client: LinearClient, def
     'linear_list_projects',
     {
       title: 'List Linear Projects',
-      description: 'List all projects in your Linear workspace. Optionally filter by team ID.',
+      description: '[LIVE API] Fetch current projects from Linear API. For reading historical data (including deleted), use linear://projects resource instead.',
       inputSchema: {
         teamId: z.string().optional().describe('Filter projects by team ID'),
       },
@@ -205,7 +210,7 @@ export function registerLinearTools(server: McpServer, client: LinearClient, def
     'linear_create_project',
     {
       title: 'Create Linear Project',
-      description: 'Create a new project in Linear. Projects help organize related issues and track progress toward goals.',
+      description: '[LIVE API - WRITE] Create a new project in Linear. This modifies Linear directly. Projects help organize related issues and track progress toward goals.',
       inputSchema: {
         name: z.string().min(1).describe('Project name'),
         teamIds: z.array(z.string()).min(1).describe('Array of team IDs to associate with the project (at least one required)'),
@@ -246,7 +251,7 @@ export function registerLinearTools(server: McpServer, client: LinearClient, def
     'linear_update_project',
     {
       title: 'Update Linear Project',
-      description: 'Update an existing Linear project (name, description, content, lead, dates). Note: Rich content with images is stored in the "content" field, not "description".',
+      description: '[LIVE API - WRITE] Update an existing Linear project. This modifies Linear directly. Note: Rich content with images is stored in the "content" field, not "description".',
       inputSchema: {
         projectId: z.string().describe('Project ID to update'),
         name: z.string().optional().describe('New project name'),
@@ -282,5 +287,5 @@ export function registerLinearTools(server: McpServer, client: LinearClient, def
     }
   );
 
-  logger.success('Linear tools registered (7 tools)');
+  logger.success('Linear tools registered (7 tools - live API for management operations)');
 }

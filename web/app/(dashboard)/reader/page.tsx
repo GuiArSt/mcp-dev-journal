@@ -2,23 +2,13 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from "@/components/ui/collapsible";
-import ReactMarkdown from "react-markdown";
-import remarkGfm from "remark-gfm";
-import remarkMath from "remark-math";
-import rehypeKatex from "rehype-katex";
-import "katex/dist/katex.min.css";
 import {
   Search,
   GitBranch,
@@ -30,49 +20,15 @@ import {
   ChevronRight,
   ChevronDown,
   Plus,
-  Settings,
-  ExternalLink,
-  FileText,
-  Layers,
   Image as ImageIcon,
   FileCode,
   File,
-  Brain,
-  Loader2,
-  Code,
-  Database,
-  Server,
-  Workflow,
-  Terminal,
-  AlertCircle,
+  Layers,
 } from "lucide-react";
 import { MermaidPreview } from "@/components/multimedia/MermaidPreview";
+import { ProjectSummaryCard } from "@/components/reader/ProjectSummaryCard";
 import { useRouter } from "next/navigation";
 import { formatDateShort } from "@/lib/utils";
-
-// Helper to clean technology strings from markdown formatting
-function cleanTechnologies(techString: string): string[] {
-  // First, remove **Label:** patterns and extract just the tech names
-  const cleaned = techString
-    .replace(/\*\*[^*]+:\*\*\s*/g, '') // Remove **Label:** patterns
-    .replace(/\*\*/g, '') // Remove remaining ** markers
-    .replace(/\([^)]+\)/g, '') // Remove parenthetical notes like (GPT-4-mini)
-    .replace(/\n/g, ', ') // Convert newlines to commas
-    .split(/[,\n]/) // Split by comma or newline
-    .map(tech => tech.trim())
-    .filter(tech => {
-      if (!tech || tech.length === 0) return false;
-      if (tech === ':') return false;
-      // Skip items that look like descriptions or scripts
-      if (tech.includes('.py') || tech.includes('.sql')) return false;
-      if (tech.length > 40) return false; // Skip long descriptions
-      return true;
-    })
-    .map(tech => tech.replace(/^[-•]\s*/, '')); // Remove bullet points
-
-  // Deduplicate
-  return [...new Set(cleaned)];
-}
 
 interface ProjectSummary {
   id: number;
@@ -149,6 +105,7 @@ export default function ReaderPage() {
   const [showAttachments, setShowAttachments] = useState<Set<string>>(new Set());
   const [activeTab, setActiveTab] = useState("projects");
   const [analyzingProject, setAnalyzingProject] = useState<string | null>(null);
+  const [deletingProject, setDeletingProject] = useState<string | null>(null);
 
   useEffect(() => {
     fetchProjects();
@@ -386,6 +343,45 @@ What changes would you like to make? You can update any field using the journal_
     }
   };
 
+  // Delete project summary (and optionally entries)
+  const deleteProject = async (repository: string, deleteEntries: boolean) => {
+    setDeletingProject(repository);
+    try {
+      const params = new URLSearchParams({ repository });
+      if (deleteEntries) {
+        params.set("deleteEntries", "true");
+      }
+
+      const response = await fetch(`/api/project-summaries?${params}`, {
+        method: "DELETE",
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || "Delete failed");
+      }
+
+      // Refresh projects list
+      await fetchProjects();
+
+      // Clear selected project if it was deleted
+      if (selectedProject === repository) {
+        setSelectedProject(null);
+        setEntries([]);
+      }
+
+      // Clear from expanded set
+      const newExpanded = new Set(expandedProjects);
+      newExpanded.delete(repository);
+      setExpandedProjects(newExpanded);
+    } catch (error) {
+      console.error("Failed to delete project:", error);
+      alert(error instanceof Error ? error.message : "Delete failed");
+    } finally {
+      setDeletingProject(null);
+    }
+  };
+
   const filteredProjects = searchQuery
     ? projects.filter(
         (p) =>
@@ -485,510 +481,233 @@ What changes would you like to make? You can update any field using the journal_
               </div>
             ) : (
               filteredProjects.map((project) => (
-                <Collapsible
+                <ProjectSummaryCard
                   key={project.id}
-                  open={expandedProjects.has(project.repository)}
-                  onOpenChange={() => toggleProject(project.repository)}
+                  project={project}
+                  isExpanded={expandedProjects.has(project.repository)}
+                  onToggle={() => toggleProject(project.repository)}
+                  onAnalyze={(e) => analyzeProject(project.repository, e)}
+                  onEdit={(e) => editProjectWithKronus(project, e)}
+                  onDelete={(deleteEntries) => deleteProject(project.repository, deleteEntries)}
+                  analyzing={analyzingProject === project.repository}
+                  deleting={deletingProject === project.repository}
                 >
-                  <Card className="border-[var(--tartarus-border)] bg-[var(--tartarus-surface)] overflow-hidden">
-                    {/* Project Header */}
-                    <CollapsibleTrigger asChild>
-                      <CardHeader className="cursor-pointer hover:bg-[var(--tartarus-elevated)] transition-colors">
-                        <div className="flex items-start justify-between">
-                          <div className="flex-1">
-                            <div className="flex items-center gap-2">
-                              {expandedProjects.has(project.repository) ? (
-                                <ChevronDown className="h-4 w-4 text-[var(--tartarus-ivory-muted)]" />
-                              ) : (
-                                <ChevronRight className="h-4 w-4 text-[var(--tartarus-ivory-muted)]" />
-                              )}
-                              <FolderGit2 className="h-5 w-5 text-[var(--tartarus-teal)]" />
-                              <CardTitle className="text-lg text-[var(--tartarus-ivory)]">
-                                {project.repository}
-                              </CardTitle>
-                              <Badge className="bg-[var(--tartarus-teal-soft)] text-[var(--tartarus-teal)] ml-2">
-                                {project.entry_count} entries
-                              </Badge>
-                              {project.id === -1 && (
-                                <Badge className="bg-[var(--tartarus-gold-soft)] text-[var(--tartarus-gold)] ml-1">
-                                  New
-                                </Badge>
-                              )}
-                            </div>
-                            <CardDescription className="mt-1 ml-10 line-clamp-2 text-[var(--tartarus-ivory-muted)]">
-                              {project.summary?.substring(0, 200)}...
-                            </CardDescription>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            {project.git_url && (
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                asChild
-                                onClick={(e) => e.stopPropagation()}
-                                className="text-[var(--tartarus-ivory-muted)] hover:text-[var(--tartarus-teal)]"
-                              >
-                                <a href={project.git_url} target="_blank" rel="noopener noreferrer">
-                                  <ExternalLink className="h-4 w-4" />
-                                </a>
-                              </Button>
-                            )}
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={(e) => analyzeProject(project.repository, e)}
-                              disabled={analyzingProject === project.repository || project.entry_count === 0}
-                              className={`${project.id === -1 ? "text-[var(--tartarus-gold)] hover:text-[var(--tartarus-gold-bright)] hover:bg-[var(--tartarus-gold-soft)]" : "text-[var(--tartarus-teal)] hover:text-[var(--tartarus-teal-bright)] hover:bg-[var(--tartarus-teal-soft)]"}`}
-                            >
-                              {analyzingProject === project.repository ? (
-                                <Loader2 className="h-4 w-4 mr-1.5 animate-spin" />
-                              ) : (
-                                <Brain className="h-4 w-4 mr-1.5" />
-                              )}
-                              {analyzingProject === project.repository ? "Analyzing..." : project.id === -1 ? "Initialize" : "Analyze"}
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={(e) => editProjectWithKronus(project, e)}
-                              className="text-[var(--tartarus-gold)] hover:text-[var(--tartarus-gold-bright)] hover:bg-[var(--tartarus-gold-soft)]"
-                            >
-                              <img src="/chronus-logo.png" alt="Kronus" className="h-4 w-4 mr-1.5 rounded-full object-cover" />
-                              Edit
-                            </Button>
-                          </div>
-                        </div>
-                        {project.technologies && (
-                          <div className="flex flex-wrap gap-1 mt-2 ml-10">
-                            {cleanTechnologies(project.technologies).slice(0, 6).map((tech) => (
-                              <Badge key={tech} variant="outline" className="text-xs border-[var(--tartarus-border)] text-[var(--tartarus-ivory-muted)]">
-                                {tech.split(" ")[0]}
-                              </Badge>
-                            ))}
-                          </div>
+                  {/* Attachments Section */}
+                  <div className="mt-4 pt-4 border-t border-[var(--tartarus-border)]">
+                    <div className="flex items-center justify-between mb-2">
+                      <h4 className="text-sm font-medium text-[var(--tartarus-ivory)] flex items-center gap-2">
+                        <Paperclip className="h-4 w-4 text-[var(--tartarus-teal)]" />
+                        Attachments
+                      </h4>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => toggleShowAttachments(project.repository)}
+                        className="text-xs text-[var(--tartarus-teal)] hover:bg-[var(--tartarus-teal-soft)]"
+                      >
+                        {showAttachments.has(project.repository) ? (
+                          <>
+                            <ChevronDown className="h-3 w-3 mr-1" />
+                            Hide
+                          </>
+                        ) : (
+                          <>
+                            <ChevronRight className="h-3 w-3 mr-1" />
+                            Show
+                          </>
                         )}
-                      </CardHeader>
-                    </CollapsibleTrigger>
+                      </Button>
+                    </div>
 
-                    {/* Expanded Content */}
-                    <CollapsibleContent>
-                      <CardContent className="border-t border-[var(--tartarus-border)] pt-4">
-                        {/* Project Details */}
-                        {project.purpose && (
-                          <div className="mb-4">
-                            <h4 className="text-sm font-medium text-[var(--tartarus-teal)] mb-2">Purpose</h4>
-                            <div className="prose prose-sm max-w-none text-[var(--tartarus-ivory-muted)] prose-strong:text-[var(--tartarus-ivory)]">
-                              <ReactMarkdown remarkPlugins={[remarkGfm, remarkMath]} rehypePlugins={[rehypeKatex]}>
-                                {project.purpose}
-                              </ReactMarkdown>
-                            </div>
+                    {showAttachments.has(project.repository) && (
+                      <>
+                        {attachmentsLoading[project.repository] ? (
+                          <div className="space-y-2">
+                            <Skeleton className="h-12 w-full bg-[var(--tartarus-elevated)]" />
                           </div>
-                        )}
+                        ) : attachments[project.repository]?.length === 0 ? (
+                          <p className="text-xs text-[var(--tartarus-ivory-muted)] py-2">No attachments</p>
+                        ) : (
+                          <div className="space-y-2">
+                            {attachments[project.repository]?.map(att => {
+                              const isMermaid = att.filename.endsWith('.mmd') || att.filename.endsWith('.mermaid');
+                              const isImage = att.mime_type.startsWith('image/');
+                              const isExpanded = expandedAttachments.has(att.id);
 
-                        {project.architecture && (
-                          <div className="mb-4">
-                            <h4 className="text-sm font-medium text-[var(--tartarus-teal)] mb-2">Architecture</h4>
-                            <div className="prose prose-sm max-w-none text-[var(--tartarus-ivory-muted)] prose-strong:text-[var(--tartarus-ivory)] prose-headings:text-[var(--tartarus-ivory)] prose-h2:text-base prose-h3:text-sm">
-                              <ReactMarkdown remarkPlugins={[remarkGfm, remarkMath]} rehypePlugins={[rehypeKatex]}>
-                                {project.architecture}
-                              </ReactMarkdown>
-                            </div>
-                          </div>
-                        )}
+                              return (
+                                <div key={att.id} className="rounded-lg border border-[var(--tartarus-border)] bg-[var(--tartarus-elevated)] overflow-hidden">
+                                  <button
+                                    onClick={() => toggleAttachmentExpand(att.id, isMermaid)}
+                                    className="w-full flex items-center gap-2 px-3 py-2 bg-[var(--tartarus-surface)] hover:bg-[var(--tartarus-elevated)] transition-colors text-left"
+                                  >
+                                    {isExpanded ? (
+                                      <ChevronDown className="h-3 w-3 text-[var(--tartarus-ivory-muted)]" />
+                                    ) : (
+                                      <ChevronRight className="h-3 w-3 text-[var(--tartarus-ivory-muted)]" />
+                                    )}
+                                    {isMermaid ? (
+                                      <FileCode className="h-4 w-4 text-[var(--tartarus-teal)]" />
+                                    ) : isImage ? (
+                                      <ImageIcon className="h-4 w-4 text-[var(--tartarus-teal)]" />
+                                    ) : (
+                                      <File className="h-4 w-4 text-[var(--tartarus-ivory-muted)]" />
+                                    )}
+                                    <span className="text-sm text-[var(--tartarus-ivory)] flex-1">{att.filename}</span>
+                                    {att.description && (
+                                      <span className="text-xs text-[var(--tartarus-ivory-muted)] truncate max-w-[200px]">{att.description}</span>
+                                    )}
+                                    <span className="text-xs text-[var(--tartarus-ivory-faded)]">
+                                      {(att.size / 1024).toFixed(1)} KB
+                                    </span>
+                                  </button>
 
-                        {project.key_decisions && (
-                          <div className="mb-4">
-                            <h4 className="text-sm font-medium text-[var(--tartarus-teal)] mb-2">Key Decisions</h4>
-                            <div className="prose prose-sm max-w-none text-[var(--tartarus-ivory-muted)] prose-strong:text-[var(--tartarus-ivory)]">
-                              <ReactMarkdown remarkPlugins={[remarkGfm, remarkMath]} rehypePlugins={[rehypeKatex]}>
-                                {project.key_decisions}
-                              </ReactMarkdown>
-                            </div>
-                          </div>
-                        )}
-
-                        {project.status && (
-                          <div className="mb-4">
-                            <h4 className="text-sm font-medium text-[var(--tartarus-teal)] mb-2">Status</h4>
-                            <div className="prose prose-sm max-w-none text-[var(--tartarus-ivory-muted)] prose-strong:text-[var(--tartarus-gold)]">
-                              <ReactMarkdown remarkPlugins={[remarkGfm, remarkMath]} rehypePlugins={[rehypeKatex]}>
-                                {project.status}
-                              </ReactMarkdown>
-                            </div>
-                          </div>
-                        )}
-
-                        {/* Technologies (full list) */}
-                        {project.technologies && (
-                          <div className="mb-4">
-                            <h4 className="text-sm font-medium text-[var(--tartarus-teal)] mb-2">Technologies</h4>
-                            <div className="flex flex-wrap gap-1.5">
-                              {cleanTechnologies(project.technologies).map((tech) => (
-                                <Badge key={tech} variant="outline" className="text-xs border-[var(--tartarus-border)] text-[var(--tartarus-ivory-muted)]">
-                                  {tech}
-                                </Badge>
-                              ))}
-                            </div>
-                          </div>
-                        )}
-
-                        {/* Living Project Summary (Entry 0) */}
-                        {(project.file_structure || project.tech_stack || project.frontend || project.backend || project.database_info || project.services || project.commands || project.patterns || project.extended_notes) && (
-                          <div className="mb-4 border-t border-[var(--tartarus-border)] pt-4">
-                            <div className="flex items-center gap-2 mb-3">
-                              <Brain className="h-4 w-4 text-[var(--tartarus-teal)]" />
-                              <h4 className="text-sm font-medium text-[var(--tartarus-teal)]">Living Project Summary</h4>
-                              {project.entries_synced && (
-                                <Badge variant="outline" className="text-xs border-[var(--tartarus-teal-dim)] text-[var(--tartarus-teal)]">
-                                  {project.entries_synced} entries analyzed
-                                </Badge>
-                              )}
-                            </div>
-
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                              {project.file_structure && (
-                                <div className="col-span-2">
-                                  <h5 className="text-xs font-medium text-[var(--tartarus-ivory-muted)] mb-1 flex items-center gap-1">
-                                    <FolderGit2 className="h-3 w-3" /> File Structure
-                                  </h5>
-                                  <pre className="text-xs text-[var(--tartarus-ivory-muted)] bg-[var(--tartarus-elevated)] p-2 rounded overflow-x-auto">
-                                    {project.file_structure}
-                                  </pre>
-                                </div>
-                              )}
-
-                              {project.tech_stack && (
-                                <div>
-                                  <h5 className="text-xs font-medium text-[var(--tartarus-ivory-muted)] mb-1 flex items-center gap-1">
-                                    <Code className="h-3 w-3" /> Tech Stack
-                                  </h5>
-                                  <div className="prose prose-sm max-w-none text-[var(--tartarus-ivory-muted)] prose-strong:text-[var(--tartarus-ivory)]">
-                                    <ReactMarkdown remarkPlugins={[remarkGfm, remarkMath]} rehypePlugins={[rehypeKatex]}>{project.tech_stack}</ReactMarkdown>
-                                  </div>
-                                </div>
-                              )}
-
-                              {project.frontend && (
-                                <div>
-                                  <h5 className="text-xs font-medium text-[var(--tartarus-ivory-muted)] mb-1 flex items-center gap-1">
-                                    <Layers className="h-3 w-3" /> Frontend
-                                  </h5>
-                                  <div className="prose prose-sm max-w-none text-[var(--tartarus-ivory-muted)]">
-                                    <ReactMarkdown remarkPlugins={[remarkGfm, remarkMath]} rehypePlugins={[rehypeKatex]}>{project.frontend}</ReactMarkdown>
-                                  </div>
-                                </div>
-                              )}
-
-                              {project.backend && (
-                                <div>
-                                  <h5 className="text-xs font-medium text-[var(--tartarus-ivory-muted)] mb-1 flex items-center gap-1">
-                                    <Server className="h-3 w-3" /> Backend
-                                  </h5>
-                                  <div className="prose prose-sm max-w-none text-[var(--tartarus-ivory-muted)]">
-                                    <ReactMarkdown remarkPlugins={[remarkGfm, remarkMath]} rehypePlugins={[rehypeKatex]}>{project.backend}</ReactMarkdown>
-                                  </div>
-                                </div>
-                              )}
-
-                              {project.database_info && (
-                                <div>
-                                  <h5 className="text-xs font-medium text-[var(--tartarus-ivory-muted)] mb-1 flex items-center gap-1">
-                                    <Database className="h-3 w-3" /> Database
-                                  </h5>
-                                  <div className="prose prose-sm max-w-none text-[var(--tartarus-ivory-muted)]">
-                                    <ReactMarkdown remarkPlugins={[remarkGfm, remarkMath]} rehypePlugins={[rehypeKatex]}>{project.database_info}</ReactMarkdown>
-                                  </div>
-                                </div>
-                              )}
-
-                              {project.services && (
-                                <div>
-                                  <h5 className="text-xs font-medium text-[var(--tartarus-ivory-muted)] mb-1 flex items-center gap-1">
-                                    <Workflow className="h-3 w-3" /> Services
-                                  </h5>
-                                  <div className="prose prose-sm max-w-none text-[var(--tartarus-ivory-muted)]">
-                                    <ReactMarkdown remarkPlugins={[remarkGfm, remarkMath]} rehypePlugins={[rehypeKatex]}>{project.services}</ReactMarkdown>
-                                  </div>
-                                </div>
-                              )}
-
-                              {project.commands && (
-                                <div>
-                                  <h5 className="text-xs font-medium text-[var(--tartarus-ivory-muted)] mb-1 flex items-center gap-1">
-                                    <Terminal className="h-3 w-3" /> Commands
-                                  </h5>
-                                  <pre className="text-xs text-[var(--tartarus-ivory-muted)] bg-[var(--tartarus-elevated)] p-2 rounded">
-                                    {project.commands}
-                                  </pre>
-                                </div>
-                              )}
-
-                              {project.patterns && (
-                                <div>
-                                  <h5 className="text-xs font-medium text-[var(--tartarus-ivory-muted)] mb-1 flex items-center gap-1">
-                                    <FileCode className="h-3 w-3" /> Patterns
-                                  </h5>
-                                  <div className="prose prose-sm max-w-none text-[var(--tartarus-ivory-muted)]">
-                                    <ReactMarkdown remarkPlugins={[remarkGfm, remarkMath]} rehypePlugins={[rehypeKatex]}>{project.patterns}</ReactMarkdown>
-                                  </div>
-                                </div>
-                              )}
-
-                              {project.extended_notes && (
-                                <div className="col-span-2">
-                                  <h5 className="text-xs font-medium text-[var(--tartarus-ivory-muted)] mb-1 flex items-center gap-1">
-                                    <AlertCircle className="h-3 w-3" /> Notes & Gotchas
-                                  </h5>
-                                  <div className="prose prose-sm max-w-none text-[var(--tartarus-ivory-muted)]">
-                                    <ReactMarkdown remarkPlugins={[remarkGfm, remarkMath]} rehypePlugins={[rehypeKatex]}>{project.extended_notes}</ReactMarkdown>
-                                  </div>
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                        )}
-
-                        {/* Metadata */}
-                        <div className="mb-4 flex items-center gap-4 text-xs text-[var(--tartarus-ivory-muted)]">
-                          {project.last_entry_date && (
-                            <span className="flex items-center gap-1">
-                              <Calendar className="h-3 w-3" />
-                              Last entry: {formatDateShort(project.last_entry_date)}
-                            </span>
-                          )}
-                          <span className="flex items-center gap-1">
-                            <FileText className="h-3 w-3" />
-                            {project.entry_count} entries
-                          </span>
-                          {project.linear_project_id && (
-                            <Badge variant="outline" className="text-xs border-[var(--tartarus-teal-dim)] text-[var(--tartarus-teal)]">
-                              Linear Linked
-                            </Badge>
-                          )}
-                        </div>
-
-                        {/* Attachments Section */}
-                        <div className="mb-4">
-                          <div className="flex items-center justify-between mb-2">
-                            <h4 className="text-sm font-medium text-[var(--tartarus-teal)] flex items-center gap-2">
-                              <Paperclip className="h-4 w-4" />
-                              Attachments
-                            </h4>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => toggleShowAttachments(project.repository)}
-                              className="text-xs text-[var(--tartarus-teal)] hover:bg-[var(--tartarus-teal-soft)]"
-                            >
-                              {showAttachments.has(project.repository) ? (
-                                <>
-                                  <ChevronDown className="h-3 w-3 mr-1" />
-                                  Hide
-                                </>
-                              ) : (
-                                <>
-                                  <ChevronRight className="h-3 w-3 mr-1" />
-                                  Show
-                                </>
-                              )}
-                            </Button>
-                          </div>
-
-                          {showAttachments.has(project.repository) && (
-                            <>
-                              {attachmentsLoading[project.repository] ? (
-                                <div className="space-y-2">
-                                  <Skeleton className="h-12 w-full bg-[var(--tartarus-elevated)]" />
-                                </div>
-                              ) : attachments[project.repository]?.length === 0 ? (
-                                <p className="text-xs text-[var(--tartarus-ivory-muted)] py-2">No attachments</p>
-                              ) : (
-                                <div className="space-y-2">
-                                  {/* All attachments as clickable items */}
-                                  {attachments[project.repository]?.map(att => {
-                                    const isMermaid = att.filename.endsWith('.mmd') || att.filename.endsWith('.mermaid');
-                                    const isImage = att.mime_type.startsWith('image/');
-                                    const isExpanded = expandedAttachments.has(att.id);
-
-                                    return (
-                                      <div key={att.id} className="rounded-lg border border-[var(--tartarus-border)] bg-[var(--tartarus-elevated)] overflow-hidden">
-                                        {/* Clickable header */}
-                                        <button
-                                          onClick={() => toggleAttachmentExpand(att.id, isMermaid)}
-                                          className="w-full flex items-center gap-2 px-3 py-2 bg-[var(--tartarus-surface)] hover:bg-[var(--tartarus-elevated)] transition-colors text-left"
-                                        >
-                                          {isExpanded ? (
-                                            <ChevronDown className="h-3 w-3 text-[var(--tartarus-ivory-muted)]" />
+                                  {isExpanded && (
+                                    <div className="border-t border-[var(--tartarus-border)]">
+                                      {isMermaid ? (
+                                        <div className="p-4 bg-white dark:bg-slate-950">
+                                          {attachmentContents[att.id] ? (
+                                            <MermaidPreview code={attachmentContents[att.id]} />
                                           ) : (
-                                            <ChevronRight className="h-3 w-3 text-[var(--tartarus-ivory-muted)]" />
-                                          )}
-                                          {isMermaid ? (
-                                            <FileCode className="h-4 w-4 text-[var(--tartarus-teal)]" />
-                                          ) : isImage ? (
-                                            <ImageIcon className="h-4 w-4 text-[var(--tartarus-teal)]" />
-                                          ) : (
-                                            <File className="h-4 w-4 text-[var(--tartarus-ivory-muted)]" />
-                                          )}
-                                          <span className="text-sm text-[var(--tartarus-ivory)] flex-1">{att.filename}</span>
-                                          {att.description && (
-                                            <span className="text-xs text-[var(--tartarus-ivory-muted)] truncate max-w-[200px]">{att.description}</span>
-                                          )}
-                                          <span className="text-xs text-[var(--tartarus-ivory-faded)]">
-                                            {(att.size / 1024).toFixed(1)} KB
-                                          </span>
-                                        </button>
-
-                                        {/* Expanded content - only rendered on click */}
-                                        {isExpanded && (
-                                          <div className="border-t border-[var(--tartarus-border)]">
-                                            {isMermaid ? (
-                                              <div className="p-4 bg-white dark:bg-slate-950">
-                                                {attachmentContents[att.id] ? (
-                                                  <MermaidPreview code={attachmentContents[att.id]} />
-                                                ) : (
-                                                  <div className="text-sm text-[var(--tartarus-ivory-muted)]">Loading diagram...</div>
-                                                )}
-                                              </div>
-                                            ) : isImage ? (
-                                              <div className="p-4">
-                                                <img
-                                                  src={`/api/attachments/${att.id}/raw`}
-                                                  alt={att.description || att.filename}
-                                                  className="max-w-full h-auto rounded"
-                                                  loading="lazy"
-                                                />
-                                              </div>
-                                            ) : (
-                                              <div className="p-3 text-xs text-[var(--tartarus-ivory-muted)]">
-                                                <a
-                                                  href={`/api/attachments/${att.id}/raw`}
-                                                  download={att.filename}
-                                                  className="text-[var(--tartarus-teal)] hover:underline"
-                                                >
-                                                  Download file
-                                                </a>
-                                              </div>
-                                            )}
-                                          </div>
-                                        )}
-                                      </div>
-                                    );
-                                  })}
-                                </div>
-                              )}
-                            </>
-                          )}
-                        </div>
-
-                        {/* Entries List */}
-                        <div className="mt-4 border-t border-[var(--tartarus-border)] pt-4">
-                          <div className="flex items-center justify-between mb-3">
-                            <h4 className="text-sm font-medium text-[var(--tartarus-ivory)]">
-                              Journal Entries
-                            </h4>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => createNewEntry(project.repository)}
-                              className="border-[var(--tartarus-gold-dim)] text-[var(--tartarus-gold)] hover:bg-[var(--tartarus-gold-soft)]"
-                            >
-                              <Plus className="h-4 w-4 mr-1" />
-                              New Entry
-                            </Button>
-                          </div>
-
-                          {selectedProject === project.repository ? (
-                            entriesLoading ? (
-                              <div className="space-y-2">
-                                {Array.from({ length: 3 }).map((_, i) => (
-                                  <Skeleton key={i} className="h-16 w-full bg-[var(--tartarus-elevated)]" />
-                                ))}
-                              </div>
-                            ) : filteredEntries.length === 0 ? (
-                              <div className="py-6 text-center">
-                                <p className="text-[var(--tartarus-ivory-muted)] text-sm">No entries yet.</p>
-                              </div>
-                            ) : (
-                              <div className="space-y-2">
-                                {filteredEntries.slice(0, 10).map((entry) => (
-                                  <Link key={entry.id} href={`/reader/${entry.commit_hash}`}>
-                                    <div className="group flex items-start gap-3 p-3 rounded-lg bg-[var(--tartarus-elevated)] hover:bg-[var(--tartarus-deep)] transition-colors cursor-pointer border border-[var(--tartarus-border)]">
-                                      <div className="flex-1 min-w-0">
-                                        <div className="flex items-center gap-2 text-xs text-[var(--tartarus-ivory-muted)]">
-                                          <span className="font-mono">{entry.commit_hash.substring(0, 7)}</span>
-                                          <span className="flex items-center gap-1">
-                                            <GitBranch className="h-3 w-3" />
-                                            {entry.branch}
-                                          </span>
-                                          <span className="flex items-center gap-1">
-                                            <Calendar className="h-3 w-3" />
-                                            {formatDateShort(entry.date)}
-                                          </span>
-                                          {entry.attachment_count > 0 && (
-                                            <span className="flex items-center gap-1">
-                                              <Paperclip className="h-3 w-3" />
-                                              {entry.attachment_count}
-                                            </span>
+                                            <div className="text-sm text-[var(--tartarus-ivory-muted)]">Loading diagram...</div>
                                           )}
                                         </div>
-                                        <p className="text-sm text-[var(--tartarus-ivory)] mt-1 line-clamp-2">
-                                          {entry.why.replace(/[#*`]/g, "").substring(0, 150)}...
-                                        </p>
-                                        {entry.kronus_wisdom && (
-                                          <div className="flex items-center gap-1 mt-1 text-xs text-[var(--tartarus-teal)]">
-                                            <Sparkles className="h-3 w-3" />
-                                            <span className="line-clamp-1 italic">{entry.kronus_wisdom.substring(0, 80)}...</span>
-                                          </div>
-                                        )}
-                                      </div>
-                                      <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                        <Button
-                                          variant="ghost"
-                                          size="sm"
-                                          className="h-7 text-[var(--tartarus-gold)] hover:bg-[var(--tartarus-gold-soft)] text-xs px-2"
-                                          onClick={(e) => editEntryWithKronus(entry, e)}
-                                        >
-                                          <img src="/chronus-logo.png" alt="Kronus" className="h-3.5 w-3.5 mr-1 rounded-full object-cover" />
-                                          Edit
-                                        </Button>
-                                        <ChevronRight className="h-4 w-4 text-[var(--tartarus-ivory-muted)]" />
-                                      </div>
+                                      ) : isImage ? (
+                                        <div className="p-4">
+                                          <img
+                                            src={`/api/attachments/${att.id}/raw`}
+                                            alt={att.description || att.filename}
+                                            className="max-w-full h-auto rounded"
+                                            loading="lazy"
+                                          />
+                                        </div>
+                                      ) : (
+                                        <div className="p-3 text-xs text-[var(--tartarus-ivory-muted)]">
+                                          <a
+                                            href={`/api/attachments/${att.id}/raw`}
+                                            download={att.filename}
+                                            className="text-[var(--tartarus-teal)] hover:underline"
+                                          >
+                                            Download file
+                                          </a>
+                                        </div>
+                                      )}
                                     </div>
-                                  </Link>
-                                ))}
-                                {entries.length > 10 && (
-                                  <div className="text-center py-2">
-                                    <Link href={`/reader?project=${project.repository}`}>
-                                      <Button variant="ghost" size="sm" className="text-[var(--tartarus-teal)]">
-                                        View all {entries.length} entries
-                                      </Button>
-                                    </Link>
+                                  )}
+                                </div>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </>
+                    )}
+                  </div>
+
+                  {/* Entries List */}
+                  <div className="mt-4 pt-4 border-t border-[var(--tartarus-border)]">
+                    <div className="flex items-center justify-between mb-3">
+                      <h4 className="text-sm font-medium text-[var(--tartarus-ivory)]">
+                        Journal Entries
+                      </h4>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => createNewEntry(project.repository)}
+                        className="border-[var(--tartarus-gold-dim)] text-[var(--tartarus-gold)] hover:bg-[var(--tartarus-gold-soft)]"
+                      >
+                        <Plus className="h-4 w-4 mr-1" />
+                        New Entry
+                      </Button>
+                    </div>
+
+                    {selectedProject === project.repository ? (
+                      entriesLoading ? (
+                        <div className="space-y-2">
+                          {Array.from({ length: 3 }).map((_, i) => (
+                            <Skeleton key={i} className="h-16 w-full bg-[var(--tartarus-elevated)]" />
+                          ))}
+                        </div>
+                      ) : filteredEntries.length === 0 ? (
+                        <div className="py-6 text-center">
+                          <p className="text-[var(--tartarus-ivory-muted)] text-sm">No entries yet.</p>
+                        </div>
+                      ) : (
+                        <div className="space-y-2">
+                          {filteredEntries.slice(0, 10).map((entry) => (
+                            <Link key={entry.id} href={`/reader/${entry.commit_hash}`}>
+                              <div className="group flex items-start gap-3 p-3 rounded-lg bg-[var(--tartarus-elevated)] hover:bg-[var(--tartarus-deep)] transition-colors cursor-pointer border border-[var(--tartarus-border)]">
+                                <div className="flex-1 min-w-0">
+                                  <div className="flex items-center gap-2 text-xs text-[var(--tartarus-ivory-muted)]">
+                                    <span className="font-mono">{entry.commit_hash.substring(0, 7)}</span>
+                                    <span className="flex items-center gap-1">
+                                      <GitBranch className="h-3 w-3" />
+                                      {entry.branch}
+                                    </span>
+                                    <span className="flex items-center gap-1">
+                                      <Calendar className="h-3 w-3" />
+                                      {formatDateShort(entry.date)}
+                                    </span>
+                                    {entry.attachment_count > 0 && (
+                                      <span className="flex items-center gap-1">
+                                        <Paperclip className="h-3 w-3" />
+                                        {entry.attachment_count}
+                                      </span>
+                                    )}
                                   </div>
-                                )}
+                                  <p className="text-sm text-[var(--tartarus-ivory)] mt-1 line-clamp-2">
+                                    {entry.why.replace(/[#*`]/g, "").substring(0, 150)}...
+                                  </p>
+                                  {entry.kronus_wisdom && (
+                                    <div className="flex items-center gap-1 mt-1 text-xs text-[var(--tartarus-teal)]">
+                                      <Sparkles className="h-3 w-3" />
+                                      <span className="line-clamp-1 italic">{entry.kronus_wisdom.substring(0, 80)}...</span>
+                                    </div>
+                                  )}
+                                </div>
+                                <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="h-7 text-[var(--tartarus-gold)] hover:bg-[var(--tartarus-gold-soft)] text-xs px-2"
+                                    onClick={(e) => editEntryWithKronus(entry, e)}
+                                  >
+                                    <img src="/chronus-logo.png" alt="Kronus" className="h-3.5 w-3.5 mr-1 rounded-full object-cover" />
+                                    Edit
+                                  </Button>
+                                  <ChevronRight className="h-4 w-4 text-[var(--tartarus-ivory-muted)]" />
+                                </div>
                               </div>
-                            )
-                          ) : (
-                            <div className="py-4 text-center">
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => {
-                                  setSelectedProject(project.repository);
-                                  const newExpanded = new Set(expandedProjects);
-                                  newExpanded.add(project.repository);
-                                  setExpandedProjects(newExpanded);
-                                }}
-                                className="text-[var(--tartarus-teal)]"
-                              >
-                                Load {project.entry_count} entries
-                              </Button>
+                            </Link>
+                          ))}
+                          {entries.length > 10 && (
+                            <div className="text-center py-2">
+                              <Link href={`/reader?project=${project.repository}`}>
+                                <Button variant="ghost" size="sm" className="text-[var(--tartarus-teal)]">
+                                  View all {entries.length} entries
+                                </Button>
+                              </Link>
                             </div>
                           )}
                         </div>
-                      </CardContent>
-                    </CollapsibleContent>
-                  </Card>
-                </Collapsible>
+                      )
+                    ) : (
+                      <div className="py-4 text-center">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => {
+                            setSelectedProject(project.repository);
+                            const newExpanded = new Set(expandedProjects);
+                            newExpanded.add(project.repository);
+                            setExpandedProjects(newExpanded);
+                          }}
+                          className="text-[var(--tartarus-teal)]"
+                        >
+                          Load {project.entry_count} entries
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                </ProjectSummaryCard>
               ))
             )}
           </div>

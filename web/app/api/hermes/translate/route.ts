@@ -1,6 +1,13 @@
+/**
+ * Hermes Translate - AI Translation with Memory
+ *
+ * Uses AI SDK 6.0 generateText with Output.object() for structured outputs
+ * (generateObject is deprecated in AI SDK 6.0)
+ */
+
 import { NextRequest, NextResponse } from "next/server";
 import { anthropic } from "@ai-sdk/anthropic";
-import { generateObject } from "ai";
+import { generateText, Output } from "ai";
 import { getDatabase } from "@/lib/db";
 import { withErrorHandler } from "@/lib/api-handler";
 import { ValidationError } from "@/lib/errors";
@@ -174,13 +181,19 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
   const systemPrompt = getHermesSystemPrompt(memory);
   const userPrompt = buildTranslationUserPrompt(text, sourceLanguage, targetLanguage, tone as TranslationTone, answers);
 
-  // Call Haiku 4.5 with structured output
-  const { object: response } = await generateObject({
+  // AI SDK 6.0 pattern: generateText with Output.object() (generateObject is deprecated)
+  const result = await generateText({
     model: anthropic("claude-haiku-4-5-20251001"),
-    schema: TranslationResponseSchema,
+    output: Output.object({ schema: TranslationResponseSchema }),
     system: systemPrompt,
     prompt: userPrompt,
   });
+
+  const response = result.output;
+
+  if (!response) {
+    throw new Error("AI generation returned no structured output");
+  }
 
   // Save translation to history (async, don't block response)
   try {

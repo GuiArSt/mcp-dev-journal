@@ -1021,14 +1021,16 @@ Details: ${data.details}` : "";
           }
 
           // ===== Repository Tools =====
-          case "repository_list_documents": {
+          case "repository_search_documents": {
             const params = new URLSearchParams();
             if (typedArgs.type) params.set("type", String(typedArgs.type));
+            if (typedArgs.search) params.set("search", String(typedArgs.search));
             if (typedArgs.limit) params.set("limit", String(typedArgs.limit));
+            if (typedArgs.offset) params.set("offset", String(typedArgs.offset));
             
             const res = await fetch(`/api/documents?${params.toString()}`);
             const data = await res.json();
-            if (!res.ok) throw new Error(data.error || "Failed to list documents");
+            if (!res.ok) throw new Error(data.error || "Failed to search documents");
             
             if (!data.documents || data.documents.length === 0) {
               output = "No documents found.";
@@ -1037,7 +1039,10 @@ Details: ${data.details}` : "";
                 const tags = d.metadata?.tags?.join(", ") || "";
                 return `• [${d.id}] ${d.title} (${d.type})${tags ? ` [${tags}]` : ""}`;
               }).join("\n");
-              output = `Found ${data.documents.length} document(s):\n${docList}`;
+              const paginationInfo = data.has_more 
+                ? `\n\nShowing ${data.documents.length} of ${data.total} documents. Use offset=${data.offset + data.documents.length} to see more.`
+                : `\n\nFound ${data.total} total document(s).`;
+              output = `Found ${data.documents.length} document(s):\n${docList}${paginationInfo}`;
             }
             break;
           }

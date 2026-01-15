@@ -44,24 +44,20 @@ export const WRITE_TOOLS = new Set([
 // Tools that are read-only (no confirmation needed)
 export const READ_TOOLS = new Set([
   // Journal read operations
-  "journal_get_entry",
   "journal_list_by_repository",
   "journal_list_by_branch",
   "journal_list_repositories",
   "journal_list_branches",
-  "journal_get_project_summary",
   "journal_list_project_summaries",
   "journal_list_attachments",
   "journal_backup", // This is actually a backup, but we'll treat as safe
 
   // Repository read operations
-  "repository_list_documents",
-  "repository_get_document",
+  "repository_search_documents",
   "repository_list_skills",
   "repository_list_experience",
   "repository_list_education",
   "repository_list_portfolio_projects",
-  "repository_get_portfolio_project",
 
   // Media read operations
   "list_media",

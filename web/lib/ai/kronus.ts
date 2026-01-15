@@ -9,10 +9,11 @@ import {
   workExperience,
   education,
   journalEntries,
+  linearProjects,
+  linearIssues,
 } from "@/lib/db/drizzle";
 import { eq, desc, and } from "drizzle-orm";
 import { formatDateShort } from "@/lib/utils";
-import { listProjects, listIssues } from "@/lib/linear/client";
 
 // Cache the soul only (repository is dynamic based on config)
 let cachedSoul: string | null = null;
@@ -338,26 +339,31 @@ ${entriesSection.join("\n\n---\n\n")}`;
       }
     }
 
-    // ===== LINEAR PROJECTS (from live API) =====
+    // ===== LINEAR PROJECTS (from cached database) =====
     if (config.linearProjects) {
       try {
-        const projectsResult = await listProjects({ showAll: false });
-        const projects = projectsResult.projects || [];
-
+        const db = getDrizzleDb();
+        
+        // Fetch all non-deleted projects from cache
+        let projects = await db
+          .select()
+          .from(linearProjects)
+          .where(eq(linearProjects.isDeleted, false));
+        
         // Filter by completion status if needed
-        const filteredProjects = config.linearIncludeCompleted
-          ? projects
-          : projects.filter(
-              (p: any) => p.state !== "completed" && p.state !== "canceled"
-            );
+        if (!config.linearIncludeCompleted) {
+          projects = projects.filter(
+            (p) => p.state !== "completed" && p.state !== "canceled"
+          );
+        }
 
-        if (filteredProjects.length > 0) {
-          const projectsSection = filteredProjects.map((project: any) => {
+        if (projects.length > 0) {
+          const projectsSection = projects.map((project) => {
             const progress = project.progress
               ? `${Math.round(project.progress * 100)}%`
               : "N/A";
             const targetDate = project.targetDate || "No target";
-            const lead = project.lead?.name || "Unassigned";
+            const lead = project.leadName || "Unassigned";
 
             return `### ${project.name}
 **State:** ${project.state || "Unknown"} | **Progress:** ${progress} | **Target:** ${targetDate}
@@ -366,9 +372,9 @@ ${entriesSection.join("\n\n---\n\n")}`;
 ${project.description ? `\n${project.description}` : ""}`;
           });
 
-          const linearProjectsText = `## Linear Projects (${filteredProjects.length})
+          const linearProjectsText = `## Linear Projects (${projects.length})
 
-Active projects from Linear that you're working on or leading.
+Cached projects from Linear (synced locally for historical preservation).
 These represent current initiatives and their progress.
 
 ${projectsSection.join("\n\n---\n\n")}`;
@@ -376,34 +382,48 @@ ${projectsSection.join("\n\n---\n\n")}`;
           sections.push(linearProjectsText);
           totalChars += linearProjectsText.length;
         }
-      } catch {
-        // Linear API may not be configured - ignore
+      } catch (error) {
+        // Linear data may not be synced yet - ignore
+        console.warn("[Kronus] Linear projects not available:", error);
       }
     }
 
-    // ===== LINEAR ISSUES (from live API) =====
+    // ===== LINEAR ISSUES (from cached database) =====
     if (config.linearIssues) {
       try {
-        const issuesResult = await listIssues({ showAll: false, limit: 100 });
-        const issues = issuesResult.issues || [];
-
+        const db = getDrizzleDb();
+        const defaultUserId = process.env.LINEAR_USER_ID;
+        
+        // Fetch issues from cache - filter by assignee if LINEAR_USER_ID is set
+        let issues = await db
+          .select()
+          .from(linearIssues)
+          .where(
+            defaultUserId
+              ? and(
+                  eq(linearIssues.isDeleted, false),
+                  eq(linearIssues.assigneeId, defaultUserId)
+                )
+              : eq(linearIssues.isDeleted, false)
+          );
+        
         // Filter by completion status if needed
-        const filteredIssues = config.linearIncludeCompleted
-          ? issues
-          : issues.filter((i: any) => {
-              const stateName = i.state?.name?.toLowerCase() || "";
-              return (
-                !stateName.includes("done") &&
-                !stateName.includes("completed") &&
-                !stateName.includes("canceled")
-              );
-            });
+        if (!config.linearIncludeCompleted) {
+          issues = issues.filter((i) => {
+            const stateName = (i.stateName || "").toLowerCase();
+            return (
+              !stateName.includes("done") &&
+              !stateName.includes("completed") &&
+              !stateName.includes("canceled")
+            );
+          });
+        }
 
-        if (filteredIssues.length > 0) {
+        if (issues.length > 0) {
           // Group by project
-          const byProject: Record<string, any[]> = {};
-          for (const issue of filteredIssues) {
-            const projectName = issue.project?.name || "No Project";
+          const byProject: Record<string, typeof issues> = {};
+          for (const issue of issues) {
+            const projectName = issue.projectName || "No Project";
             if (!byProject[projectName]) byProject[projectName] = [];
             byProject[projectName].push(issue);
           }
@@ -426,9 +446,9 @@ ${projectsSection.join("\n\n---\n\n")}`;
           const issuesSection = Object.entries(byProject)
             .map(([projectName, projectIssues]) => {
               const issueList = projectIssues
-                .map((issue: any) => {
+                .map((issue) => {
                   return `- **${issue.identifier}**: ${issue.title}
-  Priority: ${priorityLabel(issue.priority)} | State: ${issue.state?.name || "Unknown"}
+  Priority: ${priorityLabel(issue.priority)} | State: ${issue.stateName || "Unknown"}
   ${issue.description ? `${issue.description.substring(0, 150)}${issue.description.length > 150 ? "..." : ""}` : ""}`;
                 })
                 .join("\n\n");
@@ -437,9 +457,9 @@ ${projectsSection.join("\n\n---\n\n")}`;
             })
             .join("\n\n---\n\n");
 
-          const linearIssuesText = `## Linear Issues Assigned to Me (${filteredIssues.length})
+          const linearIssuesText = `## Linear Issues Assigned to Me (${issues.length})
 
-Active issues and tasks from Linear that are assigned to you.
+Cached issues from Linear (synced locally for historical preservation).
 Organized by project for context.
 
 ${issuesSection}`;
@@ -447,8 +467,9 @@ ${issuesSection}`;
           sections.push(linearIssuesText);
           totalChars += linearIssuesText.length;
         }
-      } catch {
-        // Linear API may not be configured - ignore
+      } catch (error) {
+        // Linear data may not be synced yet - ignore
+        console.warn("[Kronus] Linear issues not available:", error);
       }
     }
 
@@ -510,7 +531,7 @@ You have access to tools for:
 1. **Journal Management**: Create, read, update entries and project summaries
 2. **Linear Integration**: List/create/update issues and projects
 3. **Repository**: Access to all writings, prompts, skills, experience, and education
-   - **repository_list_documents**: Browse writings and prompts (filter by type)
+   - **repository_search_documents**: Search writings and prompts (filter by type, search keywords, pagination)
    - **repository_get_document**: Read a specific document by ID or slug
    - **repository_create_document**: Add new writings/prompts/notes
    - **repository_update_document**: Edit existing documents (requires document ID)
@@ -524,7 +545,7 @@ You have access to tools for:
 
 ### CRITICAL: Document Update Protocol
 **When the user wants to EDIT/UPDATE an existing document:**
-1. FIRST use **repository_list_documents** or **repository_get_document** to find the document and get its **ID**
+1. FIRST use **repository_search_documents** or **repository://document/{slug_or_id}** resource to find the document and get its **ID**
 2. THEN use **repository_update_document** with that ID to make changes
 3. NEVER create a new document when the user asks to edit an existing one
 

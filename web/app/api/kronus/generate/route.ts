@@ -1,8 +1,15 @@
+/**
+ * Kronus Generate - Journal Entry AI Generation
+ *
+ * Uses AI SDK 6.0 generateText with Output.object() for structured outputs
+ * (generateObject is deprecated in AI SDK 6.0)
+ */
+
 import { NextRequest, NextResponse } from "next/server";
 import { anthropic } from "@ai-sdk/anthropic";
 import { openai } from "@ai-sdk/openai";
 import { google } from "@ai-sdk/google";
-import { generateObject } from "ai";
+import { generateText, Output } from "ai";
 import fs from "fs";
 import path from "path";
 import os from "os";
@@ -144,17 +151,24 @@ Analyze the agent report and extract the structured fields.
 
 Respond with valid JSON matching the schema.`;
 
-    const result = await generateObject({
+    // AI SDK 6.0 pattern: generateText with Output.object() (generateObject is deprecated)
+    const result = await generateText({
       model: model as any,
-      schema: AIOutputSchema,
+      output: Output.object({ schema: AIOutputSchema }),
       prompt: systemPrompt,
       temperature: 0.7,
     });
 
+    const object = result.output;
+
+    if (!object) {
+      throw new Error("AI generation returned no structured output");
+    }
+
     return NextResponse.json({
       success: true,
       model: modelName,
-      ...result.object,
+      ...object,
     });
   } catch (error: any) {
     console.error("Kronus generation error:", error);

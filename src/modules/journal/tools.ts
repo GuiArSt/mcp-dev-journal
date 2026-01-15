@@ -26,6 +26,12 @@ import {
   getAttachmentStats,
   getAttachmentCountsForCommits,
   initDatabase,
+  // Linear cache - historical buffer
+  listLinearProjects,
+  getLinearProject,
+  listLinearIssues,
+  getLinearIssue,
+  getLinearCacheStats,
 } from './db/database.js';
 import { AgentInputSchema, ProjectSummaryInputSchema, AttachmentInputSchema } from './types.js';
 
@@ -313,55 +319,14 @@ Example file mentions in report:
     }
   );
 
-  // Tool 2: Get Entry by Commit
-  server.registerTool(
-    'journal_get_entry',
-    {
-      title: 'Get Journal Entry by Commit',
-      description: 'Retrieve a journal entry by its commit hash. By default excludes raw_agent_report to comply with MCP truncation limits (~256 lines / 10 KiB). Use include_raw_report=true to include the full report.',
-      inputSchema: {
-        commit_hash: AgentInputSchema.shape.commit_hash,
-        include_raw_report: z.boolean().optional().default(false).describe('Include full raw_agent_report field (can be very large, default: false)'),
-      },
-    },
-    async ({ commit_hash, include_raw_report }) => {
-      try {
-        const entry = getEntryByCommit(commit_hash);
-
-        if (!entry) {
-          return {
-            content: [
-              {
-                type: 'text' as const,
-                text: `No journal entry found for commit ${commit_hash}`,
-              },
-            ],
-          };
-        }
-
-        const summary = formatEntrySummary(entry, include_raw_report);
-        const output = JSON.stringify(summary, null, 2);
-        
-        return {
-          content: [
-            {
-              type: 'text' as const,
-              text: truncateOutput(output),
-            },
-          ],
-        };
-      } catch (error) {
-        throw toMcpError(error);
-      }
-    }
-  );
+  // Tool 2 removed - use resource journal://entry/{commit_hash} instead
 
   // Tool 3: List Entries by Repository
   server.registerTool(
     'journal_list_by_repository',
     {
       title: 'List Journal Entries by Repository',
-      description: 'List journal entries for a repository with pagination. Returns 20 entries by default (max 50). Each entry includes attachment_count showing how many files (images, diagrams, etc.) are attached. Large fields (raw_agent_report) excluded by default to comply with MCP truncation limits (~256 lines / 10 KiB). Use journal_list_attachments to see attachment details for a specific commit.',
+      description: '**SEARCH/QUERY TOOL** - List journal entries for a repository with pagination control. Returns 20 entries by default (max 50). Each entry includes attachment_count showing how many files (images, diagrams, etc.) are attached. Large fields (raw_agent_report) excluded by default to comply with MCP truncation limits (~256 lines / 10 KiB). Use journal://attachments/{commit_hash} resource to see attachment details for a specific commit.',
       inputSchema: {
         repository: AgentInputSchema.shape.repository,
         limit: z.number().optional().default(20).describe('Maximum number of entries to return (default: 20, max: 50)'),
@@ -438,7 +403,7 @@ Example file mentions in report:
     'journal_list_by_branch',
     {
       title: 'List Journal Entries by Branch',
-      description: 'List journal entries for a repository and branch with pagination. Returns 20 entries by default (max 50). Each entry includes attachment_count showing how many files (images, diagrams, etc.) are attached. Large fields (raw_agent_report) excluded by default to comply with MCP truncation limits (~256 lines / 10 KiB). Use journal_list_attachments to see attachment details for a specific commit.',
+      description: '**SEARCH/QUERY TOOL** - List journal entries for a repository and branch with pagination control. Returns 20 entries by default (max 50). Each entry includes attachment_count showing how many files (images, diagrams, etc.) are attached. Large fields (raw_agent_report) excluded by default to comply with MCP truncation limits (~256 lines / 10 KiB). Use journal://attachments/{commit_hash} resource to see attachment details for a specific commit.',
       inputSchema: {
         repository: AgentInputSchema.shape.repository,
         branch: AgentInputSchema.shape.branch,
@@ -513,123 +478,178 @@ Example file mentions in report:
     }
   );
 
-  // Tool 5: List Repositories
-  server.registerTool(
-    'journal_list_repositories',
-    {
-      title: 'List All Repositories',
-      description: 'List all repositories that have journal entries. Returns a simple list of repository names. Output is truncation-safe and complies with MCP limits.',
-      inputSchema: {},
-    },
-    async () => {
-      try {
-        const repositories = listRepositories();
-        const text = `📚 ${repositories.length} repositories:\n${repositories.join('\n')}`;
-        
-        return {
-          content: [
-            {
-              type: 'text' as const,
-              text: truncateOutput(text),
-            },
-          ],
-        };
-      } catch (error) {
-        throw toMcpError(error);
-      }
-    }
-  );
+  // Tool 5 removed - use resource journal://repositories instead
 
-  // Tool 6: List Branches
+  // Tool 6 removed - use resource journal://branches/{repository} instead
+
+  // Tool 7 removed - use resource journal://summary/{repository} instead
+
+  // Tool 8: Create Project Summary (Entry 0 Initial Creation)
   server.registerTool(
-    'journal_list_branches',
+    'journal_create_project_summary',
     {
-      title: 'List Branches for Repository',
-      description: 'List all branches in a repository that have journal entries. Returns a simple list of branch names. Output is truncation-safe and complies with MCP limits.',
+      title: 'Create Project Summary (Entry 0)',
+      description: `Create the initial Entry 0 (Living Project Summary) for a repository.
+Entry 0 is synthesized from TWO sources:
+1. **Your raw_report** - The primary source, your free-form observations about the project
+2. **Recent journal entries** - Additional context from existing journal entries (if any exist)
+
+Kronus normalizes both sources into structured Entry 0 sections.
+
+## When to Use This Tool
+Use this tool when a repository has NO Entry 0 yet. If Entry 0 already exists, use journal_submit_summary_report instead to update it.
+
+## How Entry 0 is Created
+Entry 0 combines:
+- **Your report** (raw_report parameter) - Your observations, discoveries, and narrative
+- **Recent journal entries** (if they exist) - Historical context from past work
+
+Kronus analyzes both sources to extract structured information and create a comprehensive project summary.
+
+## Your Report = The Primary Source
+The raw_report is YOUR space to write freely. This is where you capture:
+- The narrative and story of what you're building
+- The WHY behind decisions, not just the what
+- The spirit and essence of the project
+- Context, journey, struggles, breakthroughs
+- Non-technical aspects: goals, vision, personality
+- Technical discoveries (file paths, patterns, versions)
+
+Write like you're journaling - be messy, be expressive, be you.
+Kronus extracts technical details into structured sections below,
+but your narrative is preserved and valued as the project's soul.
+
+## Entry 0 Sections (extracted from your report)
+Kronus will parse your report and populate these structured sections:
+- **summary**: High-level project description
+- **purpose**: Primary goals and objectives
+- **architecture**: System design and structure
+- **key_decisions**: Important architectural/design decisions
+- **technologies**: Tech stack summary
+- **status**: Current project status
+- **file_structure**: Directory tree, what lives where
+- **tech_stack**: Frameworks, libraries, versions
+- **frontend**: UI patterns, components, state management
+- **backend**: API routes, middleware, auth patterns
+- **database_info**: Schema structure, ORM patterns
+- **services**: External APIs and integrations
+- **custom_tooling**: Project-specific utilities
+- **data_flow**: How data moves through the system
+- **patterns**: Naming conventions, code style
+- **commands**: Dev, deploy, build commands
+- **extended_notes**: Gotchas, TODOs, historical context
+
+## What To Include In Your Report
+- Technical discoveries (file paths, patterns, versions)
+- Non-technical context (why this approach, what problem it solves)
+- The journey (what you tried, what worked, what didn't)
+- Gotchas and "future me will thank me" notes
+- Anything that makes this project THIS project
+
+## Example Report
+"Building a developer journal system to track my coding journey. The soul of this
+project is capturing not just what I code, but WHY - the decisions, the learning,
+the growth. Using Next.js 16 with App Router, SQLite for portability (no server
+needed), and Kronus (Claude) to help me reflect on my work. Structure: src/ for
+MCP server, web/ for Next.js app. Important: dates are European (dd/mm/yyyy).
+The file_structure discovery: modules/journal/ handles entries, ai/ does the magic."`,
       inputSchema: {
-        repository: AgentInputSchema.shape.repository,
+        repository: z.string().min(1).describe('Repository name (must NOT have an existing project summary)'),
+        git_url: z.string().optional().describe('Optional Git repository URL (e.g., "https://github.com/user/repo")'),
+        raw_report: z.string().min(50).describe('Your free-form report - the PRIMARY source for Entry 0. Include technical discoveries, narrative, context, file structure, tech stack, patterns, etc. Kronus will also analyze recent journal entries (if any exist) to enrich this report.'),
+        include_recent_entries: z.number().optional().default(5).describe('Number of recent journal entries to analyze for ADDITIONAL context when creating Entry 0. These entries complement your raw_report (default: 5, max: 20).'),
       },
     },
-    async ({ repository }) => {
+    async ({ repository, git_url, raw_report, include_recent_entries }) => {
       try {
-        const branches = listBranches(repository);
-        const text = `🌿 ${branches.length} branches in ${repository}:\n${branches.join('\n')}`;
-        
-        return {
-          content: [
-            {
-              type: 'text' as const,
-              text: truncateOutput(text),
-            },
-          ],
-        };
-      } catch (error) {
-        throw toMcpError(error);
-      }
-    }
-  );
+        // 1. Check if Entry 0 already exists
+        const existingSummary = getProjectSummary(repository);
 
-  // Tool 7: Get Project Summary
-  server.registerTool(
-    'journal_get_project_summary',
-    {
-      title: 'Get Project Summary',
-      description: 'Retrieve the high-level summary for a repository. Includes journal entry statistics (entry_count, last_entry_date) and optional Linear integration fields (linear_project_id, linear_issue_id) if linked to Linear projects/issues.',
-      inputSchema: {
-        repository: ProjectSummaryInputSchema.shape.repository,
-      },
-    },
-    async ({ repository }) => {
-      try {
-        const projectSummary = getProjectSummary(repository);
-
-        if (!projectSummary) {
+        if (existingSummary) {
           return {
             content: [
               {
                 type: 'text' as const,
-                text: `No project summary found for ${repository}`,
+                text: `⚠️ Project summary (Entry 0) already exists for "${repository}". Use journal_submit_summary_report to update it instead.`,
               },
             ],
           };
         }
 
-        // Build response with explanation
-        let responseText = `📋 Project Summary for ${repository}:\n\n`;
-        
-        // Add Linear integration explanation if present
-        if (projectSummary.linear_project_id || projectSummary.linear_issue_id) {
-          responseText += `🔗 Linear Integration:\n`;
-          if (projectSummary.linear_project_id) {
-            responseText += `  • Linear Project ID: ${projectSummary.linear_project_id}\n`;
-            responseText += `    → This repository is linked to a Linear project. Use linear_list_projects or linear_get_viewer to fetch project details.\n`;
+        // 2. Get recent journal entries for additional context (if any exist)
+        // Entry 0 is synthesized from: raw_report (primary) + recentEntries (additional context)
+        const entriesLimit = Math.min(include_recent_entries || 5, 20); // Cap at 20
+        const { entries: recentEntries } = getEntriesByRepositoryPaginated(repository, entriesLimit, 0);
+
+        logger.info(`Creating Entry 0 for ${repository} from agent report + ${recentEntries.length} recent journal entries`);
+
+        // 3. Call Kronus to normalize the report and journal entries into structured Entry 0
+        // normalizeReport combines: raw_report (agent's observations) + recentEntries (historical context)
+        const normalizedUpdates = await normalizeReport(
+          raw_report, // Primary source: agent's free-form report
+          null, // No existing summary - this is initial creation
+          recentEntries, // Additional context: recent journal entries
+          journalConfig
+        );
+
+        // 4. Merge updates (will just return the updates since there's no existing summary)
+        const mergedUpdates = mergeSummaryUpdates(null, normalizedUpdates);
+
+        // 5. Create initial Entry 0
+        upsertProjectSummary({
+          repository,
+          git_url: git_url || null,
+          summary: mergedUpdates.summary || 'Project summary',
+          purpose: mergedUpdates.purpose || 'To be documented',
+          architecture: mergedUpdates.architecture || 'To be documented',
+          key_decisions: mergedUpdates.key_decisions || 'To be documented',
+          technologies: mergedUpdates.technologies || 'To be documented',
+          status: mergedUpdates.status || 'In development',
+          linear_project_id: null,
+          linear_issue_id: null,
+          // Living Project Summary fields
+          file_structure: mergedUpdates.file_structure || null,
+          tech_stack: mergedUpdates.tech_stack || null,
+          frontend: mergedUpdates.frontend || null,
+          backend: mergedUpdates.backend || null,
+          database_info: mergedUpdates.database_info || null,
+          services: mergedUpdates.services || null,
+          custom_tooling: mergedUpdates.custom_tooling || null,
+          data_flow: mergedUpdates.data_flow || null,
+          patterns: mergedUpdates.patterns || null,
+          commands: mergedUpdates.commands || null,
+          extended_notes: mergedUpdates.extended_notes || null,
+          last_synced_entry: recentEntries.length > 0 ? recentEntries[0].commit_hash : null,
+          entries_synced: recentEntries.length,
+        });
+
+        // Auto-backup
+        autoBackup();
+
+        // 6. Track what fields were created
+        const createdFields: string[] = [];
+        for (const [key, value] of Object.entries(mergedUpdates)) {
+          if (value !== null && value !== undefined && String(value).trim().length > 0) {
+            createdFields.push(key);
           }
-          if (projectSummary.linear_issue_id) {
-            responseText += `  • Linear Issue ID: ${projectSummary.linear_issue_id}\n`;
-            responseText += `    → This repository is linked to a Linear issue. Use linear_list_issues to fetch issue details.\n`;
-          }
-          responseText += `\n`;
         }
-        
-        // Add journal entry stats explanation
-        if (projectSummary.entry_count !== undefined) {
-          responseText += `📊 Journal Entry Statistics:\n`;
-          responseText += `  • Total entries: ${projectSummary.entry_count}\n`;
-          if (projectSummary.last_entry_date) {
-            responseText += `  • Last entry date: ${projectSummary.last_entry_date}\n`;
-          } else {
-            responseText += `  • Last entry date: None\n`;
-          }
-          responseText += `\n`;
-        }
-        
-        responseText += `📄 Full Project Summary:\n${JSON.stringify(projectSummary, null, 2)}`;
+
+        const output = {
+          success: true,
+          repository,
+          created_fields: createdFields,
+          fields_count: createdFields.length,
+          entries_analyzed: recentEntries.length,
+          message: `Entry 0 (Living Project Summary) created for ${repository} with ${createdFields.length} field(s): ${createdFields.join(', ')}`,
+        };
+
+        const text = `✅ Entry 0 (Living Project Summary) created for ${repository}\n\n${JSON.stringify(output, null, 2)}`;
 
         return {
           content: [
             {
               type: 'text' as const,
-              text: responseText,
+              text: truncateOutput(text),
             },
           ],
         };
@@ -639,7 +659,7 @@ Example file mentions in report:
     }
   );
 
-  // Tool 8: Submit Summary Report (Entry 0 Update)
+  // Tool 9: Submit Summary Report (Entry 0 Update)
   server.registerTool(
     'journal_submit_summary_report',
     {
@@ -647,18 +667,49 @@ Example file mentions in report:
       description: `Submit a chaotic report about a project to update Entry 0 (Living Project Summary).
 Kronus (Sonnet 4.5) normalizes messy observations into structured sections.
 
-Can include:
-- File structure discoveries
-- Code patterns and conventions
-- Tech stack info (frameworks, libraries, versions)
-- Dev/deploy commands
-- Gotchas and historical context
-- Anything relevant to the project
+## Your Report = The Soul of the Project
+The raw_report is YOUR space to write freely. This is where you capture:
+- The narrative and story of what you're building
+- The WHY behind decisions, not just the what
+- The spirit and essence of the project
+- Context, journey, struggles, breakthroughs
+- Non-technical aspects: goals, vision, personality
 
-Be as detailed or messy as needed - Kronus will structure it.`,
+Write like you're journaling - be messy, be expressive, be you.
+Kronus extracts technical details into structured sections below,
+but your narrative is preserved and valued as the project's soul.
+
+## Entry 0 Sections (extracted from your report)
+Kronus will parse your report and populate these structured sections:
+- **file_structure**: Directory tree, what lives where
+- **tech_stack**: Frameworks, libraries, versions
+- **frontend**: UI patterns, components, state management
+- **backend**: API routes, middleware, auth patterns
+- **database_info**: Schema structure, ORM patterns
+- **services**: External APIs and integrations
+- **custom_tooling**: Project-specific utilities
+- **data_flow**: How data moves through the system
+- **patterns**: Naming conventions, code style
+- **commands**: Dev, deploy, build commands
+- **extended_notes**: Gotchas, TODOs, historical context
+
+## What To Include In Your Report
+- Technical discoveries (file paths, patterns, versions)
+- Non-technical context (why this approach, what problem it solves)
+- The journey (what you tried, what worked, what didn't)
+- Gotchas and "future me will thank me" notes
+- Anything that makes this project THIS project
+
+## Example Report
+"Building a developer journal system to track my coding journey. The soul of this
+project is capturing not just what I code, but WHY - the decisions, the learning,
+the growth. Using Next.js 16 with App Router, SQLite for portability (no server
+needed), and Kronus (Claude) to help me reflect on my work. Structure: src/ for
+MCP server, web/ for Next.js app. Important: dates are European (dd/mm/yyyy).
+The file_structure discovery: modules/journal/ handles entries, ai/ does the magic."`,
       inputSchema: {
         repository: z.string().min(1).describe('Repository name (must have an existing project summary)'),
-        raw_report: z.string().min(50).describe('Unstructured report - file structure, patterns, stack, commands, gotchas, etc. Be detailed!'),
+        raw_report: z.string().min(50).describe('Your free-form report - the soul/spirit of the project, technical discoveries, narrative, context. Write freely, Kronus extracts structure.'),
         include_recent_entries: z.number().optional().default(5).describe('Also analyze N recent journal entries for additional context (default: 5)'),
       },
     },
@@ -770,7 +821,7 @@ Be as detailed or messy as needed - Kronus will structure it.`,
     'journal_list_project_summaries',
     {
       title: 'List All Project Summaries',
-      description: 'List project summaries across all repositories with pagination. Returns 30 summaries by default (max 50). Each summary includes journal entry statistics (entry_count, last_entry_date) and optional Linear integration fields (linear_project_id, linear_issue_id) if linked to Linear projects/issues. Output complies with MCP truncation limits (~256 lines / 10 KiB). Use limit/offset for pagination.',
+      description: '**SEARCH/QUERY TOOL** - List project summaries across all repositories with pagination control. Returns 30 summaries by default (max 50). Each summary includes journal entry statistics (entry_count, last_entry_date) and optional Linear integration fields (linear_project_id, linear_issue_id) if linked to Linear projects/issues. Output complies with MCP truncation limits (~256 lines / 10 KiB). Use limit/offset for pagination.',
       inputSchema: {
         limit: z.number().optional().default(30).describe('Maximum number of summaries to return (default: 30, max: 50)'),
         offset: z.number().optional().default(0).describe('Number of summaries to skip for pagination (default: 0)'),
@@ -832,66 +883,310 @@ Be as detailed or messy as needed - Kronus will structure it.`,
     }
   );
 
-  // Tool 9: List Attachments for Journal Entry
+  // Tool 9 removed - use resource journal://attachments/{commit_hash} instead
+
+  // Tool 10 removed - use resource journal://attachment/{attachment_id} instead
+
+  // Tool 11: List Media Library (Unified)
   server.registerTool(
-    'journal_list_attachments',
+    'journal_list_media_library',
     {
-      title: 'List Attachments for Journal Entry',
-      description: 'Get attachment metadata (filename, description, size, type) for a journal entry by commit hash. Binary file data is excluded by default to comply with MCP truncation limits (~256 lines / 10 KiB). Use journal_get_attachment with include_data=true to retrieve file contents.',
+      title: 'List Media Library',
+      description: `**SEARCH/QUERY TOOL** - Query media assets from the unified library (merges entry_attachments and media_assets tables) with advanced filtering and pagination.
+
+Returns a paginated index with download URLs that models can fetch directly, avoiding MCP truncation limits.
+
+## Sources
+- **entry_attachments**: Binary files attached to journal entries (images, diagrams, PDFs)
+- **media_assets**: Media from web app (AI-generated images, portfolio assets, documents)
+
+## Query Features
+- Multiple filters: repository, commit, destination, MIME type
+- Pagination control: limit/offset
+- Extended metadata (AI prompts, dimensions, CDN URLs)
+- Direct download URLs (requires TARTARUS_URL configuration)
+
+## Example Usage
+1. List all images: \`{ mime_type_prefix: "image/" }\`
+2. Get assets for a repo: \`{ repository: "Developer Journal Workspace" }\`
+3. Find AI-generated images: \`{ destination: "media" }\``,
       inputSchema: {
-        commit_hash: AttachmentInputSchema.shape.commit_hash,
+        repository: z.string().optional().describe('Filter by repository name (searches commit_hash links)'),
+        commit_hash: z.string().min(7).optional().describe('Filter by specific commit hash'),
+        destination: z.enum(['journal', 'repository', 'media', 'portfolio', 'all']).optional().default('all')
+          .describe('Filter by asset destination/category'),
+        mime_type_prefix: z.string().optional().describe('Filter by MIME type prefix (e.g., "image/", "application/pdf")'),
+        limit: z.number().optional().default(50).describe('Max items to return (default: 50, max: 100)'),
+        offset: z.number().optional().default(0).describe('Pagination offset'),
+        include_metadata: z.boolean().optional().default(true).describe('Include full metadata (alt, prompt, model, dimensions)'),
       },
     },
-    async ({ commit_hash }) => {
+    async ({ repository, commit_hash, destination, mime_type_prefix, limit, offset, include_metadata }) => {
       try {
-        // Use metadata-only function (no binary data)
-        const attachments = getAttachmentMetadataByCommit(commit_hash);
+        const result = getUnifiedMediaLibrary(
+          {
+            repository,
+            commit_hash,
+            destination: destination as 'journal' | 'repository' | 'media' | 'portfolio' | 'all' | undefined,
+            mime_type_prefix,
+          },
+          limit ?? 50,
+          offset ?? 0
+        );
 
-        if (attachments.length === 0) {
-          return {
-            content: [
-              {
-                type: 'text' as const,
-                text: `No attachments found for commit ${commit_hash}`,
-              },
-            ],
+        const tartarusUrl = journalConfig.tartarusUrl;
+
+        // Transform items with download URLs
+        const items = result.items.map(item => {
+          // Generate download URL
+          let downloadUrl: string | null = null;
+          if (tartarusUrl) {
+            if (item.source === 'entry_attachments') {
+              downloadUrl = `${tartarusUrl}/api/mcp/attachments/${item.source_id}/raw`;
+            } else {
+              // Prefer CDN URLs if available
+              downloadUrl = item.supabase_url || item.drive_url || `${tartarusUrl}/api/media/${item.source_id}/raw`;
+            }
+          }
+
+          const baseItem = {
+            id: `${item.source === 'entry_attachments' ? 'attachment' : 'media'}:${item.source_id}`,
+            source: item.source,
+            source_id: item.source_id,
+            filename: item.filename,
+            mime_type: item.mime_type,
+            file_size: item.file_size,
+            description: item.description,
+            download_url: downloadUrl,
+            commit_hash: item.commit_hash,
+            repository: item.repository,
+            document_id: item.document_id,
+            destination: item.destination,
+            created_at: item.created_at,
           };
-        }
 
-        const stats = getAttachmentStats(commit_hash);
+          // Add metadata if requested
+          if (include_metadata && item.source === 'media_assets') {
+            return {
+              ...baseItem,
+              metadata: {
+                alt: item.alt || undefined,
+                prompt: item.prompt || undefined,
+                model: item.model || undefined,
+                tags: item.tags ? JSON.parse(item.tags) : undefined,
+                width: item.width || undefined,
+                height: item.height || undefined,
+                drive_url: item.drive_url || undefined,
+                supabase_url: item.supabase_url || undefined,
+              },
+            };
+          }
 
-        // Add download URLs if Tartarus URL is configured
-        const attachmentsWithUrls = attachments.map((att: any) => ({
-          ...att,
-          download_url: journalConfig.tartarusUrl
-            ? `${journalConfig.tartarusUrl}/api/attachments/${att.id}/raw`
-            : null,
+          return baseItem;
+        });
+
+        const response = {
+          total: result.total,
+          showing: `${offset} to ${offset + items.length}`,
+          has_more: offset + items.length < result.total,
+          sources: result.sources,
+          base_url: tartarusUrl || null,
+          download_enabled: !!tartarusUrl,
+          items,
+        };
+
+        const text = `📚 Media Library (${result.total} items)\n\n${JSON.stringify(response, null, 2)}`;
+
+        return {
+          content: [
+            {
+              type: 'text' as const,
+              text: truncateOutput(text),
+            },
+          ],
+        };
+      } catch (error) {
+        throw toMcpError(error);
+      }
+    }
+  );
+
+  // ============================================
+  // REPOSITORY TOOLS - Fetch from Tartarus API
+  // These tools fetch repository data (documents, skills, experience, etc.)
+  // from the Tartarus web app via HTTP API
+  // ============================================
+  //
+  // REPOSITORY STRUCTURE OVERVIEW:
+  // The repository contains multiple distinct parts:
+  //
+  // 1. JOURNAL ENTRIES (git commit-based)
+  //    - Created via journal_create_entry
+  //    - Linked to git commits, branches, repositories
+  //    - Contains: why, what_changed, decisions, technologies, files_changed
+  //
+  // 2. DOCUMENTS (writings, prompts, notes)
+  //    - Types: 'writing', 'prompt', 'note' (primary categorization)
+  //    - Labels/Tags: Stored in metadata.tags array (e.g., "poems", "prompts", "skills", "manifesto", "essay")
+  //    - Documents can have BOTH a type AND multiple labels
+  //    - Example: A document with type="writing" might have tags=["poem", "philosophy"]
+  //    - Filter by type OR search by content/title
+  //
+  // 3. SKILLS (CV/portfolio)
+  //    - Technical capabilities with proficiency levels (magnitude 1-5)
+  //    - Organized by categories (Frontend, Backend, AI/ML, etc.)
+  //
+  // 4. WORK EXPERIENCE (CV)
+  //    - Job history with companies, roles, achievements
+  //
+  // 5. EDUCATION (CV)
+  //    - Academic background, degrees, institutions
+  //
+  // 6. PORTFOLIO PROJECTS
+  //    - Showcased deliverables, case studies, shipped work
+  //    - Distinct from journal project_summaries (which are living docs)
+  //
+  // NOTE: Documents have a two-level categorization:
+  //   - Primary: type field ('writing', 'prompt', 'note')
+  //   - Secondary: metadata.tags array (custom labels like 'poem', 'prompt', 'skill', etc.)
+  //   - Use type filter for broad categories, search for specific labels/content
+
+  const tartarusUrl = journalConfig.tartarusUrl;
+  const mcpApiKey = journalConfig.mcpApiKey;
+
+  // Helper to fetch from Tartarus API
+  async function fetchTartarus<T>(endpoint: string): Promise<T> {
+    if (!tartarusUrl) {
+      throw new Error('TARTARUS_URL not configured. Set this env var to enable repository access.');
+    }
+    const url = `${tartarusUrl}${endpoint}`;
+    logger.info(`Fetching from Tartarus: ${url}`);
+
+    const headers: Record<string, string> = {
+      'Accept': 'application/json',
+    };
+
+    // Add MCP API key for authentication if configured
+    if (mcpApiKey) {
+      headers['X-MCP-API-Key'] = mcpApiKey;
+    }
+
+    const response = await fetch(url, { headers });
+
+    if (!response.ok) {
+      const errorText = await response.text().catch(() => 'Unknown error');
+      throw new Error(`Tartarus API error (${response.status}): ${errorText}`);
+    }
+
+    return response.json();
+  }
+
+  // Tool 14: repository_search_documents (Search & Query Tool)
+  server.registerTool(
+    'repository_search_documents',
+    {
+      title: 'Search & List Repository Documents',
+      description: `Search and query documents from the repository (writings, prompts, notes) with advanced filtering and pagination.
+
+**This is a SEARCH TOOL** - Use this when you need to:
+- Search documents by keywords in title/content
+- Filter by type AND search simultaneously
+- Control pagination (limit/offset)
+- Get pagination metadata
+
+For simple direct access, use resources instead:
+- Get specific document: \`repository://document/{slug_or_id}\` resource
+- List by type only: \`repository://documents/{type}\` resource
+
+## Repository Structure: Documents
+Documents are organized with TWO levels of categorization:
+
+1. **Primary Type** (required field):
+   - \`writing\`: Creative works, essays, poems, philosophical pieces, fiction
+   - \`prompt\`: System prompts, AI contexts, templates, instructions for AI
+   - \`note\`: Quick notes, reference material, snippets
+
+2. **Labels/Tags** (in metadata.tags array):
+   - Additional categorization like "poems", "prompts", "skills", "manifesto", "essay", "reflection", etc.
+   - Documents can have multiple tags
+   - Example: A document with type="writing" might have tags=["poem", "philosophy"]
+
+## Search & Filtering Capabilities
+- **Search**: Search in title and content (finds documents by keywords, including tag names)
+- **Type filter**: Filter by broad category (writing/prompt/note)
+- **Combined**: Use both \`type\` and \`search\` together for precise queries
+- Documents can appear in multiple categories via metadata.alsoShownIn
+
+## Pagination Control
+- \`limit\`: Maximum documents to return (default: 50, max: 100)
+- \`offset\`: Number of documents to skip (default: 0)
+- Returns pagination metadata: total, showing range, has_more flag
+
+## Returns
+Document metadata including: id, slug, type, title, language, excerpt, dates.
+Full document content available via \`repository://document/{slug_or_id}\` resource.
+
+Requires TARTARUS_URL to be configured.`,
+      inputSchema: {
+        type: z.enum(['writing', 'prompt', 'note']).optional().describe('Filter by primary document type (writing/prompt/note)'),
+        search: z.string().optional().describe('Search in title and content (can find documents by keywords or tag names)'),
+        limit: z.number().optional().default(50).describe('Maximum number of documents to return (default: 50, max: 100)'),
+        offset: z.number().optional().default(0).describe('Number of documents to skip for pagination (default: 0)'),
+      },
+    },
+    async ({ type, search, limit = 50, offset = 0 }) => {
+      try {
+        const safeLimit = Math.min(limit, 100); // Cap at 100
+        const params = new URLSearchParams();
+        if (type) params.set('type', type);
+        if (search) params.set('search', search);
+        params.set('limit', safeLimit.toString());
+        params.set('offset', offset.toString());
+
+        const queryString = params.toString();
+        const response = await fetchTartarus<{
+          documents: any[];
+          total: number;
+          limit: number;
+          offset: number;
+          has_more: boolean;
+        }>(`/api/documents?${queryString}`);
+
+        // Format response
+        const formatted = response.documents.map(doc => ({
+          id: doc.id,
+          slug: doc.slug,
+          type: doc.type,
+          title: doc.title,
+          language: doc.language,
+          excerpt: doc.content?.substring(0, 200) + (doc.content?.length > 200 ? '...' : ''),
+          created_at: doc.createdAt,
+          updated_at: doc.updatedAt,
         }));
 
+        // Build output with pagination info (similar to journal tools)
         const output: any = {
-          commit_hash,
-          attachment_count: attachments.length,
-          total_size_bytes: stats.total_size,
-          total_size_kb: (stats.total_size / 1024).toFixed(2),
-          attachments: attachmentsWithUrls,
+          total_documents: response.total,
+          showing: `${offset} to ${offset + formatted.length}`,
+          has_more: response.has_more,
+          documents: formatted,
         };
 
-        // Add helpful note about download URLs
-        if (journalConfig.tartarusUrl) {
-          output.download_note = 'Use download_url to fetch full file content via HTTP (bypasses MCP truncation limits)';
-        } else {
-          output.download_note = 'Set TARTARUS_URL env var to enable direct download URLs';
+        // Check if output will be truncated
+        const testText = `📄 Documents (${response.total} total)\n\n${JSON.stringify(output, null, 2)}`;
+        const willTruncate = testText.split('\n').length > MAX_SAFE_LINES || Buffer.byteLength(testText, 'utf8') > MAX_SAFE_BYTES;
+
+        if (willTruncate) {
+          output.warning = `⚠️ OUTPUT TRUNCATED ⚠️ Response exceeds MCP size limits (~256 lines / 10 KiB). Showing ${formatted.length} of ${response.total} documents. Use pagination (limit/offset) to see more.`;
+          output.truncated = true;
+          output.documents_returned = formatted.length;
+          output.documents_total = response.total;
         }
 
-        const text = `📎 ${attachments.length} attachment(s) for commit ${commit_hash}\n\n${JSON.stringify(output, null, 2)}`;
-        
+        const text = `📄 Documents (${response.total} total)\n\n${JSON.stringify(output, null, 2)}`;
+
         return {
-          content: [
-            {
-              type: 'text' as const,
-              text: truncateOutput(text),
-            },
-          ],
+          content: [{ type: 'text' as const, text: truncateOutput(text) }],
         };
       } catch (error) {
         throw toMcpError(error);
@@ -899,73 +1194,69 @@ Be as detailed or messy as needed - Kronus will structure it.`,
     }
   );
 
-  // Tool 10: Get Attachment by ID
+  // Tool 15 removed - use resource repository://document/{slug_or_id} instead
+
+  // Tool 16: repository_list_skills
   server.registerTool(
-    'journal_get_attachment',
+    'repository_list_skills',
     {
-      title: 'Get Attachment by ID',
-      description: 'Retrieve attachment metadata and optionally file data by attachment ID. Returns metadata only by default (filename, description, size, type). Set include_data=true to get base64-encoded file data (may be truncated for large files to comply with MCP limits). Use this tool to fetch images, diagrams, PDFs, or Mermaid files attached to journal entries.',
+      title: 'List Skills',
+      description: `List all skills from the CV/portfolio section of the repository.
+
+## Repository Structure: Skills
+Skills represent technical capabilities and expertise areas:
+- Organized by categories (Frontend, Backend, AI/ML, Design, etc.)
+- Proficiency levels: magnitude 1-5 (1=Beginner, 5=Expert)
+- Includes descriptions and tags
+
+## Returns
+Skills grouped by category with:
+- Name, category, proficiency level (magnitude + human-readable level)
+- Description, tags
+- Useful for understanding technical capabilities and expertise areas.`,
       inputSchema: {
-        attachment_id: z.number().positive().describe('Attachment ID to retrieve'),
-        include_data: z.boolean().optional().default(false).describe('Include base64-encoded file data (can be very large, default: false)'),
-        max_data_preview_chars: z.number().optional().default(500).describe('If include_data=true, maximum characters of base64 data to include (default: 500)'),
+        category: z.string().optional().describe('Filter by category (e.g., "Frontend", "Backend", "AI/ML")'),
       },
     },
-    async ({ attachment_id, include_data, max_data_preview_chars }) => {
+    async ({ category }) => {
       try {
-        const attachment = getAttachmentById(attachment_id);
+        const params = new URLSearchParams();
+        if (category) params.set('category', category);
 
-        if (!attachment) {
-          return {
-            content: [
-              {
-                type: 'text' as const,
-                text: `No attachment found with ID ${attachment_id}`,
-              },
-            ],
-          };
-        }
+        const queryString = params.toString();
+        const skills = await fetchTartarus<any[]>(`/api/cv/skills${queryString ? `?${queryString}` : ''}`);
 
-        // Build download URL if Tartarus URL is configured
-        const downloadUrl = journalConfig.tartarusUrl
-          ? `${journalConfig.tartarusUrl}/api/attachments/${attachment.id}/raw`
-          : null;
-
-        const output: any = {
-          id: attachment.id,
-          filename: attachment.filename,
-          mime_type: attachment.mime_type,
-          description: attachment.description || null,
-          file_size_bytes: attachment.file_size,
-          file_size_kb: (attachment.file_size / 1024).toFixed(2),
-          commit_hash: attachment.commit_hash,
-          uploaded_at: attachment.uploaded_at,
-          download_url: downloadUrl,
+        // Map magnitude to level names
+        const levelMap: Record<number, string> = {
+          5: 'Expert',
+          4: 'Professional',
+          3: 'Intermediate',
+          2: 'Apprentice',
+          1: 'Beginner',
         };
 
-        if (include_data) {
-          const data_base64 = attachment.data.toString('base64');
-          const previewLength = Math.min(max_data_preview_chars || 500, data_base64.length);
-          output.data_base64_preview = data_base64.substring(0, previewLength);
-          output.data_base64_full_length = data_base64.length;
-          output.note = previewLength < data_base64.length
-            ? `Data truncated for preview (${previewLength}/${data_base64.length} chars). Use download_url to fetch full file.`
-            : 'Full data included';
-        } else {
-          output.note = downloadUrl
-            ? 'Binary data excluded. Use download_url to fetch full file via HTTP (bypasses MCP limits).'
-            : 'Binary data excluded. Set TARTARUS_URL env var to enable direct download URLs.';
+        const formatted = skills.map(s => ({
+          id: s.id,
+          name: s.name,
+          category: s.category,
+          level: levelMap[s.magnitude] || 'Unknown',
+          magnitude: s.magnitude,
+          description: s.description,
+          tags: s.tags ? JSON.parse(s.tags) : [],
+        }));
+
+        // Group by category
+        const byCategory: Record<string, any[]> = {};
+        for (const skill of formatted) {
+          const cat = skill.category || 'Other';
+          if (!byCategory[cat]) byCategory[cat] = [];
+          byCategory[cat].push(skill);
         }
 
-        const text = `📄 Attachment ${attachment_id}\n\n${JSON.stringify(output, null, 2)}`;
-        
+        const text = `🛠️ Skills (${formatted.length} total)\n\n${JSON.stringify(byCategory, null, 2)}`;
+
         return {
-          content: [
-            {
-              type: 'text' as const,
-              text: truncateOutput(text),
-            },
-          ],
+          content: [{ type: 'text' as const, text: truncateOutput(text) }],
         };
       } catch (error) {
         throw toMcpError(error);
@@ -973,7 +1264,156 @@ Be as detailed or messy as needed - Kronus will structure it.`,
     }
   );
 
-  logger.success('Journal tools registered (11 tools)');
+  // Tool 17: repository_list_experience
+  server.registerTool(
+    'repository_list_experience',
+    {
+      title: 'List Work Experience',
+      description: `List work experience history from the CV section of the repository.
+
+## Repository Structure: Work Experience
+Professional job history including:
+- Company, title, department, location
+- Date ranges (start → end or Present)
+- Tagline/description
+- Achievements (array of accomplishments)
+
+Useful for understanding professional background and career history.`,
+      inputSchema: {},
+    },
+    async () => {
+      try {
+        const experience = await fetchTartarus<any[]>('/api/cv/experience');
+
+        const formatted = experience.map(job => ({
+          id: job.id,
+          title: job.title,
+          company: job.company,
+          department: job.department,
+          location: job.location,
+          period: `${job.dateStart} → ${job.dateEnd || 'Present'}`,
+          tagline: job.tagline,
+          achievements: job.achievements ? JSON.parse(job.achievements) : [],
+        }));
+
+        const text = `💼 Work Experience (${formatted.length} entries)\n\n${JSON.stringify(formatted, null, 2)}`;
+
+        return {
+          content: [{ type: 'text' as const, text: truncateOutput(text) }],
+        };
+      } catch (error) {
+        throw toMcpError(error);
+      }
+    }
+  );
+
+  // Tool 18: repository_list_education
+  server.registerTool(
+    'repository_list_education',
+    {
+      title: 'List Education',
+      description: `List education history from the CV section of the repository.
+
+## Repository Structure: Education
+Academic background including:
+- Degree, field of study, institution, location
+- Date ranges (start → end or Present)
+- Tagline/description
+- Focus areas and achievements
+
+Useful for understanding academic background and qualifications.`,
+      inputSchema: {},
+    },
+    async () => {
+      try {
+        const education = await fetchTartarus<any[]>('/api/cv/education');
+
+        const formatted = education.map(edu => ({
+          id: edu.id,
+          degree: edu.degree,
+          field: edu.field,
+          institution: edu.institution,
+          location: edu.location,
+          period: `${edu.dateStart} → ${edu.dateEnd || 'Present'}`,
+          tagline: edu.tagline,
+          focusAreas: edu.focusAreas ? JSON.parse(edu.focusAreas) : [],
+          achievements: edu.achievements ? JSON.parse(edu.achievements) : [],
+        }));
+
+        const text = `🎓 Education (${formatted.length} entries)\n\n${JSON.stringify(formatted, null, 2)}`;
+
+        return {
+          content: [{ type: 'text' as const, text: truncateOutput(text) }],
+        };
+      } catch (error) {
+        throw toMcpError(error);
+      }
+    }
+  );
+
+  // Tool 19: repository_list_portfolio_projects
+  server.registerTool(
+    'repository_list_portfolio_projects',
+    {
+      title: 'List Portfolio Projects',
+      description: `List portfolio projects (shipped work, case studies) from the repository.
+
+## Repository Structure: Portfolio Projects
+Showcased deliverables and case studies:
+- Projects with titles, categories, companies, roles
+- Status: shipped, wip (work in progress), archived
+- Technologies used, metrics, links
+- Featured flag for highlighting
+
+## Important Distinction
+These are DISTINCT from journal project_summaries:
+- **Portfolio Projects**: Showcased deliverables, case studies, shipped work
+- **Journal Project Summaries (Entry 0)**: Living documentation of active projects (created via journal_create_project_summary)
+
+Returns projects with titles, categories, technologies, and metrics.`,
+      inputSchema: {
+        status: z.enum(['shipped', 'wip', 'archived']).optional().describe('Filter by project status'),
+        featured: z.boolean().optional().describe('Only show featured projects'),
+      },
+    },
+    async ({ status, featured }) => {
+      try {
+        const params = new URLSearchParams();
+        if (status) params.set('status', status);
+        if (featured !== undefined) params.set('featured', featured.toString());
+
+        const queryString = params.toString();
+        const projects = await fetchTartarus<any[]>(`/api/portfolio-projects${queryString ? `?${queryString}` : ''}`);
+
+        const formatted = projects.map(p => ({
+          id: p.id,
+          title: p.title,
+          category: p.category,
+          company: p.company,
+          status: p.status,
+          featured: p.featured,
+          role: p.role,
+          dateCompleted: p.dateCompleted,
+          excerpt: p.excerpt,
+          technologies: p.technologies ? JSON.parse(p.technologies) : [],
+          metrics: p.metrics ? JSON.parse(p.metrics) : {},
+          links: p.links ? JSON.parse(p.links) : {},
+        }));
+
+        const text = `🚀 Portfolio Projects (${formatted.length} found)\n\n${JSON.stringify(formatted, null, 2)}`;
+
+        return {
+          content: [{ type: 'text' as const, text: truncateOutput(text) }],
+        };
+      } catch (error) {
+        throw toMcpError(error);
+      }
+    }
+  );
+
+  // Tool 20 removed - use resource repository://portfolio-project/{id} instead
+
+  logger.success('Journal tools registered (7 tools) + Repository tools (5 tools via Tartarus API)');
 
   // ============================================
   // MCP Resources - Expose journal data as resources
@@ -1029,7 +1469,755 @@ Be as detailed or messy as needed - Kronus will structure it.`,
     }
   );
 
-  logger.success('Journal resources registered (2 resources)');
+  // Resource Template: Get journal entry by commit hash
+  server.registerResource(
+    'journal-entry',
+    new ResourceTemplate('journal://entry/{commit_hash}', { list: undefined }),
+    {
+      description: 'Get a journal entry by commit hash. By default excludes raw_agent_report. Add ?include_raw_report=true to URI query to include full report.',
+      mimeType: 'application/json',
+    },
+    async (uri, { commit_hash }) => {
+      try {
+        // Check for query parameter
+        const url = new URL(uri.href);
+        const includeRawReport = url.searchParams.get('include_raw_report') === 'true';
+
+        const entry = getEntryByCommit(commit_hash as string);
+        if (!entry) {
+          return {
+            contents: [{
+              uri: uri.href,
+              mimeType: 'application/json',
+              text: JSON.stringify({ error: `No journal entry found for commit ${commit_hash}` }),
+            }],
+          };
+        }
+
+        const summary = formatEntrySummary(entry, includeRawReport);
+        return {
+          contents: [{
+            uri: uri.href,
+            mimeType: 'application/json',
+            text: JSON.stringify(summary, null, 2),
+          }],
+        };
+      } catch (error) {
+        return {
+          contents: [{
+            uri: uri.href,
+            mimeType: 'application/json',
+            text: JSON.stringify({ 
+              error: `Failed to fetch entry: ${error instanceof Error ? error.message : 'Unknown error'}` 
+            }),
+          }],
+        };
+      }
+    }
+  );
+
+  // Resource Template: List branches for a repository
+  server.registerResource(
+    'journal-branches',
+    new ResourceTemplate('journal://branches/{repository}', { list: undefined }),
+    {
+      description: 'List all branches in a repository that have journal entries. Returns a simple list of branch names.',
+      mimeType: 'application/json',
+    },
+    async (uri, { repository }) => {
+      try {
+        const branches = listBranches(repository as string);
+        return {
+          contents: [{
+            uri: uri.href,
+            mimeType: 'application/json',
+            text: JSON.stringify({
+              repository: repository,
+              branch_count: branches.length,
+              branches: branches,
+            }, null, 2),
+          }],
+        };
+      } catch (error) {
+        return {
+          contents: [{
+            uri: uri.href,
+            mimeType: 'application/json',
+            text: JSON.stringify({ 
+              error: `Failed to fetch branches: ${error instanceof Error ? error.message : 'Unknown error'}` 
+            }),
+          }],
+        };
+      }
+    }
+  );
+
+  // Resource Template: List attachments for a journal entry
+  server.registerResource(
+    'journal-attachments',
+    new ResourceTemplate('journal://attachments/{commit_hash}', { list: undefined }),
+    {
+      description: 'List attachment metadata for a journal entry by commit hash. Binary file data is excluded. Use journal://attachment/{attachment_id} resource to get individual attachment details.',
+      mimeType: 'application/json',
+    },
+    async (uri, { commit_hash }) => {
+      try {
+        // Use metadata-only function (no binary data)
+        const attachments = getAttachmentMetadataByCommit(commit_hash as string);
+
+        const stats = getAttachmentStats(commit_hash as string);
+
+        // Add download URLs if Tartarus URL is configured
+        const attachmentsWithUrls = attachments.map((att: any) => ({
+          ...att,
+          download_url: journalConfig.tartarusUrl
+            ? `${journalConfig.tartarusUrl}/api/attachments/${att.id}/raw`
+            : null,
+        }));
+
+        const output: any = {
+          commit_hash: commit_hash,
+          attachment_count: attachments.length,
+          total_size_bytes: stats.total_size,
+          total_size_kb: (stats.total_size / 1024).toFixed(2),
+          attachments: attachmentsWithUrls,
+        };
+
+        // Add helpful note about download URLs
+        if (journalConfig.tartarusUrl) {
+          output.download_note = 'Use download_url to fetch full file content via HTTP (bypasses MCP truncation limits)';
+        } else {
+          output.download_note = 'Set TARTARUS_URL env var to enable direct download URLs';
+        }
+
+        return {
+          contents: [{
+            uri: uri.href,
+            mimeType: 'application/json',
+            text: JSON.stringify(output, null, 2),
+          }],
+        };
+      } catch (error) {
+        return {
+          contents: [{
+            uri: uri.href,
+            mimeType: 'application/json',
+            text: JSON.stringify({ 
+              error: `Failed to fetch attachments: ${error instanceof Error ? error.message : 'Unknown error'}` 
+            }),
+          }],
+        };
+      }
+    }
+  );
+
+  // Resource Template: Get attachment by ID
+  server.registerResource(
+    'journal-attachment',
+    new ResourceTemplate('journal://attachment/{attachment_id}', { list: undefined }),
+    {
+      description: 'Get attachment metadata by attachment ID. **Base64 data is excluded by default** to avoid heavy payloads (especially for images). Use download_url to fetch binary files via HTTP. Add ?include_data=true&max_chars=500 to URI query only for small text files (NOT recommended for images).',
+      mimeType: 'application/json',
+    },
+    async (uri, { attachment_id }) => {
+      try {
+        const attachment = getAttachmentById(Number(attachment_id));
+        if (!attachment) {
+          return {
+            contents: [{
+              uri: uri.href,
+              mimeType: 'application/json',
+              text: JSON.stringify({ error: `No attachment found with ID ${attachment_id}` }),
+            }],
+          };
+        }
+
+        // Check for query parameters
+        const url = new URL(uri.href);
+        const includeData = url.searchParams.get('include_data') === 'true';
+        const maxChars = parseInt(url.searchParams.get('max_chars') || '500', 10);
+
+        // Build download URL if Tartarus URL is configured
+        const downloadUrl = journalConfig.tartarusUrl
+          ? `${journalConfig.tartarusUrl}/api/attachments/${attachment.id}/raw`
+          : null;
+
+        // Check if this is an image
+        const isImage = attachment.mime_type?.startsWith('image/');
+        const isLargeFile = attachment.file_size > 100 * 1024; // > 100KB
+
+        const output: any = {
+          id: attachment.id,
+          filename: attachment.filename,
+          mime_type: attachment.mime_type,
+          description: attachment.description || null,
+          file_size_bytes: attachment.file_size,
+          file_size_kb: (attachment.file_size / 1024).toFixed(2),
+          commit_hash: attachment.commit_hash,
+          uploaded_at: attachment.uploaded_at,
+          download_url: downloadUrl,
+        };
+
+        // Add warnings for images/large files
+        if (isImage) {
+          output.warning = '⚠️ This is an image file. Base64 encoding would be very large. Use download_url to fetch the image via HTTP instead.';
+        } else if (isLargeFile) {
+          output.warning = `⚠️ This file is large (${(attachment.file_size / 1024).toFixed(2)} KB). Base64 encoding would exceed MCP limits. Use download_url to fetch via HTTP instead.`;
+        }
+
+        if (includeData) {
+          // Warn if trying to include data for images or large files
+          if (isImage) {
+            output.error = 'Cannot include base64 data for image files. Use download_url instead.';
+            output.data_included = false;
+          } else if (isLargeFile) {
+            output.warning = 'File is large - only including preview. Use download_url for full file.';
+            const data_base64 = attachment.data.toString('base64');
+            const previewLength = Math.min(maxChars, Math.min(data_base64.length, 10000)); // Cap at 10KB preview
+            output.data_base64_preview = data_base64.substring(0, previewLength);
+            output.data_base64_full_length = data_base64.length;
+            output.note = `Preview only (${previewLength}/${data_base64.length} chars). Use download_url to fetch full file.`;
+          } else {
+            // Small text files - include data
+            const data_base64 = attachment.data.toString('base64');
+            const previewLength = Math.min(maxChars, data_base64.length);
+            output.data_base64_preview = data_base64.substring(0, previewLength);
+            output.data_base64_full_length = data_base64.length;
+            output.note = previewLength < data_base64.length
+              ? `Data truncated for preview (${previewLength}/${data_base64.length} chars). Use download_url to fetch full file.`
+              : 'Full data included';
+          }
+        } else {
+          // Default: no data included
+          if (downloadUrl) {
+            output.note = 'Binary data excluded by default. Use download_url to fetch full file via HTTP (bypasses MCP size limits).';
+            if (isImage) {
+              output.recommendation = 'For images, always use download_url - base64 encoding would be too large for MCP.';
+            }
+          } else {
+            output.note = 'Binary data excluded. Set TARTARUS_URL env var to enable direct download URLs.';
+          }
+        }
+
+        return {
+          contents: [{
+            uri: uri.href,
+            mimeType: 'application/json',
+            text: JSON.stringify(output, null, 2),
+          }],
+        };
+      } catch (error) {
+        return {
+          contents: [{
+            uri: uri.href,
+            mimeType: 'application/json',
+            text: JSON.stringify({ 
+              error: `Failed to fetch attachment: ${error instanceof Error ? error.message : 'Unknown error'}` 
+            }),
+          }],
+        };
+      }
+    }
+  );
+
+  // ============================================
+  // REPOSITORY RESOURCES - Expose repository documents as resources
+  // Resources provide read-only data access via URIs
+  // ============================================
+
+  const tartarusUrlForResources = journalConfig.tartarusUrl;
+  const mcpApiKeyForResources = journalConfig.mcpApiKey;
+
+  // Helper to fetch from Tartarus API (for resources)
+  async function fetchTartarusForResource<T>(endpoint: string): Promise<T> {
+    if (!tartarusUrlForResources) {
+      throw new Error('TARTARUS_URL not configured. Set this env var to enable repository resources.');
+    }
+    const url = `${tartarusUrlForResources}${endpoint}`;
+    const headers: Record<string, string> = {
+      'Accept': 'application/json',
+    };
+    if (mcpApiKeyForResources) {
+      headers['X-MCP-API-Key'] = mcpApiKeyForResources;
+    }
+    const response = await fetch(url, { headers });
+    if (!response.ok) {
+      const errorText = await response.text().catch(() => 'Unknown error');
+      throw new Error(`Tartarus API error (${response.status}): ${errorText}`);
+    }
+    return response.json();
+  }
+
+  // Resource Template: Get document by slug or ID
+  server.registerResource(
+    'repository-document',
+    new ResourceTemplate('repository://document/{slug_or_id}', { list: undefined }),
+    {
+      description: 'Get a repository document (writing, prompt, or note) by slug or ID. Returns full document content (text/markdown). Document content is text-based and should not contain heavy base64 data.',
+      mimeType: 'application/json',
+    },
+    async (uri, { slug_or_id }) => {
+      try {
+        const document = await fetchTartarusForResource<any>(`/api/documents/${encodeURIComponent(slug_or_id as string)}`);
+        
+        // Check if document content is suspiciously large (might contain embedded base64)
+        const contentLength = document.content?.length || 0;
+        const isLargeContent = contentLength > 100000; // > 100KB of text
+        
+        const output: any = { ...document };
+        
+        if (isLargeContent) {
+          output.warning = `⚠️ Document content is large (${(contentLength / 1024).toFixed(2)} KB). If it contains embedded base64 images, consider using separate image resources instead.`;
+          // Still return full content, but warn about size
+        }
+        
+        return {
+          contents: [{
+            uri: uri.href,
+            mimeType: 'application/json',
+            text: JSON.stringify(output, null, 2),
+          }],
+        };
+      } catch (error) {
+        return {
+          contents: [{
+            uri: uri.href,
+            mimeType: 'application/json',
+            text: JSON.stringify({ 
+              error: `Failed to fetch document: ${error instanceof Error ? error.message : 'Unknown error'}` 
+            }),
+          }],
+        };
+      }
+    }
+  );
+
+  // Resource Template: List documents by type
+  server.registerResource(
+    'repository-documents-by-type',
+    new ResourceTemplate('repository://documents/{type}', { 
+      list: async () => {
+        // Return list of available types
+        return [
+          { uri: 'repository://documents/writing', name: 'Writings' },
+          { uri: 'repository://documents/prompt', name: 'Prompts' },
+          { uri: 'repository://documents/note', name: 'Notes' },
+        ];
+      }
+    }),
+    {
+      description: 'List repository documents filtered by type (writing, prompt, or note). Returns paginated results (default: 50 documents).',
+      mimeType: 'application/json',
+    },
+    async (uri, { type }) => {
+      try {
+        const validTypes = ['writing', 'prompt', 'note'];
+        if (!validTypes.includes(type as string)) {
+          return {
+            contents: [{
+              uri: uri.href,
+              mimeType: 'application/json',
+              text: JSON.stringify({ 
+                error: `Invalid type. Must be one of: ${validTypes.join(', ')}` 
+              }),
+            }],
+          };
+        }
+
+        const response = await fetchTartarusForResource<{
+          documents: any[];
+          total: number;
+          limit: number;
+          offset: number;
+          has_more: boolean;
+        }>(`/api/documents?type=${type}&limit=50&offset=0`);
+
+        return {
+          contents: [{
+            uri: uri.href,
+            mimeType: 'application/json',
+            text: JSON.stringify({
+              type: type,
+              total: response.total,
+              showing: `0 to ${response.documents.length}`,
+              has_more: response.has_more,
+              documents: response.documents.map(doc => ({
+                id: doc.id,
+                slug: doc.slug,
+                type: doc.type,
+                title: doc.title,
+                language: doc.language,
+                excerpt: doc.content?.substring(0, 200) + (doc.content?.length > 200 ? '...' : ''),
+                created_at: doc.createdAt,
+                updated_at: doc.updatedAt,
+              })),
+            }, null, 2),
+          }],
+        };
+      } catch (error) {
+        return {
+          contents: [{
+            uri: uri.href,
+            mimeType: 'application/json',
+            text: JSON.stringify({ 
+              error: `Failed to fetch documents: ${error instanceof Error ? error.message : 'Unknown error'}` 
+            }),
+          }],
+        };
+      }
+    }
+  );
+
+  // Resource Template: Get portfolio project by ID
+  server.registerResource(
+    'repository-portfolio-project',
+    new ResourceTemplate('repository://portfolio-project/{id}', { list: undefined }),
+    {
+      description: 'Get full details of a portfolio project by ID. Returns complete project information including description, metrics, and links.',
+      mimeType: 'application/json',
+    },
+    async (uri, { id }) => {
+      try {
+        const project = await fetchTartarusForResource<any>(`/api/portfolio-projects/${encodeURIComponent(id as string)}`);
+        return {
+          contents: [{
+            uri: uri.href,
+            mimeType: 'application/json',
+            text: JSON.stringify(project, null, 2),
+          }],
+        };
+      } catch (error) {
+        return {
+          contents: [{
+            uri: uri.href,
+            mimeType: 'application/json',
+            text: JSON.stringify({ 
+              error: `Failed to fetch portfolio project: ${error instanceof Error ? error.message : 'Unknown error'}` 
+            }),
+          }],
+        };
+      }
+    }
+  );
+
+  logger.success('Journal resources registered (7 resources) + Repository resources (3 resource templates)');
+
+  // ============================================
+  // LINEAR CACHE RESOURCES - Historical buffer of Linear data
+  // Data is cached locally, includes deleted items for history
+  // ============================================
+
+  // Resource: Linear cache stats
+  server.registerResource(
+    'linear-cache-stats',
+    'linear://cache/stats',
+    {
+      description: 'Get Linear cache statistics - shows active/deleted/total counts for projects and issues. The cache is a HISTORICAL BUFFER that preserves data even after Linear deletes it.',
+      mimeType: 'application/json',
+    },
+    async (uri) => {
+      try {
+        const stats = getLinearCacheStats();
+        return {
+          contents: [{
+            uri: uri.href,
+            mimeType: 'application/json',
+            text: JSON.stringify({
+              description: 'Linear cache is a historical buffer - we preserve ALL data including deleted items',
+              projects: stats.projects,
+              issues: stats.issues,
+              last_project_sync: stats.lastProjectSync,
+              last_issue_sync: stats.lastIssueSync,
+            }, null, 2),
+          }],
+        };
+      } catch (error) {
+        return {
+          contents: [{
+            uri: uri.href,
+            mimeType: 'application/json',
+            text: JSON.stringify({ error: `Failed to get Linear cache stats: ${error instanceof Error ? error.message : 'Unknown error'}` }),
+          }],
+        };
+      }
+    }
+  );
+
+  // Resource: List Linear projects (cached)
+  server.registerResource(
+    'linear-projects',
+    'linear://projects',
+    {
+      description: 'List all cached Linear projects (historical buffer - includes deleted projects). Rich descriptions preserved for AI context.',
+      mimeType: 'application/json',
+    },
+    async (uri) => {
+      try {
+        const { projects, total } = listLinearProjects({ includeDeleted: true, limit: 100 });
+        return {
+          contents: [{
+            uri: uri.href,
+            mimeType: 'application/json',
+            text: JSON.stringify({
+              total,
+              note: 'Historical buffer - includes deleted projects (is_deleted=true)',
+              projects: projects.map(p => ({
+                id: p.id,
+                name: p.name,
+                description: p.description,
+                state: p.state,
+                progress: p.progress,
+                url: p.url,
+                lead_name: p.lead_name,
+                is_deleted: p.is_deleted,
+                synced_at: p.synced_at,
+              })),
+            }, null, 2),
+          }],
+        };
+      } catch (error) {
+        return {
+          contents: [{
+            uri: uri.href,
+            mimeType: 'application/json',
+            text: JSON.stringify({ error: `Failed to list Linear projects: ${error instanceof Error ? error.message : 'Unknown error'}` }),
+          }],
+        };
+      }
+    }
+  );
+
+  // Resource Template: Get Linear project by ID
+  server.registerResource(
+    'linear-project',
+    new ResourceTemplate('linear://project/{id}', { list: undefined }),
+    {
+      description: 'Get full details of a cached Linear project by ID. Includes rich description and content preserved in our historical buffer.',
+      mimeType: 'application/json',
+    },
+    async (uri, { id }) => {
+      try {
+        const project = getLinearProject(id as string);
+        if (!project) {
+          return {
+            contents: [{
+              uri: uri.href,
+              mimeType: 'application/json',
+              text: JSON.stringify({ error: `Linear project not found: ${id}` }),
+            }],
+          };
+        }
+        return {
+          contents: [{
+            uri: uri.href,
+            mimeType: 'application/json',
+            text: JSON.stringify(project, null, 2),
+          }],
+        };
+      } catch (error) {
+        return {
+          contents: [{
+            uri: uri.href,
+            mimeType: 'application/json',
+            text: JSON.stringify({ error: `Failed to get Linear project: ${error instanceof Error ? error.message : 'Unknown error'}` }),
+          }],
+        };
+      }
+    }
+  );
+
+  // Resource: List Linear issues (cached)
+  server.registerResource(
+    'linear-issues',
+    'linear://issues',
+    {
+      description: 'List all cached Linear issues (historical buffer - includes deleted issues). Rich descriptions and context preserved for AI.',
+      mimeType: 'application/json',
+    },
+    async (uri) => {
+      try {
+        const { issues, total } = listLinearIssues({ includeDeleted: true, limit: 100 });
+        return {
+          contents: [{
+            uri: uri.href,
+            mimeType: 'application/json',
+            text: JSON.stringify({
+              total,
+              note: 'Historical buffer - includes deleted issues (is_deleted=true)',
+              issues: issues.map(i => ({
+                id: i.id,
+                identifier: i.identifier,
+                title: i.title,
+                description: i.description?.substring(0, 500) + (i.description && i.description.length > 500 ? '...' : ''),
+                state_name: i.state_name,
+                assignee_name: i.assignee_name,
+                project_name: i.project_name,
+                url: i.url,
+                priority: i.priority,
+                is_deleted: i.is_deleted,
+                synced_at: i.synced_at,
+              })),
+            }, null, 2),
+          }],
+        };
+      } catch (error) {
+        return {
+          contents: [{
+            uri: uri.href,
+            mimeType: 'application/json',
+            text: JSON.stringify({ error: `Failed to list Linear issues: ${error instanceof Error ? error.message : 'Unknown error'}` }),
+          }],
+        };
+      }
+    }
+  );
+
+  // Resource Template: Get Linear issue by ID or identifier
+  server.registerResource(
+    'linear-issue',
+    new ResourceTemplate('linear://issue/{identifier}', { list: undefined }),
+    {
+      description: 'Get full details of a cached Linear issue by ID or identifier (e.g., DEV-123). Includes full description preserved in historical buffer.',
+      mimeType: 'application/json',
+    },
+    async (uri, { identifier }) => {
+      try {
+        const issue = getLinearIssue(identifier as string);
+        if (!issue) {
+          return {
+            contents: [{
+              uri: uri.href,
+              mimeType: 'application/json',
+              text: JSON.stringify({ error: `Linear issue not found: ${identifier}` }),
+            }],
+          };
+        }
+        return {
+          contents: [{
+            uri: uri.href,
+            mimeType: 'application/json',
+            text: JSON.stringify(issue, null, 2),
+          }],
+        };
+      } catch (error) {
+        return {
+          contents: [{
+            uri: uri.href,
+            mimeType: 'application/json',
+            text: JSON.stringify({ error: `Failed to get Linear issue: ${error instanceof Error ? error.message : 'Unknown error'}` }),
+          }],
+        };
+      }
+    }
+  );
+
+  logger.success('Linear cache resources registered (5 resources)');
+
+  // ============================================
+  // CV RESOURCES - Skills, Experience, Education from repository
+  // Exposed via Tartarus API
+  // ============================================
+
+  // Resource: CV Skills
+  server.registerResource(
+    'cv-skills',
+    'repository://cv/skills',
+    {
+      description: 'List all skills from CV/portfolio with categories, proficiency levels, and descriptions.',
+      mimeType: 'application/json',
+    },
+    async (uri) => {
+      try {
+        const response = await fetchTartarusForResource<any[]>('/api/cv/skills');
+        return {
+          contents: [{
+            uri: uri.href,
+            mimeType: 'application/json',
+            text: JSON.stringify({
+              total: response.length,
+              skills: response,
+            }, null, 2),
+          }],
+        };
+      } catch (error) {
+        return {
+          contents: [{
+            uri: uri.href,
+            mimeType: 'application/json',
+            text: JSON.stringify({ error: `Failed to fetch skills: ${error instanceof Error ? error.message : 'Unknown error'}` }),
+          }],
+        };
+      }
+    }
+  );
+
+  // Resource: CV Experience
+  server.registerResource(
+    'cv-experience',
+    'repository://cv/experience',
+    {
+      description: 'List all work experience from CV/portfolio with companies, roles, and achievements.',
+      mimeType: 'application/json',
+    },
+    async (uri) => {
+      try {
+        const response = await fetchTartarusForResource<any[]>('/api/cv/experience');
+        return {
+          contents: [{
+            uri: uri.href,
+            mimeType: 'application/json',
+            text: JSON.stringify({
+              total: response.length,
+              experience: response,
+            }, null, 2),
+          }],
+        };
+      } catch (error) {
+        return {
+          contents: [{
+            uri: uri.href,
+            mimeType: 'application/json',
+            text: JSON.stringify({ error: `Failed to fetch experience: ${error instanceof Error ? error.message : 'Unknown error'}` }),
+          }],
+        };
+      }
+    }
+  );
+
+  // Resource: CV Education
+  server.registerResource(
+    'cv-education',
+    'repository://cv/education',
+    {
+      description: 'List all education from CV/portfolio with degrees, institutions, and achievements.',
+      mimeType: 'application/json',
+    },
+    async (uri) => {
+      try {
+        const response = await fetchTartarusForResource<any[]>('/api/cv/education');
+        return {
+          contents: [{
+            uri: uri.href,
+            mimeType: 'application/json',
+            text: JSON.stringify({
+              total: response.length,
+              education: response,
+            }, null, 2),
+          }],
+        };
+      } catch (error) {
+        return {
+          contents: [{
+            uri: uri.href,
+            mimeType: 'application/json',
+            text: JSON.stringify({ error: `Failed to fetch education: ${error instanceof Error ? error.message : 'Unknown error'}` }),
+          }],
+        };
+      }
+    }
+  );
+
+  logger.success('CV resources registered (3 resources)');
 
   // ============================================
   // MCP Prompts - Reusable prompt templates
@@ -1106,7 +2294,7 @@ Please provide a chaotic report with any of the following you've discovered:
 - Development commands
 - Gotchas and notes
 
-Use the journal_submit_summary_report tool with your findings.`,
+Use journal_create_project_summary if Entry 0 doesn't exist yet, or journal_submit_summary_report to update an existing Entry 0.`,
           },
         }],
       };
@@ -1149,9 +2337,9 @@ ${context}
 
 What would you like to know? I can:
 1. Show recent journal entries (journal_list_by_repository)
-2. Get the full project summary (journal_get_project_summary)
+2. Get the full project summary (journal://summary/{repository} resource)
 3. List branches with activity (journal_list_branches)
-4. Search for specific commits (journal_get_entry)`,
+4. Search for specific commits (journal://entry/{commit_hash} resource)`,
           },
         }],
       };
