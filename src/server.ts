@@ -8,6 +8,7 @@ import type { UnifiedConfig } from "./shared/types.js";
 import { initDatabase } from "./modules/journal/db/database.js";
 import { registerJournalTools } from "./modules/journal/tools.js";
 import { registerKronusTools } from "./modules/kronus/index.js";
+import { registerGitTools } from "./modules/git/tools.js";
 
 /**
  * Tartarus MCP Server
@@ -76,8 +77,13 @@ Resources ARE available. Use ReadMcpResourceTool with the URIs below to access t
 
 ## Write Tools
 - Journal entries: journal_create_entry, journal_create_project_summary, journal_update_project_technical, journal_submit_summary_report
+- Journal visuals: journal_attach_screenshot (Playwright, localhost only), journal_attach_muse_visual (GPT Image 2 infographic or mood)
 - Repository: repository_create_document, repository_update_document, repository_create_from_report, repository_upload_media
 - Kronus: kronus_ask (query the knowledge oracle)
+- Git (read-only, any repo): git_read — log, diff, show, blame, ls-files, status, branch
+
+## Prompts (reusable agent guidance)
+- journal-visual — After creating a journal entry, invoke this prompt to decide and attach a visual (screenshot, infographic, or mood image). Works for any codebase.
 
 ## Architecture
 - MCP exposes resources (read) and tools (write journal entries + repository documents)
@@ -95,6 +101,7 @@ Resources ARE available. Use ReadMcpResourceTool with the URIs below to access t
     initDatabase(this.config.journal.dbPath);
     await registerJournalTools(this.server, this.config.journal);
     registerKronusTools(this.server, this.config.journal);
+    registerGitTools(this.server);
 
     logger.success("Tartarus MCP Server initialized");
   }

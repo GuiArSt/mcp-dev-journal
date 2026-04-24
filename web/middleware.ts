@@ -28,8 +28,12 @@ export function middleware(request: NextRequest) {
   const isIntegrationApi = request.nextUrl.pathname.startsWith("/api/integrations/linear/sync/");
   const isLocalhost = request.headers.get("host")?.startsWith("localhost");
 
-  // Allow auth API, health check, AI endpoints, MCP resources, attachment downloads, MCP repository access, and local cron
-  if (isApiAuth || isHealthCheck || isAiSummarize || isMcpResources || isAttachmentDownload || isMcpRepositoryAccess || ((isCronEndpoint || isIntegrationApi) && isLocalhost)) {
+  // Screenshot endpoint and media raw — localhost only, no auth
+  const isScreenshotEndpoint = request.nextUrl.pathname === "/api/screenshot" && isLocalhost;
+  const isMediaRaw = request.nextUrl.pathname.match(/^\/api\/media\/\d+\/raw$/) && isLocalhost;
+
+  // Allow auth API, health check, AI endpoints, MCP resources, attachment downloads, MCP repository access, local cron, and screenshot
+  if (isApiAuth || isHealthCheck || isAiSummarize || isMcpResources || isAttachmentDownload || isMcpRepositoryAccess || isScreenshotEndpoint || isMediaRaw || ((isCronEndpoint || isIntegrationApi) && isLocalhost)) {
     return NextResponse.next();
   }
 

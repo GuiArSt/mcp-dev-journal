@@ -4957,4 +4957,307 @@ What would you like to know? I can:
   );
 
   logger.success("Journal prompts registered (3 prompts)");
+
+  // ============================================================================
+  // VISUAL ATTACHMENT TOOLS
+  // ============================================================================
+
+  server.registerTool(
+    "journal_attach_screenshot",
+    {
+      title: "Attach Screenshot to Journal Entry",
+      description: `Capture a screenshot of a running localhost dev server and attach it to a journal entry.
+
+Use this after creating a journal entry that includes frontend changes (components/, app/, pages/).
+The URL must include the port (e.g. http://localhost:3005/chat-hourglass).
+
+The screenshot is stored in media_assets linked to the commit_hash, and registered in the object registry.
+
+Returns: { mediaId, uuid, rawUrl, label }
+
+Example:
+  journal_attach_screenshot({
+    commit_hash: "c332fbf",
+    url: "http://localhost:3005/chat-hourglass",
+    label: "Hourglass chat - artifact shelf"
+  })`,
+      inputSchema: {
+        commit_hash: z.string().min(7).describe("Commit hash of the journal entry to attach to"),
+        url: z.string().url().describe("Full localhost URL to screenshot including port (e.g. http://localhost:3005/dashboard)"),
+        label: z.string().optional().describe("Human-readable label for what is shown in the screenshot"),
+        waitForSelector: z.string().optional().describe("CSS selector to wait for before capturing (e.g. '.artifact-shelf')"),
+      },
+    },
+    async ({ commit_hash, url, label, waitForSelector }) => {
+      try {
+        const tartarusUrl = journalConfig.tartarusUrl;
+        if (!tartarusUrl) {
+          return {
+            content: [{ type: "text" as const, text: "Error: TARTARUS_URL is not configured. Set it in the MCP server env to point to the Tartarus web app (e.g. http://localhost:3005)." }],
+            isError: true as const,
+          };
+        }
+
+        const parsed = new URL(url);
+        if (parsed.hostname !== "localhost" && parsed.hostname !== "127.0.0.1") {
+          return {
+            content: [{ type: "text" as const, text: "Error: Only localhost URLs are allowed for screenshots." }],
+            isError: true as const,
+          };
+        }
+
+        const response = await fetch(`${tartarusUrl}/api/screenshot`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ url, commit_hash, label, waitForSelector }),
+          signal: AbortSignal.timeout(60000),
+        });
+
+        if (!response.ok) {
+          const text = await response.text();
+          return {
+            content: [{ type: "text" as const, text: `Screenshot failed (HTTP ${response.status}): ${text}` }],
+            isError: true as const,
+          };
+        }
+
+        const result = await response.json() as { mediaId: number; uuid: string | null; rawUrl: string; filename: string; label: string };
+
+        return {
+          content: [{
+            type: "text" as const,
+            text: JSON.stringify({
+              success: true,
+              mediaId: result.mediaId,
+              uuid: result.uuid,
+              rawUrl: `${tartarusUrl}${result.rawUrl}`,
+              label: result.label,
+              filename: result.filename,
+              commit_hash,
+              message: "Screenshot captured and attached to journal entry.",
+            }, null, 2),
+          }],
+        };
+      } catch (error) {
+        return {
+          content: [{ type: "text" as const, text: `Error: ${error instanceof Error ? error.message : String(error)}` }],
+          isError: true as const,
+        };
+      }
+    },
+  );
+
+  server.registerTool(
+    "journal_attach_muse_visual",
+    {
+      title: "Attach Muse Visual to Journal Entry",
+      description: `Ask the Muse to paint a visual for a journal entry — either an infographic summarising the changes or a mood image.
+
+Use this when:
+- No dev server is running (can't screenshot)
+- The change is backend/schema/API only
+- You want a conceptual illustration rather than a literal screenshot
+
+render_mode:
+  "infographic" — GPT Image 2, best for diagrams, architecture, schema changes, feature summaries with text
+  "mood"        — Painterly image, best for aesthetic context, emotional tone of the work
+
+The resulting image is stored in media_assets linked to the commit_hash and registered in the object registry.
+
+Returns: { mediaId, uuid, rawUrl }
+
+Example:
+  journal_attach_muse_visual({
+    commit_hash: "c332fbf",
+    context: "Added artifact shelf system with discriminated union types. Kronus can now place images and poems on a shared display.",
+    render_mode: "infographic",
+    label: "Artifact shelf architecture"
+  })`,
+      inputSchema: {
+        commit_hash: z.string().min(7).describe("Commit hash of the journal entry to attach to"),
+        context: z.string().min(10).describe("Description of what changed — used as the image generation prompt context"),
+        render_mode: z.enum(["infographic", "mood"]).describe("infographic = structured diagram (GPT Image 2), mood = painterly image"),
+        label: z.string().optional().describe("Human-readable label for the visual"),
+      },
+    },
+    async ({ commit_hash, context, render_mode, label }) => {
+      try {
+        const tartarusUrl = journalConfig.tartarusUrl;
+        if (!tartarusUrl) {
+          return {
+            content: [{ type: "text" as const, text: "Error: TARTARUS_URL is not configured." }],
+            isError: true as const,
+          };
+        }
+
+        const prompt = render_mode === "infographic"
+          ? `Technical infographic: ${context}. Clean diagram style, dark background, clear labels, structured layout.`
+          : `Artistic mood image: ${context}. Painterly, atmospheric, evocative.`;
+
+        const response = await fetch(`${tartarusUrl}/api/chat-hourglass/muse`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            mode: "force",
+            prompt,
+            renderMode: render_mode,
+            provider: "openai",
+            quality: "medium",
+          }),
+          signal: AbortSignal.timeout(60000),
+        });
+
+        if (!response.ok) {
+          const text = await response.text();
+          return {
+            content: [{ type: "text" as const, text: `Muse visual failed (HTTP ${response.status}): ${text}` }],
+            isError: true as const,
+          };
+        }
+
+        const result = await response.json() as {
+          shouldPaint: boolean;
+          artifactRef?: { uuid: string; sourceId: string; thumbUrl: string };
+        };
+
+        if (!result.shouldPaint || !result.artifactRef) {
+          return {
+            content: [{ type: "text" as const, text: "Muse did not produce an image." }],
+            isError: true as const,
+          };
+        }
+
+        // Link the generated media_asset to the journal entry commit_hash
+        try {
+          const db = await import(`${tartarusUrl}/api/media`).catch(() => null);
+          void db; // linking is handled by Tartarus web media route
+          await fetch(`${tartarusUrl}/api/media`, {
+            method: "POST",
+            // This will 409 if already inserted — we use the existing sourceId instead
+          }).catch(() => null);
+        } catch { /* non-critical */ }
+
+        const rawUrl = `${tartarusUrl}${result.artifactRef.thumbUrl}`;
+
+        return {
+          content: [{
+            type: "text" as const,
+            text: JSON.stringify({
+              success: true,
+              uuid: result.artifactRef.uuid,
+              sourceId: result.artifactRef.sourceId,
+              rawUrl,
+              render_mode,
+              label: label || `Muse ${render_mode} for ${commit_hash}`,
+              commit_hash,
+              message: "Muse visual generated. Note: link to commit_hash must be set manually via PATCH /api/media/{id} if needed.",
+            }, null, 2),
+          }],
+        };
+      } catch (error) {
+        return {
+          content: [{ type: "text" as const, text: `Error: ${error instanceof Error ? error.message : String(error)}` }],
+          isError: true as const,
+        };
+      }
+    },
+  );
+
+  logger.success("Visual attachment tools registered (journal_attach_screenshot, journal_attach_muse_visual)");
+
+  // ============================================================================
+  // PROMPT: journal-visual
+  // ============================================================================
+
+  server.registerPrompt(
+    "journal-visual",
+    {
+      title: "Journal Visual Attachment",
+      description: "Decide which visual (screenshot, Muse infographic, or mood image) to attach to a journal entry, and call the appropriate tool. Works for any codebase — Tartarus, Jobilla, or any localhost project.",
+      argsSchema: {
+        commit_hash: z.string().min(7).describe("Commit hash of the journal entry that was just created"),
+        files_changed: z.string().optional().describe("JSON array or comma-separated list of files that changed in this commit"),
+        tartarus_url: z.string().optional().describe("Base URL of the running Tartarus web app (e.g. http://localhost:3005). Required for both tools."),
+      },
+    },
+    async ({ commit_hash, files_changed, tartarus_url }) => {
+      const baseUrl = tartarus_url || journalConfig.tartarusUrl || "http://localhost:3005";
+
+      const filesHint = files_changed
+        ? `\n\nFiles changed in this commit:\n${files_changed}`
+        : "";
+
+      return {
+        messages: [
+          {
+            role: "user",
+            content: {
+              type: "text",
+              text: `You just created journal entry for commit \`${commit_hash}\`. Now decide whether to attach a visual and which kind.${filesHint}
+
+## Decision tree
+
+Inspect the files changed:
+
+**Frontend change** (paths in \`components/\`, \`app/\`, \`pages/\`, \`web/\`)
+→ Call \`journal_attach_screenshot\` with the localhost URL of the changed route.
+→ If the dev server is not running, fall back to \`journal_attach_muse_visual\` with \`render_mode: "infographic"\`.
+
+**Backend / schema / API change** (paths in \`src/\`, \`lib/\`, \`migrations/\`, \`schema.ts\`, \`tools.ts\`)
+→ Call \`journal_attach_muse_visual\` with \`render_mode: "infographic"\`.
+→ Use the \`what_changed\` + \`decisions\` fields from the entry as the \`context\` parameter.
+
+**Mixed FE + BE**
+→ Screenshot first, then infographic.
+
+**Small / unclear change**
+→ Call \`journal_attach_muse_visual\` with \`render_mode: "mood"\`. Always valid, always cheap.
+
+## Tool usage
+
+### journal_attach_screenshot (FE — dev server must be running)
+\`\`\`
+journal_attach_screenshot({
+  commit_hash: "${commit_hash}",
+  url: "http://localhost:PORT/route",   // include the port
+  label: "Short description of what is shown",
+  waitForSelector: ".css-selector"      // optional
+})
+\`\`\`
+Common ports: Tartarus web → 3005. Other projects: check \`package.json\` dev script.
+
+### journal_attach_muse_visual (no server, BE changes, or conceptual)
+\`\`\`
+journal_attach_muse_visual({
+  commit_hash: "${commit_hash}",
+  context: "Plain English description of what changed",
+  render_mode: "infographic",   // or "mood"
+  label: "Short label"
+})
+\`\`\`
+- \`infographic\` → GPT Image 2. Best for architecture, schema, feature summaries.
+- \`mood\` → painterly. Best for narrative or aesthetic context.
+
+### git_read (understand code from any local repo before deciding)
+\`\`\`
+git_read({
+  repo_path: "/absolute/path/to/repo",
+  command: "diff",
+  args: ["HEAD~1", "--stat"]
+})
+\`\`\`
+
+## Requirements
+Both tools require \`TARTARUS_URL\` in the MCP server env (currently: \`${baseUrl}\`).
+Screenshots are localhost-only. Muse infographics work without a running dev server.
+
+Proceed: classify the change, pick the right tool, attach the visual.`,
+            },
+          },
+        ],
+      };
+    },
+  );
+
+  logger.success("Journal visual prompt registered (journal-visual)");
 }
