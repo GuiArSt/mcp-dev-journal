@@ -1,11 +1,19 @@
-.PHONY: dev build start lint format fix clean install check typecheck help prod docker-up docker-down docker-logs docker-build
+.PHONY: dev dev-tartarus dev-website build start lint format fix clean install check typecheck help prod docker-up docker-down docker-logs docker-build
 
 # Default - run from web directory
 all: check build
 
-# Delegate everything to web/
+# Run tartarus (3000) and website (3005) together; open both in browser
 dev:
+	@echo "🜨  Starting tartarus (:3000) + website (:3005)..."
+	@( sleep 4 && open http://localhost:3000 && open http://localhost:3005 ) &
+	@$(MAKE) -j2 dev-tartarus dev-website
+
+dev-tartarus:
 	cd web && npm run dev
+
+dev-website:
+	cd website && npm run dev
 
 build:
 	cd web && npm run build
