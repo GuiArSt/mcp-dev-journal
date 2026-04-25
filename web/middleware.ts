@@ -28,12 +28,15 @@ export function middleware(request: NextRequest) {
   const isIntegrationApi = request.nextUrl.pathname.startsWith("/api/integrations/linear/sync/");
   const isLocalhost = request.headers.get("host")?.startsWith("localhost");
 
-  // Screenshot endpoint and media raw — localhost only, no auth
-  const isScreenshotEndpoint = request.nextUrl.pathname === "/api/screenshot" && isLocalhost;
-  const isMediaRaw = request.nextUrl.pathname.match(/^\/api\/media\/\d+\/raw$/) && isLocalhost;
+  // Localhost-only endpoints — no auth required (MCP server, Playwright, internal tooling)
+  const isLocalMcp = isLocalhost && (
+    request.nextUrl.pathname === "/api/screenshot" ||
+    request.nextUrl.pathname.startsWith("/api/media") ||
+    request.nextUrl.pathname.startsWith("/api/chat-hourglass/muse")
+  );
 
   // Allow auth API, health check, AI endpoints, MCP resources, attachment downloads, MCP repository access, local cron, and screenshot
-  if (isApiAuth || isHealthCheck || isAiSummarize || isMcpResources || isAttachmentDownload || isMcpRepositoryAccess || isScreenshotEndpoint || isMediaRaw || ((isCronEndpoint || isIntegrationApi) && isLocalhost)) {
+  if (isApiAuth || isHealthCheck || isAiSummarize || isMcpResources || isAttachmentDownload || isMcpRepositoryAccess || isLocalMcp || ((isCronEndpoint || isIntegrationApi) && isLocalhost)) {
     return NextResponse.next();
   }
 

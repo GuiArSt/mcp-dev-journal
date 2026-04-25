@@ -13,16 +13,16 @@ Read `files_changed` from the entry:
 
 **FE change** — paths in `components/`, `app/`, `pages/`, `web/`
 → Use `journal_attach_screenshot`. Ask which port the dev server is on (Tartarus: 3005, Jobilla: varies).
-→ If server is not running, fall back to `journal_attach_muse_visual` with `render_mode: "infographic"`.
+→ If server is not running, fall back to `journal_generate_image` with `render_mode: "infographic"`.
 
 **BE / schema / API change** — paths in `src/`, `lib/`, `migrations/`, `schema.ts`, `tools.ts`
-→ Use `journal_attach_muse_visual` with `render_mode: "infographic"`. Summarise `what_changed` + `decisions` as context.
+→ Use `journal_generate_image` with `render_mode: "infographic"`. Summarise `what_changed` + `decisions` as context.
 
 **Mixed FE + BE**
 → Screenshot first, then infographic.
 
 **Small / uncertain change**
-→ `journal_attach_muse_visual` with `render_mode: "mood"`. Cheap and always valid.
+→ `journal_generate_image` with `render_mode: "mood"`. Cheap and always valid.
 
 ## Tools
 
@@ -39,10 +39,10 @@ journal_attach_screenshot({
 
 Returns `{ mediaId, uuid, rawUrl, label }`. The image is immediately queryable via `GET /api/media?commit_hash=abc1234`.
 
-### `journal_attach_muse_visual` — infographic or mood
+### `journal_generate_image` — infographic or mood
 
 ```
-journal_attach_muse_visual({
+journal_generate_image({
   commit_hash: "abc1234",
   context: "Plain English summary of what changed, pulled from what_changed + decisions",
   render_mode: "infographic",  // or "mood"

@@ -5048,26 +5048,24 @@ Example:
   );
 
   server.registerTool(
-    "journal_attach_muse_visual",
+    "journal_generate_image",
     {
-      title: "Attach Muse Visual to Journal Entry",
-      description: `Ask the Muse to paint a visual for a journal entry — either an infographic summarising the changes or a mood image.
+      title: "Generate Image for Journal Entry",
+      description: `Generate an image for a journal entry and link it automatically. Fire-and-forget — returns immediately while generation runs in the background (~60s). The image lands in media_assets linked to commit_hash when done.
 
 Use this when:
-- No dev server is running (can't screenshot)
-- The change is backend/schema/API only
-- You want a conceptual illustration rather than a literal screenshot
+- The change is backend/schema/API only (no UI to screenshot)
+- No dev server is running
+- You want a conceptual illustration alongside or instead of a screenshot
 
 render_mode:
-  "infographic" — GPT Image 2, best for diagrams, architecture, schema changes, feature summaries with text
-  "mood"        — Painterly image, best for aesthetic context, emotional tone of the work
+  "infographic" — GPT Image 2. Best for architecture diagrams, schema changes, system flow, feature summaries with text labels.
+  "mood"        — Painterly image. Best for narrative context, emotional tone, or when the change is hard to diagram.
 
-The resulting image is stored in media_assets linked to the commit_hash and registered in the object registry.
-
-Returns: { mediaId, uuid, rawUrl }
+Check arrival: GET /api/media?commit_hash={hash} — the row appears when generation completes.
 
 Example:
-  journal_attach_muse_visual({
+  journal_generate_image({
     commit_hash: "c332fbf",
     context: "Added artifact shelf system with discriminated union types. Kronus can now place images and poems on a shared display.",
     render_mode: "infographic",
@@ -5081,89 +5079,50 @@ Example:
       },
     },
     async ({ commit_hash, context, render_mode, label }) => {
-      try {
-        const tartarusUrl = journalConfig.tartarusUrl;
-        if (!tartarusUrl) {
-          return {
-            content: [{ type: "text" as const, text: "Error: TARTARUS_URL is not configured." }],
-            isError: true as const,
-          };
-        }
-
-        const prompt = render_mode === "infographic"
-          ? `Technical infographic: ${context}. Clean diagram style, dark background, clear labels, structured layout.`
-          : `Artistic mood image: ${context}. Painterly, atmospheric, evocative.`;
-
-        const response = await fetch(`${tartarusUrl}/api/chat-hourglass/muse`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            mode: "force",
-            prompt,
-            renderMode: render_mode,
-            provider: "openai",
-            quality: "medium",
-          }),
-          signal: AbortSignal.timeout(60000),
-        });
-
-        if (!response.ok) {
-          const text = await response.text();
-          return {
-            content: [{ type: "text" as const, text: `Muse visual failed (HTTP ${response.status}): ${text}` }],
-            isError: true as const,
-          };
-        }
-
-        const result = await response.json() as {
-          shouldPaint: boolean;
-          artifactRef?: { uuid: string; sourceId: string; thumbUrl: string };
-        };
-
-        if (!result.shouldPaint || !result.artifactRef) {
-          return {
-            content: [{ type: "text" as const, text: "Muse did not produce an image." }],
-            isError: true as const,
-          };
-        }
-
-        // Link the generated media_asset to the journal entry commit_hash
-        try {
-          const db = await import(`${tartarusUrl}/api/media`).catch(() => null);
-          void db; // linking is handled by Tartarus web media route
-          await fetch(`${tartarusUrl}/api/media`, {
-            method: "POST",
-            // This will 409 if already inserted — we use the existing sourceId instead
-          }).catch(() => null);
-        } catch { /* non-critical */ }
-
-        const rawUrl = `${tartarusUrl}${result.artifactRef.thumbUrl}`;
-
+      const tartarusUrl = journalConfig.tartarusUrl;
+      if (!tartarusUrl) {
         return {
-          content: [{
-            type: "text" as const,
-            text: JSON.stringify({
-              success: true,
-              uuid: result.artifactRef.uuid,
-              sourceId: result.artifactRef.sourceId,
-              rawUrl,
-              render_mode,
-              label: label || `Muse ${render_mode} for ${commit_hash}`,
-              commit_hash,
-              message: "Muse visual generated. Note: link to commit_hash must be set manually via PATCH /api/media/{id} if needed.",
-            }, null, 2),
-          }],
-        };
-      } catch (error) {
-        return {
-          content: [{ type: "text" as const, text: `Error: ${error instanceof Error ? error.message : String(error)}` }],
+          content: [{ type: "text" as const, text: "Error: TARTARUS_URL is not configured." }],
           isError: true as const,
         };
       }
+
+      const prompt = render_mode === "infographic"
+        ? `Technical infographic: ${context}. Clean diagram style, dark background, clear labels, structured layout.`
+        : `Artistic mood image: ${context}. Painterly, atmospheric, evocative.`;
+
+      // Fire-and-forget — image generation takes 30–90s, don't block the agent.
+      // When complete, the image lands in media_assets with commit_hash FK.
+      // Retrieve via GET /api/media?commit_hash={hash}.
+      void fetch(`${tartarusUrl}/api/chat-hourglass/muse`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          mode: "force",
+          prompt,
+          renderMode: render_mode,
+          commit_hash,
+          provider: "openai",
+          quality: "medium",
+        }),
+      }).catch(() => {});
+
+      return {
+        content: [{
+          type: "text" as const,
+          text: JSON.stringify({
+            status: "generating",
+            commit_hash,
+            render_mode,
+            label: label || `Muse ${render_mode} for ${commit_hash}`,
+            message: `Image generation started in the background. When complete it will be linked to commit ${commit_hash}. Retrieve via GET ${tartarusUrl}/api/media?commit_hash=${commit_hash}`,
+          }, null, 2),
+        }],
+      };
     },
   );
 
-  logger.success("Visual attachment tools registered (journal_attach_screenshot, journal_attach_muse_visual)");
+  logger.success("Visual attachment tools registered (journal_attach_screenshot, journal_generate_image)");
 
   // ============================================================================
   // PROMPT: journal-visual
@@ -5201,17 +5160,17 @@ Inspect the files changed:
 
 **Frontend change** (paths in \`components/\`, \`app/\`, \`pages/\`, \`web/\`)
 → Call \`journal_attach_screenshot\` with the localhost URL of the changed route.
-→ If the dev server is not running, fall back to \`journal_attach_muse_visual\` with \`render_mode: "infographic"\`.
+→ If the dev server is not running, fall back to \`journal_generate_image\` with \`render_mode: "infographic"\`.
 
 **Backend / schema / API change** (paths in \`src/\`, \`lib/\`, \`migrations/\`, \`schema.ts\`, \`tools.ts\`)
-→ Call \`journal_attach_muse_visual\` with \`render_mode: "infographic"\`.
+→ Call \`journal_generate_image\` with \`render_mode: "infographic"\`.
 → Use the \`what_changed\` + \`decisions\` fields from the entry as the \`context\` parameter.
 
 **Mixed FE + BE**
 → Screenshot first, then infographic.
 
 **Small / unclear change**
-→ Call \`journal_attach_muse_visual\` with \`render_mode: "mood"\`. Always valid, always cheap.
+→ Call \`journal_generate_image\` with \`render_mode: "mood"\`. Always valid, always cheap.
 
 ## Tool usage
 
@@ -5226,9 +5185,9 @@ journal_attach_screenshot({
 \`\`\`
 Common ports: Tartarus web → 3005. Other projects: check \`package.json\` dev script.
 
-### journal_attach_muse_visual (no server, BE changes, or conceptual)
+### journal_generate_image (no server, BE changes, or conceptual)
 \`\`\`
-journal_attach_muse_visual({
+journal_generate_image({
   commit_hash: "${commit_hash}",
   context: "Plain English description of what changed",
   render_mode: "infographic",   // or "mood"
@@ -5260,4 +5219,176 @@ Proceed: classify the change, pick the right tool, attach the visual.`,
   );
 
   logger.success("Journal visual prompt registered (journal-visual)");
+
+  // ============================================================================
+  // PROMPT: tartarus — master guide for any connected agent
+  // ============================================================================
+
+  server.registerPrompt(
+    "tartarus",
+    {
+      title: "Tartarus — How to Use This Knowledge System",
+      description: "Complete guide for any agent: how to write rich journal entries, attach visuals, fetch context, and add to the library. Load this once at the start of a session to understand the full Tartarus surface.",
+      argsSchema: {},
+    },
+    async () => {
+      const tartarusUrl = journalConfig.tartarusUrl ?? "http://localhost:3005";
+
+      // Live repo index — always current, never stale
+      const repos = listRepositories();
+      const repoTable = repos.length > 0
+        ? repos.map((r: string) => `- ${r}`).join("\n")
+        : "- (no repositories yet)";
+
+      return {
+        messages: [
+          {
+            role: "user",
+            content: {
+              type: "text",
+              text: `# Tartarus — Agent Guide
+
+Tartarus is Guillermo's personal knowledge system. It has four layers:
+
+1. **Journal** — commit-scoped entries documenting what changed, why, decisions made, and visuals
+2. **Entry 0 / Project Summary** — the living state of each repository (technical + narrative)
+3. **Repository** — documents, prompts, notes, CV, portfolio, media library
+4. **Registry** — universal UUID-based index across all of the above
+
+---
+
+## Known Repositories (live — fetched from DB at call time)
+
+Use EXACTLY these names in \`repository\` fields. Do not invent variants.
+
+${repoTable}
+
+If working in a codebase not listed: use its directory name in kebab-case and create an Entry 0 first with \`journal_create_project_summary\`.
+
+---
+
+## Writing a Journal Entry
+
+### 1. Create the entry
+\`\`\`
+journal_create_entry({
+  commit_hash: "abc1234",      // 7+ chars, must be a real git commit
+  repository: "tartarus",      // must match a known repo above
+  branch: "main",
+  author: "Guillermo Stumpf",
+  date: "2026-04-24T00:00:00Z",
+  raw_agent_report: "..."      // your full context dump — Kronus extracts structure from this
+})
+\`\`\`
+
+The raw_agent_report should include ALL file paths (created/modified/deleted) and the full context of what was done. Kronus extracts: why, what_changed, decisions, technologies, kronus_wisdom, files_changed.
+
+### 2. Attach visuals (always do this for meaningful commits)
+
+**FE change** (components/, app/, pages/) — screenshot the affected route:
+\`\`\`
+journal_attach_screenshot({
+  commit_hash: "abc1234",
+  url: "http://localhost:PORT/the-route",
+  label: "What is visible",
+  waitForSelector: ".css-selector"   // optional
+})
+\`\`\`
+Common ports: Tartarus web → 3005. Others: check package.json dev script.
+
+**BE / schema / API change** — Muse infographic (async, fire-and-forget):
+\`\`\`
+journal_generate_image({
+  commit_hash: "abc1234",
+  context: "Plain English description from what_changed + decisions",
+  render_mode: "infographic",   // or "mood"
+  label: "Short label"
+})
+\`\`\`
+Returns immediately with status "generating". Image links to the entry when GPT Image 2 completes (~60s).
+Check arrival: GET ${tartarusUrl}/api/media?commit_hash=abc1234
+
+**Mixed FE + BE** → do both.
+**Small / uncertain** → mood image.
+
+### 3. Update Entry 0 if structure changed
+\`\`\`
+journal_update_project_technical({ repository: "tartarus", section: "tech_stack", content: "..." })
+journal_submit_summary_report({ repository: "tartarus", section: "status", content: "..." })
+\`\`\`
+
+---
+
+## Reading Context from Tartarus
+
+### Project overview
+\`\`\`
+ReadMcpResourceTool("journal://project-summary/tartarus")         // shallow
+ReadMcpResourceTool("journal://project-summary/tartarus/deep")    // full history
+\`\`\`
+
+### Recent entries
+\`\`\`
+journal_list_by_repository({ repository: "tartarus", limit: 10 })
+ReadMcpResourceTool("journal://entry/abc1234")
+ReadMcpResourceTool("journal://attachments/abc1234")   // images/files on this entry
+\`\`\`
+
+### Universal search
+\`\`\`
+registry_search_objects({ query: "artifact shelf", type: "journal_entry" })
+registry_fetch_object({ uuid: "..." })
+\`\`\`
+
+### Read code from any local repo
+\`\`\`
+git_read({ repo_path: "/Users/guillermo.as/Documents/Software/jobilla/api", command: "diff", args: ["HEAD~1", "--stat"] })
+git_read({ repo_path: "/path/to/repo", command: "show", args: ["HEAD:src/file.ts"] })
+\`\`\`
+Allowed commands: log, diff, show, blame, ls-files, status, branch.
+
+---
+
+## Adding to the Library
+
+### Upload media / images
+POST ${tartarusUrl}/api/media with { filename, data (base64), description, tags, commit_hash? }
+
+### Create a document
+\`\`\`
+repository_create_document({ title: "...", type: "note", content: "..." })
+repository_create_from_report({ title: "...", type: "prompt", raw_content: "..." })
+\`\`\`
+
+### Fetch existing docs
+\`\`\`
+ReadMcpResourceTool("repository://documents/note")
+ReadMcpResourceTool("repository://document/slug-or-id")
+\`\`\`
+
+---
+
+## Visual Decision Philosophy
+
+One screenshot per distinct UI area — not per file changed. One infographic per backend change — not per function. Exhaustive but not repeated. The visual is a fossil of the intent; it should tell you what the product looked like or what the system did, at this exact moment.
+
+Muse generates autonomously (auto mode every 3 turns) or on demand (force mode). Both accept commit_hash so any generation is traceable to an entry.
+
+---
+
+## Kronus Oracle
+
+Ask the knowledge oracle anything about past work:
+\`\`\`
+kronus_ask({ question: "What changed in the journal visual system?", mode: "deep" })
+\`\`\`
+Modes: quick (summaries only), deep (full context), serious (Claude Opus for complex synthesis).`,
+            },
+          },
+        ],
+      };
+    },
+  );
+
+  logger.success("Tartarus master guide prompt registered (tartarus)");
 }

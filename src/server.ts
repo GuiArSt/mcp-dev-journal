@@ -75,15 +75,21 @@ Resources ARE available. Use ReadMcpResourceTool with the URIs below to access t
 - repository://cv/education — Education
 - repository://portfolio-project/{id} — Portfolio project
 
+## Known Repositories
+Before creating a journal entry, load the live repo list — it is injected dynamically into the \`tartarus\` prompt (call it once per session). Do NOT invent repo name variants. Use the exact names from the list.
+
+If working in a codebase not yet tracked: use its directory name in kebab-case and create an Entry 0 first with journal_create_project_summary.
+
 ## Write Tools
 - Journal entries: journal_create_entry, journal_create_project_summary, journal_update_project_technical, journal_submit_summary_report
-- Journal visuals: journal_attach_screenshot (Playwright, localhost only), journal_attach_muse_visual (GPT Image 2 infographic or mood)
+- Journal visuals: journal_attach_screenshot (Playwright, localhost only), journal_generate_image (GPT Image 2 infographic or mood, async fire-and-forget)
 - Repository: repository_create_document, repository_update_document, repository_create_from_report, repository_upload_media
 - Kronus: kronus_ask (query the knowledge oracle)
 - Git (read-only, any repo): git_read — log, diff, show, blame, ls-files, status, branch
 
 ## Prompts (reusable agent guidance)
 - journal-visual — After creating a journal entry, invoke this prompt to decide and attach a visual (screenshot, infographic, or mood image). Works for any codebase.
+- tartarus — Complete usage guide: journal entries, visuals, context fetching, library. Load once per session.
 
 ## Architecture
 - MCP exposes resources (read) and tools (write journal entries + repository documents)
