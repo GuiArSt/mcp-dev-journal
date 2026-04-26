@@ -3,10 +3,10 @@
 # Default target: open tartarus + website together
 .DEFAULT_GOAL := tartarus
 
-# Boot the whole thing: tartarus (:3000) + website (:3005), opens both in browser
+# Boot the whole thing: tartarus (:3005) + website (:3007), opens both in browser
 tartarus: sync-schema
-	@echo "🜨  Opening tartarus (:3000) + website (:3005)..."
-	@( sleep 4 && open http://localhost:3000 && open http://localhost:3005 ) &
+	@echo "🜨  Opening tartarus (:3005) + website (:3007)..."
+	@( sleep 4 && open http://localhost:3005 && open http://localhost:3007 ) &
 	@$(MAKE) -j2 dev-tartarus dev-website
 
 # Aliases for muscle memory
