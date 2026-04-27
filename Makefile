@@ -1,4 +1,4 @@
-.PHONY: tartarus dev open all dev-tartarus dev-website sync-schema build start lint format fix clean install check typecheck help prod docker-up docker-down docker-logs docker-build
+.PHONY: tartarus dev open all dev-tartarus dev-website sync-schema build start lint format fix clean clean-website install check typecheck help prod docker-up docker-down docker-logs docker-build
 
 # Default target: open tartarus + website together
 .DEFAULT_GOAL := tartarus
@@ -62,7 +62,12 @@ clean:
 	rm -rf web/.next
 	rm -rf web/node_modules/.cache
 
-clean-all: clean
+# Wipe website Next/Turbopack caches — use after schema or import-graph changes
+clean-website:
+	rm -rf website/.next
+	rm -rf website/node_modules/.cache
+
+clean-all: clean clean-website
 	rm -rf web/node_modules
 	rm -rf web/package-lock.json
 
