@@ -222,7 +222,7 @@ export function ProjectSummaryCard({
   return (
     <Collapsible open={isExpanded} onOpenChange={onToggle}>
       <Card className="overflow-hidden border-[var(--tartarus-border)] bg-[var(--tartarus-surface)]">
-        {/* Project Header - Always visible */}
+        {/* Repository header — always visible */}
         <CollapsibleTrigger asChild>
           <CardHeader className="cursor-pointer py-4 transition-colors hover:bg-[var(--tartarus-elevated)]">
             <div className="flex items-start justify-between">
@@ -243,7 +243,7 @@ export function ProjectSummaryCard({
                       className="flex-shrink-0 border-[var(--tartarus-teal-dim)] text-xs text-[var(--tartarus-teal)]"
                     >
                       <BookOpen className="mr-1 h-3 w-3" />
-                      Living Doc
+                      Entry 0
                     </Badge>
                   ) : (
                     <Badge className="flex-shrink-0 bg-[var(--tartarus-teal-soft)] text-xs text-[var(--tartarus-teal)]">
@@ -333,6 +333,7 @@ export function ProjectSummaryCard({
                   size="sm"
                   onClick={onAnalyze}
                   disabled={analyzing || project.entry_count === 0}
+                  title="Refresh Entry 0 from recent journal rows. If the server has CURSOR_API_KEY and a matching delegate repo, a Cursor agent validates the write-up against the local tree before merge."
                   className={`h-8 ${isNew || needsAnalysis ? "text-[var(--tartarus-gold)] hover:bg-[var(--tartarus-gold-soft)] hover:text-[var(--tartarus-gold-bright)]" : "text-[var(--tartarus-teal)] hover:bg-[var(--tartarus-teal-soft)] hover:text-[var(--tartarus-teal-bright)]"}`}
                 >
                   {analyzing ? (
@@ -355,7 +356,7 @@ export function ProjectSummaryCard({
                     alt="Kronus"
                     className="h-4 w-4 rounded-full object-cover"
                   />
-                  <span className="ml-1.5 hidden sm:inline">Edit</span>
+                  <span className="ml-1.5 hidden sm:inline">Edit in chat</span>
                 </Button>
                 {onDelete && (
                   <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
@@ -376,10 +377,10 @@ export function ProjectSummaryCard({
                     <AlertDialogContent className="border-[var(--tartarus-border)] bg-[var(--tartarus-surface)]">
                       <AlertDialogHeader>
                         <AlertDialogTitle className="text-[var(--tartarus-ivory)]">
-                          Delete Project: {project.repository}
+                          Delete repository: {project.repository}
                         </AlertDialogTitle>
                         <AlertDialogDescription className="text-[var(--tartarus-ivory-muted)]">
-                          This will delete the Living Document for this repository.
+                          This will delete the Repository overview (Entry 0) row for this repository.
                           {project.entry_count > 0 && (
                             <div className="mt-4 rounded-lg border border-[var(--tartarus-border)] bg-[var(--tartarus-elevated)] p-3">
                               <div className="flex items-start gap-3">
@@ -422,7 +423,7 @@ export function ProjectSummaryCard({
                           ) : (
                             <Trash2 className="mr-1.5 h-4 w-4" />
                           )}
-                          {deleteEntries ? "Delete All" : "Delete Summary"}
+                          {deleteEntries ? "Delete all" : "Delete overview only"}
                         </Button>
                       </AlertDialogFooter>
                     </AlertDialogContent>
@@ -459,8 +460,8 @@ export function ProjectSummaryCard({
               <div className="rounded-lg border border-[var(--tartarus-teal-dim)] bg-[var(--tartarus-teal-soft)] p-3">
                 <div className="mb-2 flex items-center gap-2 text-xs text-[var(--tartarus-teal)]">
                   <Brain className="h-3 w-3" />
-                  <span className="font-medium">Index Summary</span>
-                  <span className="text-[var(--tartarus-ivory-muted)]">(for Kronus)</span>
+                  <span className="font-medium">Index blurb</span>
+                  <span className="text-[var(--tartarus-ivory-muted)]">(retrieval / Entry 0 summary)</span>
                 </div>
                 <p className="text-sm leading-relaxed text-[var(--tartarus-ivory-dim)]">
                   {project.summary}
@@ -468,7 +469,7 @@ export function ProjectSummaryCard({
               </div>
             )}
 
-            {/* Living Document - Full project documentation (Entry 0) */}
+            {/* Repository overview — structured Entry 0 */}
             {hasEntry0 && (
               <div className="overflow-hidden rounded-lg border border-[var(--tartarus-teal-dim)]/30 bg-gradient-to-r from-[var(--tartarus-teal)]/5 to-transparent">
                 <button
@@ -481,10 +482,10 @@ export function ProjectSummaryCard({
                     </div>
                     <div className="text-left">
                       <div className="text-sm font-medium text-[var(--tartarus-ivory)]">
-                        Living Document
+                        Repository overview
                       </div>
                       <div className="text-xs text-[var(--tartarus-ivory-muted)]">
-                        Architecture, tech stack, patterns, commands
+                        Entry 0 — architecture, stack, patterns, commands
                       </div>
                     </div>
                   </div>
@@ -601,19 +602,19 @@ export function ProjectSummaryCard({
               </div>
             )}
 
-            {/* Legacy Summary - for projects without structured Entry 0 */}
+            {/* Narrative blocks only (no extended Entry 0 grid yet) */}
             {!hasEntry0 && (project.purpose || project.architecture || project.key_decisions) && (
               <div className="overflow-hidden rounded-lg border border-[var(--tartarus-border)] bg-[var(--tartarus-elevated)]/50">
                 <div className="flex items-center gap-2 border-b border-[var(--tartarus-border)]/50 px-4 py-2">
                   <Scroll className="h-4 w-4 text-[var(--tartarus-ivory-muted)]" />
                   <span className="text-xs font-medium text-[var(--tartarus-ivory-muted)]">
-                    Legacy Summary
+                    Core fields
                   </span>
                   <Badge
                     variant="outline"
                     className="border-[var(--tartarus-ivory-faded)] text-xs text-[var(--tartarus-ivory-faded)]"
                   >
-                    Pre-Entry 0
+                    No extended grid
                   </Badge>
                 </div>
                 <div className="space-y-3 p-4">
@@ -641,12 +642,13 @@ export function ProjectSummaryCard({
               <div className="rounded-lg border border-dashed border-[var(--tartarus-gold-dim)] bg-[var(--tartarus-gold)]/5 p-4 text-center">
                 <BookOpen className="mx-auto mb-2 h-6 w-6 text-[var(--tartarus-gold)]" />
                 <p className="mb-2 text-sm text-[var(--tartarus-ivory-muted)]">
-                  This project has {project.entry_count} entries but no Living Document yet.
+                  This repository has {project.entry_count} journal entries but no structured Repository overview yet.
                 </p>
                 <Button
                   size="sm"
                   onClick={onAnalyze}
                   disabled={analyzing}
+                  title="Refresh Entry 0 from recent journal rows. With CURSOR_API_KEY + a matching delegate repo, Cursor validates against the local tree before merge."
                   className="bg-[var(--tartarus-gold)] text-[var(--tartarus-void)] hover:bg-[var(--tartarus-gold-bright)]"
                 >
                   {analyzing ? (
@@ -654,7 +656,7 @@ export function ProjectSummaryCard({
                   ) : (
                     <BookOpen className="mr-1.5 h-4 w-4" />
                   )}
-                  Generate Living Document
+                  Generate overview from journal
                 </Button>
               </div>
             )}

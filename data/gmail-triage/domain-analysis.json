@@ -1,0 +1,895 @@
+[
+  {
+    "domain": "e.economist.com",
+    "count": 48,
+    "name": "The Economist Today",
+    "sample_subjects": [
+      "At the front, Russian soldiers pay officers to stay alive",
+      "Pam Bondi\u2019s loyalty took her only so far",
+      "\ud83d\udd34 The Insider: Will China be the real winner from the Iran w"
+    ]
+  },
+  {
+    "domain": "mail.beehiiv.com",
+    "count": 41,
+    "name": "Mychal Richardson",
+    "sample_subjects": [
+      "When Your Vendor Becomes Your Operating System",
+      "The Quiet Rise of Autonomous AI",
+      "Gemini 3.1 Pro rolls out in preview"
+    ]
+  },
+  {
+    "domain": "news.devred.fr",
+    "count": 23,
+    "name": "Devred 1902",
+    "sample_subjects": [
+      " GUILLERMO, on a imagin\u00e9 votre look du week-end",
+      " GUILLERMO, on a imagin\u00e9 votre look du week-end ",
+      "Veste + pantalon = jusqu'\u00e0 50\u20ac OFFERTS !"
+    ]
+  },
+  {
+    "domain": "paypal.de",
+    "count": 23,
+    "name": "PayPal",
+    "sample_subjects": [
+      "Beleg f\u00fcr Ihre Zahlung an Microsoft Payments",
+      "Beleg f\u00fcr Ihre Zahlung an Google Payment Irela...",
+      "Beleg f\u00fcr Ihre Zahlung an Google Payment Irela..."
+    ]
+  },
+  {
+    "domain": "send.doktorabc.com",
+    "count": 20,
+    "name": "DoktorABC",
+    "sample_subjects": [
+      "Update: schnelle Nachbestellung ist jetzt live",
+      "Neue Cannabis-Regeln: Was jetzt auf Patienten zukommt",
+      "Montags Terpen Trio \u2013 12,90 \u20ac Rabatt"
+    ]
+  },
+  {
+    "domain": "google.com",
+    "count": 17,
+    "name": "Google One",
+    "sample_subjects": [
+      "Guillermo, your Google AI Pro plan now has more storage",
+      "Beleg f\u00fcr deine Google Play-Bestellung vom 01.04.2026",
+      "Beleg f\u00fcr deine Google Play-Bestellung vom 30.03.2026"
+    ]
+  },
+  {
+    "domain": "foreignaffairs.com",
+    "count": 13,
+    "name": "Foreign Affairs",
+    "sample_subjects": [
+      "Exclusive Preview: Iran\u2019s Future Is Not Foretold",
+      "Final Opportunity: Save 20% on All Access until 3/31",
+      "Preview the participating schools in the Virtual Graduate Sc"
+    ]
+  },
+  {
+    "domain": "email.eis.de",
+    "count": 12,
+    "name": "EIS: Pro 2 Ikone + Fun Factory Neuheit heute 0,00 \u20ac",
+    "sample_subjects": [
+      "Nur heute: Pro 2 & Fun Factory Neuheit kostenlos (statt 100 ",
+      "LETZTE CHANCE: 2 Premium-Toys gratis (statt 185 \u20ac) ",
+      "Guillermo, dein Geschenk wartet schon\u2026 "
+    ]
+  },
+  {
+    "domain": "novedades.elpais.com",
+    "count": 11,
+    "name": "EL PA\u00cdS",
+    "sample_subjects": [
+      "EL PA\u00cdS: 2 a\u00f1os, 19,90 \u20ac + Regalo exclusivo",
+      "Suscripci\u00f3n activada por 0,19 \u20ac a la semana",
+      "Suscr\u00edbete 2 a\u00f1os por 19,90 \u20ac"
+    ]
+  },
+  {
+    "domain": "immobilienzentrum.de",
+    "count": 10,
+    "name": "Immobilien Zentrum",
+    "sample_subjects": [
+      "NEU: Hochwertige 2,5-Zimmer-Wohnung im beliebten Straubinger",
+      "NEU: Ihr neues Zuhause im Westenviertel",
+      "Roof-Top-H\u00e4user mit Traumausblick"
+    ]
+  },
+  {
+    "domain": "steampowered.com",
+    "count": 10,
+    "name": "Steam",
+    "sample_subjects": [
+      "MONSTER HUNTER RISE from your Steam wishlist is now on sale!",
+      "ELDEN RING and one other item from your Steam wishlist is no",
+      "We've successfully renewed your subscription for Dota 2"
+    ]
+  },
+  {
+    "domain": "doktorabc.com",
+    "count": 10,
+    "name": "Doktorabc.com",
+    "sample_subjects": [
+      "Ihre Bestellung (JC24IPCXQ) ist angekommen.",
+      "Ihr Rezept wurde genehmigt, Behandlungsanweisung inliegend",
+      "Ihre Bestellung (JC24IPCXQ) wurde versendet"
+    ]
+  },
+  {
+    "domain": "email.masterclass.com",
+    "count": 10,
+    "name": "MasterClass",
+    "sample_subjects": [
+      "Your MasterClass membership is about to renew",
+      "Last Call: Win a day-in-the-life with Bobbi Brown",
+      "A research-backed framework to beat distraction"
+    ]
+  },
+  {
+    "domain": "vip.dominos.de",
+    "count": 10,
+    "name": "Dein Domino's Regensburg",
+    "sample_subjects": [
+      "\ud83c\udf55\ud83e\udd24 Hunger? Wir haben da was f\u00fcr dich!",
+      "\ud83c\udf55 Keine Lust zu kochen? Wir liefern!",
+      "\ud83c\udf55\ud83c\udf36\ufe0f W\u00fcrzig. Leidenschaftlich. Piccante Passione."
+    ]
+  },
+  {
+    "domain": "hej.news.email.ikea.de",
+    "count": 9,
+    "name": "IKEA Family",
+    "sample_subjects": [
+      "Deine Angebote im April.",
+      "Nur kurz, nur online: \u00fcber 400 Produkte reduziert.",
+      "Mach dich bereit f\u00fcr den Fr\u00fchling."
+    ]
+  },
+  {
+    "domain": "newsletter.dw.com",
+    "count": 9,
+    "name": "DW | Deutsch mit Nachrichten",
+    "sample_subjects": [
+      "Waren die eigenen Gro\u00dfeltern Nazis?",
+      "Fr\u00fchjahrsm\u00fcdigkeit \u2013 Tatsache oder Gef\u00fchl?",
+      "Die SPD \u2013 Niedergang einer Arbeiterpartei"
+    ]
+  },
+  {
+    "domain": "info.kununu.com",
+    "count": 8,
+    "name": "kununu Updates",
+    "sample_subjects": [
+      "Wir sind f\u00fcr DICH da",
+      "Bei AMZ-Marketing GmbH tut sich was",
+      "AMZ-Marketing GmbH unter der Lupe"
+    ]
+  },
+  {
+    "domain": "substack.com",
+    "count": 8,
+    "name": "kamilkazani from kamilkazani",
+    "sample_subjects": [
+      "US-Iranian War: a best case scenario",
+      "The Open-Source Bet on AI Video Nobody's Talking About",
+      "On the Progress of Christianity (from Gibbon)"
+    ]
+  },
+  {
+    "domain": "m.learn.coursera.org",
+    "count": 8,
+    "name": "Coursera",
+    "sample_subjects": [
+      "Easter Special: Coursera Plus for \u20ac205/year",
+      "\ud83d\udce2 Final call \u2014 your 40% savings end tomorrow",
+      "New from Google! Go from familiar to AI fluent in 10 hours"
+    ]
+  },
+  {
+    "domain": "t.deliveroo.com",
+    "count": 8,
+    "name": "Deliveroo",
+    "sample_subjects": [
+      "Your order's in the kitchen \ud83c\udf89",
+      "Your order's in the kitchen \ud83c\udf89",
+      "Your order's in the kitchen \ud83c\udf89"
+    ]
+  },
+  {
+    "domain": "email.nfl.com",
+    "count": 8,
+    "name": "Super Bowl LX",
+    "sample_subjects": [
+      "\ud83d\udea8The Seahawks Etch Their Name In Super Bowl History!",
+      "Secure Your Spot At Super Bowl LXI In Los Angeles",
+      "TONIGHT: History Is Written \ud83c\udfc6 Game Day Is Finally Here!"
+    ]
+  },
+  {
+    "domain": "visitor.koelnmesse.de",
+    "count": 7,
+    "name": "gamescom 2026",
+    "sample_subjects": [
+      "\ud83d\udd25 Guillermo, hol dir die Wildcard & spare 10 % auf gamescom-",
+      "Next Respawn: gamescom lan. Jetzt Tickets sichern!",
+      "gamescom epix ist zur\u00fcck!\u00a0Guillermo, kannst du unsere lan-Qu"
+    ]
+  },
+  {
+    "domain": "shu.edu",
+    "count": 7,
+    "name": "Seton Hall University Graduate Admissions",
+    "sample_subjects": [
+      "Guillermo, there is still time to register!",
+      "You're Invited! Seton Hall's Diplomacy Graduate Programs Inf",
+      "One Day Away! Diplomacy Graduate Programs Info Session"
+    ]
+  },
+  {
+    "domain": "mein-grundeinkommen.de",
+    "count": 6,
+    "name": "Mein Grundeinkommen",
+    "sample_subjects": [
+      "Guillermo_ArSt, deine Chance auf ein Grundeinkommen",
+      "\u00dcber 100 Stimmen zeigen: Teilzeit ist unverzichtbar",
+      "Jetzt noch schnell zur Verlosung anmelden\u00a0"
+    ]
+  },
+  {
+    "domain": "wetransfer.com",
+    "count": 6,
+    "name": "WeTransfer",
+    "sample_subjects": [
+      "A transfer you sent is about to expire",
+      "l.asenci@funecap.com downloaded Claudie Mousnier Video",
+      "emelinemousnier@gmail.com downloaded Claudie Mousnier Video"
+    ]
+  },
+  {
+    "domain": "newsletter.q-dance.com",
+    "count": 6,
+    "name": "Defqon.1",
+    "sample_subjects": [
+      "Friday is almost sold out!",
+      "Pre-save the official Defqon.1 2026 Anthem by D-Sturb!",
+      "Get ready for Defqon.1 The Release"
+    ]
+  },
+  {
+    "domain": "complicated.life",
+    "count": 6,
+    "name": "It's Complicated",
+    "sample_subjects": [
+      "We\u2019ve updated our terms of use and our privacy policy",
+      "Sonja sent you a message!",
+      "Sonja sent you a message!"
+    ]
+  },
+  {
+    "domain": "rides-promotions.bolt.eu",
+    "count": 5,
+    "name": "Laura von Bolt",
+    "sample_subjects": [
+      "Hol dir deinen Rabatt f\u00fcr im Voraus gebuchte Fahrten \ud83d\udc47 ",
+      "Guillermo, hier kommt ein Rabatt nur f\u00fcr dich \ud83d\udc9a",
+      "Guillermo, spare bei deinen ersten Fahrten"
+    ]
+  },
+  {
+    "domain": "email.feverup.com",
+    "count": 5,
+    "name": "Fever",
+    "sample_subjects": [
+      "\ud83d\udea8 Hi Guillermo, deine Punkte verfallen",
+      "Everyone is talking about Candlelight, but...",
+      "Don't let Valentine's Day go by without a little sparkle"
+    ]
+  },
+  {
+    "domain": "wasteheadquarters.com",
+    "count": 4,
+    "name": "WASTE HQ",
+    "sample_subjects": [
+      "Ed announces UK and European tour dates for October",
+      "Ed announces new solo album Blue Morpho - coming 22nd May",
+      "Jonny is back with Shye Ben Tzur and the Rajasthan Express f"
+    ]
+  },
+  {
+    "domain": "hogapage.de",
+    "count": 4,
+    "name": "Jobs bei Hogapage",
+    "sample_subjects": [
+      "F\u00fchrungsjobs im Gastgewerbe, Weiterbildung in Bar und Servic",
+      "Empfang & Reservierung: Ihr Platz im Herzen des Hotels, Azub",
+      "Karriere auf See, Jetzt bewerten und mit etwas Gl\u00fcck 250 \u20ac g"
+    ]
+  },
+  {
+    "domain": "marketing.neotaste.com",
+    "count": 4,
+    "name": "Team NeoTaste",
+    "sample_subjects": [
+      "The 8 spots everyone\u2019s booking right now",
+      "\u20ac3 Tapas Plate at Que Ser\u00e1",
+      "Only until Sunday \ud83e\udd29 2 years for the price of 1 "
+    ]
+  },
+  {
+    "domain": "trustpilotmail.com",
+    "count": 4,
+    "name": "Doktorabc",
+    "sample_subjects": [
+      "Denken Sie daran, doktorabc.com zu bewerten",
+      "\u2b50 \u2b50 \u2b50 \u2b50 \u2b50  Wie viele Sterne w\u00fcrden Sie doktorabc.com geben?",
+      "Denken Sie daran, doktorabc.com zu bewerten"
+    ]
+  },
+  {
+    "domain": "rides-marketing.bolt.eu",
+    "count": 4,
+    "name": "Laura von Bolt",
+    "sample_subjects": [
+      "Wie du ein 5-Sterne-Fahrgast wirst",
+      "Bolt Fahrten sind schnell und preiswert \ud83d\ude99",
+      "Fahrergeschichten \u00fcber 5-Sterne-Fahrg\u00e4ste"
+    ]
+  },
+  {
+    "domain": "doctolib.fr",
+    "count": 4,
+    "name": "Doctolib",
+    "sample_subjects": [
+      "Votre rendez-vous est confirm\u00e9 le mardi 03 mars 2026 \u00e0 16h30",
+      "Pr\u00e9paration requise pour votre rendez-vous de demain \u00e0 17h30",
+      "Rappel : Vous avez 1 message non lu de Dr. David Muller"
+    ]
+  },
+  {
+    "domain": "immobilienscout24.de",
+    "count": 4,
+    "name": "Anna von ImmoScout24",
+    "sample_subjects": [
+      "Guillermo Ernesto, wo stehst du mit deiner Finanzierung? \ud83c\udfe1",
+      "Bereit f\u00fcr deine Immobilienbewertung?",
+      "Guillermo Ernesto, finde die Finanzierung, die zu dir passt "
+    ]
+  },
+  {
+    "domain": "c.rituals.com",
+    "count": 4,
+    "name": "Rituals Cosmetics",
+    "sample_subjects": [
+      "Mehr Duschschaum, weniger Geld!",
+      "Probieren Sie unsere Pflegeprodukte f\u00fcr M\u00e4nner aus!",
+      "Bald ist Valentinstag! Geschenke shoppen"
+    ]
+  },
+  {
+    "domain": "feedback.deliveroo.com",
+    "count": 4,
+    "name": "Deliveroo",
+    "sample_subjects": [
+      "Vous pouvez encore nous donner votre avis!",
+      "Qu'en pensez-vous?",
+      "There\u2019s still time to tell us about your order!"
+    ]
+  },
+  {
+    "domain": "73457534.mailchimpapp.com",
+    "count": 3,
+    "name": "La Mejor Pel\u00edcula del Mundo",
+    "sample_subjects": [
+      "Una alfombra, un error\u2026 y una gran pel\u00edcula!",
+      "Una alfombra, un error\u2026 y una gran pel\u00edcula!",
+      "Febrero clandestino: cine encendido, cocina viva"
+    ]
+  },
+  {
+    "domain": "irm-net.com",
+    "count": 3,
+    "name": "IRM Network e.V.",
+    "sample_subjects": [
+      "network news: Willkommen zur\u00fcck! \ud83e\udea9",
+      "Einladung zur Mitgliederversammlung und Vorstandswahlen 2026",
+      "network news: Bis zum Sommersemester\ud83e\udec2"
+    ]
+  },
+  {
+    "domain": "gmail.com",
+    "count": 3,
+    "name": "La Mejor Pelicula del Mundo",
+    "sample_subjects": [
+      "Una alfombra, un error\u2026 y una gran pel\u00edcula",
+      "Fwd: Nous avons le plaisir de vous confirmer votre r\u00e9servati",
+      "Fwd: Factures Hospitalisation - Charlotte Mousnier - Octobre"
+    ]
+  },
+  {
+    "domain": "ticketmaster.pl",
+    "count": 3,
+    "name": "Ticketmaster",
+    "sample_subjects": [
+      "Ticketmaster - Twoja p\u0142atno\u015b\u0107 jest w drodze - Nie odpowiadaj",
+      "Ticketmaster - Potwierdzenie sprzeda\u017cy RE19942614 - System O",
+      "Ticketmaster - Potwierdzenia wystawienia bilet\u00f3w RESALE RL40"
+    ]
+  },
+  {
+    "domain": "mail.perplexity.ai",
+    "count": 3,
+    "name": "Perplexity",
+    "sample_subjects": [
+      "Let Perplexity Computer handle your most complex tasks",
+      "Sign in to Perplexity",
+      "Unlock Perplexity Computer with Max"
+    ]
+  },
+  {
+    "domain": "reseaumistral.com",
+    "count": 3,
+    "name": "R\u00e9seau Mistral",
+    "sample_subjects": [
+      "Passwort zur\u00fccksetzen",
+      "Passwort zur\u00fccksetzen",
+      "Passwort zur\u00fccksetzen"
+    ]
+  },
+  {
+    "domain": "info.thalia.de",
+    "count": 3,
+    "name": "Thalia.de",
+    "sample_subjects": [
+      "THE NEWS: ACOTAR geht ENDLICH weiter! \ud83c\udf39\ud83d\udd25",
+      "Nur dieses Wochenende 17 % Rabatt! \ud83d\udc9d",
+      "eBook-Highlights, die du nicht verpassen darfst! \u2728"
+    ]
+  },
+  {
+    "domain": "chameleon.com.na",
+    "count": 3,
+    "name": "Chameleon Safaris Namibia",
+    "sample_subjects": [
+      "Ready to stop dreaming and start planning?",
+      "The questions you're probably asking",
+      "The full Namibia experience breakdown"
+    ]
+  },
+  {
+    "domain": "contentbird.io",
+    "count": 3,
+    "name": "contentbird GmbH",
+    "sample_subjects": [
+      "\ud83d\udcac NEU: Social Community Management & Analytics in der conten",
+      "\ud83d\udcac NEU: Social Community Management & Analytics in der conten",
+      "\ud83d\udcddContent Strategie 2026 in 11 Schritten erarbeiten: Kostenlo"
+    ]
+  },
+  {
+    "domain": "news.goflink.com",
+    "count": 3,
+    "name": "Flink",
+    "sample_subjects": [
+      "15\u20ac Rabatt auf deine Wochen-Highlights \ud83d\udcb8",
+      "Pralinen, Sekt, Bundle Deals & more \ud83d\ude0f\ud83d\udc98",
+      "Guillermo Ernesto, 15\u20ac Rabatt & Flink Wochen-Highlights \ud83d\ude0d"
+    ]
+  },
+  {
+    "domain": "changetheworldacademy.org",
+    "count": 3,
+    "name": "Change the World Academy",
+    "sample_subjects": [
+      "AI, geopolitics and global decisions: experience the debate ",
+      "Artificial Intelligence and global power: step into the disc",
+      "An international experience chosen by students worldwide"
+    ]
+  },
+  {
+    "domain": "nyctourism.com",
+    "count": 2,
+    "name": "NYC Tourism",
+    "sample_subjects": [
+      "Midtown\u2019s Top Sights, Shops and Restaurants",
+      "Nighttime NYC Activities to Enjoy Alcohol-Free"
+    ]
+  },
+  {
+    "domain": "gondwanatoursandsafaris.com",
+    "count": 2,
+    "name": "From Mark at Gondwana Tours & Safaris",
+    "sample_subjects": [
+      "On safari with your entire family",
+      "Uganda gets under your skin ..."
+    ]
+  },
+  {
+    "domain": "facebookmail.com",
+    "count": 2,
+    "name": "Facebook",
+    "sample_subjects": [
+      "Did you just log in near Marseille on a new device?",
+      "Did you just log in near London on a new device?"
+    ]
+  },
+  {
+    "domain": "amazon.de",
+    "count": 2,
+    "name": "Amazon.de",
+    "sample_subjects": [
+      "Ihre Amazon.de Bestellung von Grief Is the Thing with Feathe",
+      "Guillermo Ernest Arce Stumpf, did 'The Pragmatic Programmer:"
+    ]
+  },
+  {
+    "domain": "aquarelle.com",
+    "count": 2,
+    "name": "Aquarelle Fleurs",
+    "sample_subjects": [
+      "5\u20ac offerts sur votre commande",
+      "5\u20ac vous attendent sur votre compte"
+    ]
+  },
+  {
+    "domain": "todoist.com",
+    "count": 2,
+    "name": "Denise from Todoist",
+    "sample_subjects": [
+      "\ud83d\udcce guilleshin, here\u2019s one less reason to go back and open tha",
+      "guilleshin, from scrambled to sorted in seconds \ud83c\udfaf"
+    ]
+  },
+  {
+    "domain": "stripe.com",
+    "count": 2,
+    "name": "DoktorABC.com",
+    "sample_subjects": [
+      "Ihr Zahlungsbeleg [#1609-7110] von DoktorABC.com",
+      "Ihr Zahlungsbeleg [#1690-9882] von DoktorABC.com"
+    ]
+  },
+  {
+    "domain": "shared1.ccsend.com",
+    "count": 2,
+    "name": "Johns Hopkins Center for Health Security",
+    "sample_subjects": [
+      "Health Security Decoded \u2013 March 2026",
+      "Health Security Decoded \u2013 January 2026"
+    ]
+  },
+  {
+    "domain": "rechnung.o2online.de",
+    "count": 2,
+    "name": "o2 Team",
+    "sample_subjects": [
+      "Ihre Online-Rechnung von o2",
+      "Ihre Online-Rechnung von o2"
+    ]
+  },
+  {
+    "domain": "mail.sncf-connect.com",
+    "count": 2,
+    "name": "SNCF Connect",
+    "sample_subjects": [
+      "Guillermo, les billets pour l'\u00e9t\u00e9 sont en ligne !",
+      "Rendez-vous mercredi pour r\u00e9server votre \u00e9t\u00e9 !"
+    ]
+  },
+  {
+    "domain": "deeplearning.ai",
+    "count": 2,
+    "name": "DeepLearning.AI",
+    "sample_subjects": [
+      "More speakers of AI Dev 26 \u00d7 San Francisco announced",
+      "ICYMI: First speakers of AI Dev 26 \u00d7 San Francisco announced"
+    ]
+  },
+  {
+    "domain": "uber.com",
+    "count": 2,
+    "name": "Uber Belege",
+    "sample_subjects": [
+      "Deine Fahrt mit Uber am Mittwochmorgen",
+      "Deine Fahrt mit Uber am Dienstagnachmittag"
+    ]
+  },
+  {
+    "domain": "medium.com",
+    "count": 2,
+    "name": "Medium",
+    "sample_subjects": [
+      "A better Medium feed is a few clicks away",
+      "Are you reading Medium\u2019s best stories?"
+    ]
+  },
+  {
+    "domain": "itr.mail.codecademy.com",
+    "count": 2,
+    "name": "Codecademy",
+    "sample_subjects": [
+      "New career path: AI Engineer",
+      "Prefer learning live from tech pros?\u200b"
+    ]
+  },
+  {
+    "domain": "emails.avast.com",
+    "count": 2,
+    "name": "Avast",
+    "sample_subjects": [
+      "REMINDER: Scams are smarter. So is Avast.",
+      "Scams are smarter. So is Avast."
+    ]
+  },
+  {
+    "domain": "linkedin.com",
+    "count": 2,
+    "name": "LinkedIn",
+    "sample_subjects": [
+      "Guillermo, follow Carlos Stella - Gestor de comunidad y even",
+      "Guillermo, follow Touhajleb Sidi Aly - Directrice-fondatrice"
+    ]
+  },
+  {
+    "domain": "getsmarter.com",
+    "count": 2,
+    "name": "Oxford Online",
+    "sample_subjects": [
+      "Rise above the competition with 15% off",
+      "See you next time!"
+    ]
+  },
+  {
+    "domain": "bnb.com.bo",
+    "count": 2,
+    "name": "Banco Nacional de Bolivia S.A.",
+    "sample_subjects": [
+      "\u00a1Disfruta este Carnaval con Extracash!",
+      "\u00a1Este Carnaval, duplicamos tu l\u00edmite!"
+    ]
+  },
+  {
+    "domain": "e.cheaptickets.de",
+    "count": 2,
+    "name": "CheapTickets.de",
+    "sample_subjects": [
+      "Woche 4 ist gelandet: Neue Deals entdeckt! \u2708\ufe0f",
+      "\ud83d\udcb8 Solo-Reisen rufen"
+    ]
+  },
+  {
+    "domain": "email.blockchain.com",
+    "count": 1,
+    "name": "Blockchain",
+    "sample_subjects": [
+      "Become a Blockchain shareholder"
+    ]
+  },
+  {
+    "domain": "funecap.com",
+    "count": 1,
+    "name": "Laurence ASENCI",
+    "sample_subjects": [
+      "RE: guilleshin@gmail.com vous a envoy\u00e9 Claudie Mousnier Vide"
+    ]
+  },
+  {
+    "domain": "mystipendium.de",
+    "count": 1,
+    "name": "myStipendium",
+    "sample_subjects": [
+      "Deine Einladung zur the Group.Masterclass von BCG"
+    ]
+  },
+  {
+    "domain": "engage.canva.com",
+    "count": 1,
+    "name": "Canva",
+    "sample_subjects": [
+      "Hey there Guillermo! See how presentations have changed."
+    ]
+  },
+  {
+    "domain": "nyu.edu",
+    "count": 1,
+    "name": "NYU Wagner Admissions",
+    "sample_subjects": [
+      "Apply for New Scholarship by March 30, NYU Wagner"
+    ]
+  },
+  {
+    "domain": "mktmail.visa.com",
+    "count": 1,
+    "name": "VISA",
+    "sample_subjects": [
+      "Vom Warenkorb ins Finale: Visa Gewinnspiel.*"
+    ]
+  },
+  {
+    "domain": "loyalty.lindt.com",
+    "count": 1,
+    "name": "MyLindt Bonus Club",
+    "sample_subjects": [
+      "Ihr MyLindt Update, Guillermo Arce Stumpf"
+    ]
+  },
+  {
+    "domain": "niederlassung.fielmann.de",
+    "count": 1,
+    "name": "Deine Fielmann-Niederlassung",
+    "sample_subjects": [
+      "Deine Augen. Unser Fokus."
+    ]
+  },
+  {
+    "domain": "elementsofai.com",
+    "count": 1,
+    "name": "Elements of AI",
+    "sample_subjects": [
+      "AI Literacy for your staff in 60 minutes"
+    ]
+  },
+  {
+    "domain": "channel4.com",
+    "count": 1,
+    "name": "Channel 4",
+    "sample_subjects": [
+      "Please confirm your email address"
+    ]
+  },
+  {
+    "domain": "payzen.eu",
+    "count": 1,
+    "name": "do_not_reply@payzen.eu",
+    "sample_subjects": [
+      "R\u00e9seau Mistral - Votre paiement pour la commande R\u00e9f. 579620"
+    ]
+  },
+  {
+    "domain": "airwebpass.com",
+    "count": 1,
+    "name": "Ticket Virtuel",
+    "sample_subjects": [
+      "Merci pour votre achat"
+    ]
+  },
+  {
+    "domain": "mail.nintendo-europe.com",
+    "count": 1,
+    "name": "Nintendo",
+    "sample_subjects": [
+      "Update to the Nintendo Account Privacy Policy"
+    ]
+  },
+  {
+    "domain": "russianpod101.com",
+    "count": 1,
+    "name": "RussianPod101.com",
+    "sample_subjects": [
+      "Announcing: The \"You Can Speak Russian\" Sale"
+    ]
+  },
+  {
+    "domain": "m.mail.coursera.org",
+    "count": 1,
+    "name": "Columbia University",
+    "sample_subjects": [
+      "Spring into AI with Two Free Courses From Columbia Universit"
+    ]
+  },
+  {
+    "domain": "email.openai.com",
+    "count": 1,
+    "name": "OpenAI",
+    "sample_subjects": [
+      "Updates to OpenAI&apos;s Privacy Policy"
+    ]
+  },
+  {
+    "domain": "discord.com",
+    "count": 1,
+    "name": "Discord",
+    "sample_subjects": [
+      "ancient_chaos mentioned you in Midjourney"
+    ]
+  },
+  {
+    "domain": "info.ticketmaster.pl",
+    "count": 1,
+    "name": "Ticketmaster",
+    "sample_subjects": [
+      "Your Password Has Been Updated"
+    ]
+  },
+  {
+    "domain": "info.ticketmaster.de",
+    "count": 1,
+    "name": "Ticketmaster",
+    "sample_subjects": [
+      "Willkommen bei Ticketmaster!"
+    ]
+  },
+  {
+    "domain": "mail.free-now.com",
+    "count": 1,
+    "name": "Freenow",
+    "sample_subjects": [
+      "We are updating our Terms and Condtions"
+    ]
+  },
+  {
+    "domain": "communications.paypal.com",
+    "count": 1,
+    "name": "PayPal Communications",
+    "sample_subjects": [
+      "Wir nehmen einige \u00c4nderungen an unseren PayPal AGB vor"
+    ]
+  },
+  {
+    "domain": "orange-quarter.com",
+    "count": 1,
+    "name": "Tom Long",
+    "sample_subjects": [
+      "Appointment booked: Intro Chat w/Tom @ Orange Quarter (Guill"
+    ]
+  },
+  {
+    "domain": "info.o2.de",
+    "count": 1,
+    "name": "o2 Team",
+    "sample_subjects": [
+      "Die perfekte Erg\u00e4nzung zu deinem Vertrag"
+    ]
+  },
+  {
+    "domain": "euroflorist.de",
+    "count": 1,
+    "name": "Karolin von Euroflorist",
+    "sample_subjects": [
+      "Bestellfristen f\u00fcr Valentinstag"
+    ]
+  },
+  {
+    "domain": "airbnb.com",
+    "count": 1,
+    "name": "Airbnb",
+    "sample_subjects": [
+      "Aktualisierung: Bedingungen und Datenschutzerkl\u00e4rung"
+    ]
+  },
+  {
+    "domain": "canapuff.com",
+    "count": 1,
+    "name": "Sonia - Team Canapuff",
+    "sample_subjects": [
+      "\u2764\ufe0f Valentinstag Special: 33% Rabatt"
+    ]
+  },
+  {
+    "domain": "email.gog.com",
+    "count": 1,
+    "name": "GOG.com Team",
+    "sample_subjects": [
+      "Two-step authentication"
+    ]
+  },
+  {
+    "domain": "update.eis.de",
+    "count": 1,
+    "name": "EIS: Pssst \u2026 Mystery Box \u2013 gro\u00dfe \u00dcberraschungsbox kostenlos",
+    "sample_subjects": [
+      "XXL Mystery Box f\u00fcr 0,00 (statt 140,00 \u20ac Warenwert) XXL Myst"
+    ]
+  },
+  {
+    "domain": "academia-mail.com",
+    "count": 1,
+    "name": "PDF By Daniel Treisman",
+    "sample_subjects": [
+      "\ud83d\udcc4 \"Putins Silovarchs\" by Daniel Treisman"
+    ]
+  }
+]

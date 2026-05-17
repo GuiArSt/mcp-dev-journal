@@ -1,5 +1,20 @@
 import type { ToolExecutor } from "./types";
 
+function toSlug(value: string): string {
+  return value
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/(^-|-$)/g, "");
+}
+
+function normalizePortfolioStatus(status: unknown): "shipped" | "wip" | "archived" {
+  const s = String(status || "").toLowerCase();
+  if (s === "shipped" || s === "completed" || s === "done" || s === "production") return "shipped";
+  if (s === "archived") return "archived";
+  return "wip";
+}
+
 export const repositoryExecutors: Record<string, ToolExecutor> = {
   // === Documents ===
   repository_search_documents: async (args) => {
@@ -336,7 +351,7 @@ export const repositoryExecutors: Record<string, ToolExecutor> = {
       output: `📁 **Portfolio Projects** (${projects.length} found)\n\n${projects
         .map(
           (p: any) =>
-            `- **${p.title}** (${p.category}) ${p.featured ? "⭐" : ""}\n  Status: ${p.status} | Technologies: ${(p.technologies || []).join(", ")}`
+            `- **${p.title}** [id: \`${p.id}\`] (${p.category}) ${p.featured ? "⭐" : ""}\n  Status: ${p.status} | Technologies: ${(p.technologies || []).join(", ")}`
         )
         .join("\n\n")}`,
     };
@@ -362,20 +377,22 @@ export const repositoryExecutors: Record<string, ToolExecutor> = {
   },
 
   repository_create_portfolio_project: async (args) => {
+    const id = args.id ? String(args.id) : toSlug(String(args.title || "portfolio-project"));
     const res = await fetch("/api/portfolio-projects", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
+        id,
         title: args.title,
         category: args.category,
         company: args.company,
         role: args.role,
-        status: args.status || "active",
+        status: normalizePortfolioStatus(args.status),
         featured: args.featured || false,
         technologies: args.technologies || [],
         tags: args.tags || [],
         description: args.description,
-        image_url: args.image_url,
+        image: args.image || args.image_url,
       }),
     });
 
@@ -383,7 +400,7 @@ export const repositoryExecutors: Record<string, ToolExecutor> = {
     if (!res.ok)
       throw new Error(data.error || "Failed to create portfolio project");
     return {
-      output: `✅ Created portfolio project: **${args.title}** (${args.category})`,
+      output: `✅ Created portfolio project: **${args.title}** (id: \`${data.id || id}\`)`,
     };
   },
 
@@ -396,12 +413,12 @@ export const repositoryExecutors: Record<string, ToolExecutor> = {
         category: args.category,
         company: args.company,
         role: args.role,
-        status: args.status,
+        status: args.status ? normalizePortfolioStatus(args.status) : undefined,
         featured: args.featured,
         technologies: args.technologies,
         tags: args.tags,
         description: args.description,
-        image_url: args.image_url,
+        image: args.image || args.image_url,
       }),
     });
 

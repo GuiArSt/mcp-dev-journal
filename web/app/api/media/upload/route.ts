@@ -99,7 +99,14 @@ export async function POST(request: NextRequest) {
 
     try {
       const { registerObject } = await import("@/lib/object-registry");
-      registerObject({ type: 'media_asset', sourceTable: 'media_assets', sourceId: String(result.lastInsertRowid), title: file.name });
+      registerObject({
+        type: "media_asset",
+        sourceTable: "media_assets",
+        sourceId: String(result.lastInsertRowid),
+        title: file.name,
+        summary: description || undefined,
+        tags: Array.isArray(tags) ? tags : [],
+      });
     } catch { /* registry is non-critical */ }
 
     // Fetch the created record

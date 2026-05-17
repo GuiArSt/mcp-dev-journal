@@ -152,7 +152,7 @@ export const DELETE = withErrorHandler(async (request: NextRequest) => {
   // Delete all entries for this repository
   await db.delete(journalEntries).where(eq(journalEntries.repository, repository));
 
-  // Delete the project summary for this repository
+  // Delete the Repository overview row for this repository
   await db.delete(projectSummaries).where(eq(projectSummaries.repository, repository));
 
   // Trigger backup after deletion

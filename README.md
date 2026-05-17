@@ -18,7 +18,7 @@ A dual-interface platform (MCP server + web app) for structured, AI-powered jour
 - **Daimon** - Inline polish-before-send writing assistant (Cmd+Enter). Word-level diff, correction history, translation support
 - **Atropos** - AI spellchecker and text correction with inline diff view
 - **Hermes** - AI translation tool
-- **Repository** - Unified knowledge base for writings, prompts, notes, CV (skills, experience, education), and portfolio projects
+- **Library** - Unified knowledge base for writings, prompts, notes, CV (skills, experience, education), portfolio projects, and AI integration memory
 - **Linear integration** - Synced Linear projects and issues with manual + automated hourly sync
 - **Slite integration** - Synced knowledge base notes
 - **Notion integration** - Synced workspace pages
@@ -43,7 +43,7 @@ A dual-interface platform (MCP server + web app) for structured, AI-powered jour
 │ • 22 tools      │     │ • Kronus Chat (AI)    │
 │ • 26 resources  │     │ • Journal Reader      │
 │ • 3 prompts     │     │ • Daimon / Atropos    │
-│ • Kronus oracle │     │ • Repository Browser  │
+│ • Kronus oracle │     │ • Library Browser     │
 │   (agentic,     │     │ • Linear/Slite/Notion │
 │    search+fetch)│     │ • Google Workspace    │
 └────────┬────────┘     └──────────┬───────────┘
@@ -134,12 +134,12 @@ The MCP server is **read-only** for cached data, with write tools that go throug
 | `journal_create_project_summary` | Create Entry 0 — agent fills Tier 1/2/3 schema directly |
 | `journal_update_project_technical` | Update technical sections with history tracking |
 | `journal_submit_summary_report` | Update narrative sections (AI-assisted or direct) |
-| `journal_list_project_summaries` | List all Entry 0 summaries |
+| `journal_list_project_summaries` | List all Repository overview (Entry 0) rows |
 | `journal_list_media_library` | Query unified media assets |
 | `registry_search_objects` | Search the unified Tartarus object registry |
 | `registry_fetch_object` | Fetch a registry object by UUID or source reference |
 
-**Repository (9):**
+**Library (9):**
 
 | Tool | Description |
 |------|-------------|
@@ -182,7 +182,7 @@ The MCP server is **read-only** for cached data, with write tools that go throug
 | `registry://object/{uuid}` | Fetch any registry object by UUID |
 | `registry://source/{source_table}/{source_id}` | Fetch any registry object by source reference |
 
-**Repository (7):**
+**Library (7):**
 
 | URI | Description |
 |-----|-------------|
@@ -232,7 +232,7 @@ The MCP server is **read-only** for cached data, with write tools that go throug
 | **Reader** | Browse journal entries with filtering, search, attachment viewer, mermaid diagrams |
 | **Atropos** | AI text correction with inline diff view and change navigation |
 | **Hermes** | AI translation tool |
-| **Repository** | Unified knowledge base — documents, CV, portfolio, media (tabbed layout) |
+| **Library** | Unified knowledge base — documents, CV, portfolio, media, AI integrations (tabbed layout) |
 | **Prompts** | Prompt management with versioning and project organization |
 | **Integrations** | Linear, Slite, Notion sync with preview/approve workflow |
 | **Multimedia** | Media library with Mermaid diagram editor |
@@ -299,7 +299,7 @@ A schema-driven, evolving knowledge base for each project. The coding agent IS t
 ### Journal Entry Structure
 
 ```
-Repository (e.g., "my-project")
+Workspace/project slug (stored in the journal `repository` field, e.g., "my-project")
   └── Branch (e.g., "main")
       └── Entry (commit_hash: "abc1234")
           ├── why, what_changed, decisions
@@ -455,4 +455,17 @@ JOURNAL_DB_PATH=./data/journal.db npx tsx web/scripts/backfill-object-registry.t
 
 ## License
 
-MIT
+This project is licensed under the MIT License — see `LICENSE`.
+
+## Attribution
+
+- Created and maintained by **Guillermo Stumpf**
+- Organization: **Ouroboros Creative Collective**
+- Role: **Founder / solo builder**
+- Built in public as an open-source project, co-built with AI tooling
+
+## Third-Party Licenses
+
+Third-party components included in this repository keep their original licenses.
+
+- Anthropic `skill-creator`: `/.claude/skills/skill-creator/LICENSE.txt`

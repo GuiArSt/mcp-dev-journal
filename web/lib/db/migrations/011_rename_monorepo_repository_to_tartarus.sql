@@ -5,5 +5,5 @@
 UPDATE journal_entries SET repository = 'tartarus-workspace' WHERE repository = 'Developer Journal Workspace';
 UPDATE journal_entries SET repository = 'tartarus-workspace' WHERE repository = 'developer journal workspace';
 
-UPDATE project_summaries SET repository = 'tartarus-workspace' WHERE repository = 'Developer Journal Workspace';
-UPDATE project_summaries SET repository = 'tartarus-workspace' WHERE repository = 'developer journal workspace';
+UPDATE repository_overviews SET repository = 'tartarus-workspace' WHERE repository = 'Developer Journal Workspace';
+UPDATE repository_overviews SET repository = 'tartarus-workspace' WHERE repository = 'developer journal workspace';

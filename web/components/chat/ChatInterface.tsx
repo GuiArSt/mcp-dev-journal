@@ -107,6 +107,7 @@ import {
   toChatSessionSnapshot,
   parseChatSessionSnapshot,
 } from "@/lib/chat-session-snapshot";
+import type { ArtifactRef } from "@/components/chat/hourglass/artifacts/types";
 
 interface ToolState {
   isLoading: boolean;
@@ -227,6 +228,9 @@ export function ChatInterface() {
         if (value === true) (tools as any)[key] = true;
       }
     }
+    if (soul.chatIndex) {
+      tools.memory = true;
+    }
     setSoulConfig(soul);
     setToolsConfig(tools);
   }, [activeSkillSlugs, cachedSkills, isManualOverride]);
@@ -251,6 +255,11 @@ export function ChatInterface() {
     resolve: (result: string) => void;
   } | null>(null);
   const [showDiffView, setShowDiffView] = useState(false);
+  const [artifactRefs, setArtifactRefs] = useState<ArtifactRef[]>([]);
+
+  const addArtifactRef = useCallback((ref: ArtifactRef) => {
+    setArtifactRefs((prev) => (prev.some((r) => r.uuid === ref.uuid) ? prev : [...prev, ref]));
+  }, []);
 
   // Daimon — inline polish-before-send plugin (merged Atropos + Hermes)
   const [daimonEnabled, setDaimonEnabled] = useState(() => {
@@ -327,6 +336,7 @@ export function ChatInterface() {
           (effectiveSoulConfig.workExperience ? stats.workExperienceTokens || 0 : 0) +
           (effectiveSoulConfig.education ? stats.educationTokens || 0 : 0) +
           (effectiveSoulConfig.journalEntries ? stats.journalEntriesTokens || 0 : 0) +
+          (effectiveSoulConfig.chatIndex ? stats.chatIndexTokens || 0 : 0) +
           (effectiveSoulConfig.linearProjects ? linearProjectTokens : 0) +
           (effectiveSoulConfig.linearIssues ? linearIssueTokens : 0);
 
@@ -470,7 +480,7 @@ export function ChatInterface() {
           const result = await executeToolCall(toolName, typedArgs as Record<string, any>);
           output = result.output;
 
-          // Merge metadata into toolStates (e.g. images from replicate)
+          // Merge metadata into toolStates (e.g. generated image URLs)
           if (result.metadata) {
             setToolStates((prev) => ({
               ...prev,
@@ -479,6 +489,9 @@ export function ChatInterface() {
                 ...result.metadata,
               },
             }));
+            if (result.metadata.artifactRef) {
+              addArtifactRef(result.metadata.artifactRef as ArtifactRef);
+            }
           }
         }
 
@@ -602,13 +615,29 @@ export function ChatInterface() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // Only run on mount
 
-  // Debug: log status and messages changes
+  // Opt-in debug logs only (prevents console spam during token streaming)
+  const shouldLogChatDebug =
+    process.env.NODE_ENV === "development" && process.env.NEXT_PUBLIC_CHAT_DEBUG === "1";
+
   useEffect(() => {
+    if (!shouldLogChatDebug) return;
     console.log("[Chat Debug] Status:", status, "Messages:", messages.length, "Error:", error);
     if (messages.length > 0) {
-      console.log("[Chat Debug] Last message:", messages[messages.length - 1]);
+      const last = messages[messages.length - 1] as {
+        id?: string;
+        role?: string;
+        content?: unknown;
+        parts?: unknown[];
+      };
+      console.log("[Chat Debug] Last message:", {
+        id: last.id,
+        role: last.role,
+        parts: Array.isArray(last.parts) ? last.parts.length : 0,
+        contentPreview:
+          typeof last.content === "string" ? last.content.slice(0, 120) : undefined,
+      });
     }
-  }, [status, messages, error]);
+  }, [shouldLogChatDebug, status, messages.length, error]);
 
   // Auto-scroll to bottom - throttled with requestAnimationFrame
   const scrollTimeoutRef = useRef<number | null>(null);
@@ -782,6 +811,7 @@ export function ChatInterface() {
             soulConfig: effectiveSoulConfig,
             toolsConfig: effectiveToolsConfig,
             modelConfig,
+            activeSkillSlugs,
           },
         }
       );
@@ -835,6 +865,7 @@ export function ChatInterface() {
             soulConfig: effectiveSoulConfig,
             toolsConfig: effectiveToolsConfig,
             modelConfig,
+            activeSkillSlugs,
           },
         }
       );
@@ -859,7 +890,7 @@ export function ChatInterface() {
   // Convert AI SDK messages to DB format
   const convertMessagesToDBFormat = (
     msgs: typeof messages
-  ): Array<{ id: string; role: string; content: string }> => {
+  ): Array<{ id: string; role: string; content: string; parts?: any[] }> => {
     return msgs.map((m) => {
       // Extract text content from parts
       const textParts = m.parts
@@ -870,6 +901,7 @@ export function ChatInterface() {
         id: m.id,
         role: m.role,
         content: textParts || "",
+        parts: m.parts as any[],
       };
     });
   };
@@ -933,6 +965,7 @@ export function ChatInterface() {
                   lockedSoulConfig,
                   isManualOverride,
                 }),
+                artifactRefs,
               }),
             });
             if (res.ok) {
@@ -956,6 +989,7 @@ export function ChatInterface() {
                   lockedSoulConfig,
                   isManualOverride,
                 }),
+                artifactRefs,
               }),
             });
             const data = await res.json();
@@ -986,6 +1020,64 @@ export function ChatInterface() {
     activeSkillSlugs,
     lockedSoulConfig,
     isManualOverride,
+    artifactRefs,
+  ]);
+
+  // Persist generated Muse artifacts even when the message count did not
+  // change after the tool finished. This keeps old Kronus chat rows
+  // compatible with the Hourglass shelf.
+  useEffect(() => {
+    if (!currentConversationId || artifactRefs.length === 0 || status !== "ready" || messages.length === 0) {
+      return;
+    }
+
+    const timeoutId = setTimeout(async () => {
+      try {
+        const firstUserMessage = messages.find((m) => m.role === "user");
+        const title =
+          firstUserMessage?.parts
+            ?.filter((p: any) => p.type === "text")
+            .map((p: any) => p.text)
+            .join(" ")
+            .substring(0, 50)
+            .trim() || "Untitled Conversation";
+
+        await fetch(`/api/conversations/${currentConversationId}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            title,
+            messages: convertMessagesToDBFormat(messages),
+            sessionConfig: toChatSessionSnapshot({
+              soulConfig,
+              toolsConfig,
+              modelConfig,
+              formatConfig,
+              activeSkillSlugs,
+              lockedSoulConfig,
+              isManualOverride,
+            }),
+            artifactRefs,
+          }),
+        });
+      } catch (error) {
+        console.error("Failed to save artifact refs:", error);
+      }
+    }, 500);
+
+    return () => clearTimeout(timeoutId);
+  }, [
+    artifactRefs,
+    currentConversationId,
+    status,
+    messages,
+    soulConfig,
+    toolsConfig,
+    modelConfig,
+    formatConfig,
+    activeSkillSlugs,
+    lockedSoulConfig,
+    isManualOverride,
   ]);
 
   const handleSaveConversation = async () => {
@@ -1008,6 +1100,7 @@ export function ChatInterface() {
             lockedSoulConfig,
             isManualOverride,
           }),
+          artifactRefs,
         }),
       });
       const data = await res.json();
@@ -1034,6 +1127,11 @@ export function ChatInterface() {
         // Set baseline BEFORE setting messages to prevent auto-save trigger
         lastSavedMessageCountRef.current = convertedMessages.length;
         setMessages(convertedMessages);
+        try {
+          setArtifactRefs(JSON.parse(data.artifact_refs ?? "[]") as ArtifactRef[]);
+        } catch {
+          setArtifactRefs([]);
+        }
         setCurrentConversationId(id);
         setShowHistory(false);
         setToolStates({});
@@ -1057,6 +1155,7 @@ export function ChatInterface() {
 
   const handleNewConversation = () => {
     setMessages([]);
+    setArtifactRefs([]);
     setCurrentConversationId(null);
     setToolStates({});
     lastSavedMessageCountRef.current = 0;
@@ -1498,6 +1597,9 @@ export function ChatInterface() {
             soulConfig={soulConfig}
             onSoulChange={(config) => {
               setSoulConfig(config);
+              if (config.chatIndex) {
+                setToolsConfig((prev) => ({ ...prev, memory: true }));
+              }
               setIsManualOverride(true);
             }}
             toolsConfig={toolsConfig}
@@ -1731,7 +1833,7 @@ export function ChatInterface() {
                         history, project summaries
                       </p>
                       <p className="text-[var(--tartarus-ivory-muted)]">
-                        📚 <strong className="text-[var(--tartarus-ivory)]">Repository:</strong>{" "}
+                        📚 <strong className="text-[var(--tartarus-ivory)]">Library:</strong>{" "}
                         Writings, skills, CV, portfolio
                       </p>
                       <p className="text-[var(--tartarus-ivory-muted)]">

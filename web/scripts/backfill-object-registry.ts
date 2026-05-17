@@ -31,8 +31,8 @@ const SOURCES: BackfillSource[] = [
   },
   {
     type: "project_summary",
-    sourceTable: "project_summaries",
-    query: `SELECT repository AS source_id, repository AS title, summary FROM project_summaries`,
+    sourceTable: "repository_overviews",
+    query: `SELECT repository AS source_id, repository AS title, summary FROM repository_overviews`,
   },
   {
     type: "document",

@@ -98,13 +98,13 @@ export const READ_TOOLS = new Set([
 
   // Web search (read-only by nature)
   "gemini_search",
-  "perplexity_search",
-  "perplexity_ask",
-  "perplexity_research",
-  "perplexity_reason",
+
+  // Memory / chat index read operations
+  "memory_list_chat_index",
+  "memory_fetch_chat",
 
   // Image generation (creates externally, doesn't modify our DB)
-  "replicate_generate_image",
+  "generate_image",
 
   // Google Workspace read operations
   "google_drive_list_files",
@@ -137,7 +137,7 @@ export function getToolActionDescription(toolName: string, args: Record<string, 
     case "journal_regenerate_entry":
       return `Regenerate journal entry ${args.commit_hash?.substring(0, 7)} with AI`;
     case "journal_upsert_project_summary":
-      return `Update project summary for ${args.repository}`;
+      return `Update Repository overview (Entry 0) for ${args.repository}`;
 
     // Documents
     case "repository_create_document":
@@ -212,6 +212,9 @@ export function getToolActionDescription(toolName: string, args: Record<string, 
       return `Create draft to ${args.to}: "${args.subject}"`;
     case "google_calendar_create_event":
       return `Create calendar event: "${args.summary}" at ${args.start}`;
+
+    case "cursor_repository_insight":
+      return `Ask Cursor agent about project "${args.project_id}"`;
     case "google_calendar_update_event":
       return `Update calendar event ${args.eventId}`;
 

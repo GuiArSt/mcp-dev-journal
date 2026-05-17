@@ -14,7 +14,9 @@ import { withErrorHandler } from "@/lib/api-handler";
 import { ValidationError } from "@/lib/errors";
 import { getDatabase } from "@/lib/db";
 import { cleanConversationToPlainText, estimateTokens } from "@/lib/chat-text-cleaner";
-import { updateObjectSummary, lookupBySource } from "@/lib/object-registry";
+import { updateObjectSummary, lookupBySource, registerObject } from "@/lib/object-registry";
+import { getPrompt } from "@/lib/ai/prompt-store";
+import { CONVERSATION_BATCH_SUMMARY_DEFAULT } from "@/lib/ai/prompt-defaults";
 
 const MAX_TOTAL_TOKENS = 24_000; // flash-lite context budget for all conversations
 const MAX_TOKENS_PER_CONVERSATION = 6_000; // truncate individual conversations
@@ -122,12 +124,7 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
         const result = await generateText({
           model: google("gemini-3.1-flash-lite-preview"),
           output: Output.object({ schema: BatchSummarySchema }),
-          system: `You are a conversation classifier and summarizer. Generate a concise title, summary, topic tags, and importance rating.
-
-Title: 3-6 words, capture the main topic.
-Summary: 2-3 sentences describing what was discussed and key outcomes.
-Tags: 3-7 lowercase topic tags (e.g., "database", "debugging", "api-design").
-Importance: 1=trivial chat, 2=minor question, 3=normal work, 4=important decision, 5=critical architecture/security.`,
+          system: getPrompt("conversation-batch-summary", CONVERSATION_BATCH_SUMMARY_DEFAULT),
           prompt: `Summarize this conversation:\n\n${cleanedText}`,
         });
 
@@ -146,6 +143,15 @@ Importance: 1=trivial chat, 2=minor question, 3=normal work, 4=important decisio
 
         // Update registry
         try {
+          registerObject({
+            type: "conversation",
+            sourceTable: "chat_conversations",
+            sourceId: String(conv.id),
+            title: output.title,
+            summary: output.summary,
+            tags: output.tags,
+            importance: output.importance,
+          });
           const obj = lookupBySource("chat_conversations", String(conv.id));
           if (obj) {
             updateObjectSummary(obj.uuid, output.summary, output.tags, output.importance);

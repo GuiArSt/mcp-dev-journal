@@ -4,12 +4,15 @@ import { journalExecutors } from "./journal";
 import { linearExecutors } from "./linear";
 import { sliteExecutors } from "./slite";
 import { notionExecutors } from "./notion";
-import { replicateExecutors } from "./replicate";
+import { imageExecutors } from "./image";
 import { mediaExecutors } from "./media";
+import { memoryExecutors } from "./memory";
 import { repositoryExecutors } from "./repository";
+import { aiIntegrationExecutors } from "./ai-integrations";
 import { gitExecutors } from "./git";
 import { searchExecutors } from "./search";
 import { googleExecutors } from "./google";
+import { cursorDelegateExecutors } from "./cursor-delegate";
 import type { ToolExecutionResult, ToolExecutor } from "./types";
 
 // Registry of all tool executors by domain
@@ -18,12 +21,15 @@ const toolExecutors: Record<string, ToolExecutor> = {
   ...linearExecutors,
   ...sliteExecutors,
   ...notionExecutors,
-  ...replicateExecutors,
+  ...imageExecutors,
   ...mediaExecutors,
+  ...memoryExecutors,
   ...repositoryExecutors,
+  ...aiIntegrationExecutors,
   ...gitExecutors,
   ...searchExecutors,
   ...googleExecutors,
+  ...cursorDelegateExecutors,
 };
 
 // Dispatch a tool call to its executor

@@ -1,0 +1,479 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Guillermo Arce Stumpf - CV</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  @page {
+    size: A4;
+    margin: 0;
+  }
+
+  body {
+    font-family: 'Inter', -apple-system, sans-serif;
+    font-size: 9pt;
+    line-height: 1.45;
+    color: #1a1a2e;
+    background: white;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  .page {
+    width: 210mm;
+    height: 297mm;
+    display: grid;
+    grid-template-columns: 68mm 1fr;
+    overflow: hidden;
+  }
+
+  /* ---- LEFT SIDEBAR ---- */
+  .sidebar {
+    background: #1a1a2e;
+    color: #e0e0e8;
+    padding: 24pt 14pt 16pt 14pt;
+    display: flex;
+    flex-direction: column;
+    gap: 14pt;
+  }
+
+  .sidebar h2 {
+    font-size: 8pt;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 1.5pt;
+    color: #8b8baf;
+    margin-bottom: 6pt;
+    padding-bottom: 3pt;
+    border-bottom: 1px solid #2a2a4a;
+  }
+
+  .name-block {
+    text-align: center;
+    margin-bottom: 4pt;
+  }
+
+  .name-block h1 {
+    font-size: 16pt;
+    font-weight: 700;
+    color: white;
+    line-height: 1.2;
+    letter-spacing: -0.3pt;
+  }
+
+  .name-block .subtitle {
+    font-size: 8pt;
+    color: #a78bfa;
+    font-weight: 500;
+    margin-top: 4pt;
+    letter-spacing: 0.5pt;
+  }
+
+  .contact-item {
+    display: flex;
+    align-items: center;
+    gap: 6pt;
+    font-size: 7.5pt;
+    color: #c0c0d0;
+    margin-bottom: 3pt;
+  }
+
+  .contact-item .icon {
+    width: 12pt;
+    text-align: center;
+    flex-shrink: 0;
+    font-size: 8pt;
+  }
+
+  .contact-item a {
+    color: #c0c0d0;
+    text-decoration: none;
+  }
+
+  /* Skills section */
+  .skill-group {
+    margin-bottom: 6pt;
+  }
+
+  .skill-group-title {
+    font-size: 7pt;
+    font-weight: 600;
+    color: #a78bfa;
+    margin-bottom: 2pt;
+    text-transform: uppercase;
+    letter-spacing: 0.5pt;
+  }
+
+  .skill-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 2pt;
+  }
+
+  .skill-tag {
+    font-size: 6.5pt;
+    padding: 1.5pt 4pt;
+    border-radius: 2pt;
+    background: rgba(167, 139, 250, 0.12);
+    color: #d0c8f0;
+  }
+
+  .skill-tag.expert {
+    background: rgba(167, 139, 250, 0.25);
+    color: #e8e0ff;
+    font-weight: 500;
+  }
+
+  /* Languages */
+  .lang-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 2pt 6pt;
+  }
+
+  .lang-item {
+    font-size: 7.5pt;
+    display: flex;
+    justify-content: space-between;
+  }
+
+  .lang-name { color: #e0e0e8; }
+  .lang-level { color: #8b8baf; font-size: 6.5pt; }
+
+  /* Education sidebar */
+  .edu-item {
+    margin-bottom: 6pt;
+  }
+
+  .edu-item .degree {
+    font-size: 7.5pt;
+    font-weight: 600;
+    color: #e0e0e8;
+  }
+
+  .edu-item .school {
+    font-size: 7pt;
+    color: #a0a0b8;
+  }
+
+  .edu-item .dates {
+    font-size: 6.5pt;
+    color: #6b6b8a;
+  }
+
+  /* ---- MAIN CONTENT ---- */
+  .main {
+    padding: 28pt 20pt 20pt 20pt;
+    display: flex;
+    flex-direction: column;
+    gap: 14pt;
+  }
+
+  .main h2 {
+    font-size: 9.5pt;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1.2pt;
+    color: #1a1a2e;
+    margin-bottom: 8pt;
+    padding-bottom: 4pt;
+    border-bottom: 1.5px solid #e8e8f0;
+  }
+
+  /* Profile */
+  .profile p {
+    font-size: 9pt;
+    line-height: 1.55;
+    color: #3a3a5a;
+  }
+
+  /* Experience */
+  .exp-item {
+    margin-bottom: 10pt;
+    page-break-inside: avoid;
+  }
+
+  .exp-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-bottom: 1pt;
+  }
+
+  .exp-title {
+    font-size: 9.5pt;
+    font-weight: 700;
+    color: #1a1a2e;
+  }
+
+  .exp-dates {
+    font-size: 7pt;
+    color: #8b8baf;
+    white-space: nowrap;
+  }
+
+  .exp-company {
+    font-size: 8pt;
+    color: #6b6b8a;
+    margin-bottom: 4pt;
+  }
+
+  .exp-bullets {
+    list-style: none;
+    padding: 0;
+  }
+
+  .exp-bullets li {
+    font-size: 8pt;
+    color: #3a3a5a;
+    padding-left: 9pt;
+    position: relative;
+    margin-bottom: 2.5pt;
+    line-height: 1.45;
+  }
+
+  .exp-bullets li::before {
+    content: '›';
+    position: absolute;
+    left: 0;
+    color: #a78bfa;
+    font-weight: 700;
+  }
+
+  .metric {
+    color: #6d28d9;
+    font-weight: 600;
+  }
+
+  /* Projects */
+  .project-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8pt;
+  }
+
+  .project-card {
+    padding: 8pt 10pt;
+    border: 1px solid #e8e8f0;
+    border-radius: 4pt;
+    background: #fafaff;
+  }
+
+  .project-card .title {
+    font-size: 8pt;
+    font-weight: 600;
+    color: #1a1a2e;
+    margin-bottom: 2pt;
+  }
+
+  .project-card .desc {
+    font-size: 7pt;
+    color: #6b6b8a;
+    line-height: 1.45;
+  }
+
+  .project-card .tech {
+    font-size: 6.5pt;
+    color: #a78bfa;
+    margin-top: 3pt;
+  }
+</style>
+</head>
+<body>
+<div class="page">
+  <!-- LEFT SIDEBAR -->
+  <div class="sidebar">
+    <div class="name-block">
+      <h1>Guillermo<br>Arce Stumpf</h1>
+      <div class="subtitle">AI Solutions Engineer</div>
+    </div>
+
+    <div>
+      <h2>Contact</h2>
+      <div class="contact-item"><span class="icon">&#9993;</span> guillermo.a.stumpf@gmail.com</div>
+      <div class="contact-item"><span class="icon">&#9873;</span> Cologne, Germany</div>
+      <div class="contact-item"><span class="icon">&#9741;</span> <a href="https://guillermo-stumpf.com">guillermo-stumpf.com</a></div>
+      <div class="contact-item"><span class="icon">&#128279;</span> <a href="https://linkedin.com/in/guillermo-stumpf">linkedin.com/in/guillermo-stumpf</a></div>
+      <div class="contact-item"><span class="icon">&#128187;</span> <a href="https://github.com/guillermo-stumpf">github.com/guillermo-stumpf</a></div>
+    </div>
+
+    <div>
+      <h2>Languages</h2>
+      <div class="lang-grid">
+        <div class="lang-item"><span class="lang-name">Spanish</span> <span class="lang-level">C2</span></div>
+        <div class="lang-item"><span class="lang-name">German</span> <span class="lang-level">C2</span></div>
+        <div class="lang-item"><span class="lang-name">English</span> <span class="lang-level">C2</span></div>
+        <div class="lang-item"><span class="lang-name">French</span> <span class="lang-level">B2</span></div>
+        <div class="lang-item"><span class="lang-name">Russian</span> <span class="lang-level">A2</span></div>
+        <div class="lang-item"><span class="lang-name">Portuguese</span> <span class="lang-level">A2</span></div>
+      </div>
+    </div>
+
+    <div>
+      <h2>Technical Skills</h2>
+      <div class="skill-group">
+        <div class="skill-group-title">AI & Engineering</div>
+        <div class="skill-tags">
+          <span class="skill-tag expert">Prompt Engineering</span>
+          <span class="skill-tag expert">LLM API Integration</span>
+          <span class="skill-tag expert">AI System Design</span>
+          <span class="skill-tag expert">Langfuse / LLMOps</span>
+          <span class="skill-tag expert">MCP Protocol</span>
+          <span class="skill-tag">TypeScript</span>
+          <span class="skill-tag">Python</span>
+          <span class="skill-tag">Next.js</span>
+          <span class="skill-tag">SQL</span>
+          <span class="skill-tag">Hono</span>
+        </div>
+      </div>
+      <div class="skill-group">
+        <div class="skill-group-title">Data & Analytics</div>
+        <div class="skill-tags">
+          <span class="skill-tag">Data Architecture</span>
+          <span class="skill-tag">ETL Pipelines</span>
+          <span class="skill-tag">ML Forecasting</span>
+          <span class="skill-tag">Metabase</span>
+          <span class="skill-tag">PostHog</span>
+        </div>
+      </div>
+      <div class="skill-group">
+        <div class="skill-group-title">Infrastructure</div>
+        <div class="skill-tags">
+          <span class="skill-tag">Git / GitHub</span>
+          <span class="skill-tag">Vercel</span>
+          <span class="skill-tag">Docker</span>
+          <span class="skill-tag">Fly.io</span>
+        </div>
+      </div>
+      <div class="skill-group">
+        <div class="skill-group-title">Creative & Communication</div>
+        <div class="skill-tags">
+          <span class="skill-tag expert">Creative Writing</span>
+          <span class="skill-tag">Video Production</span>
+          <span class="skill-tag">Graphic Design</span>
+          <span class="skill-tag">Workshop Facilitation</span>
+          <span class="skill-tag">Public Speaking</span>
+        </div>
+      </div>
+    </div>
+
+    <div>
+      <h2>Education</h2>
+      <div class="edu-item">
+        <div class="degree">B.A. International Relations</div>
+        <div class="school">OTH Regensburg, Germany</div>
+        <div class="dates">2016 – 2023</div>
+      </div>
+      <div class="edu-item">
+        <div class="degree">Diploma, Digital Marketing</div>
+        <div class="school">ISB Dublin, Ireland</div>
+        <div class="dates">2018 – 2019</div>
+      </div>
+      <div class="edu-item">
+        <div class="degree">Dual Ausbildung, Trade Mgmt</div>
+        <div class="school">Bayer Bolivia (German Program)</div>
+        <div class="dates">2014 – 2015</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MAIN CONTENT -->
+  <div class="main">
+    <div class="profile">
+      <h2>Profile</h2>
+      <p>AI Solutions Engineer bridging technical depth with creative vision. I build production AI systems — from prompt management infrastructure and multi-provider LLM orchestration to ML forecasting and data pipelines. Trilingual (ES/DE/EN C2), I thrive at the intersection of engineering, design, and cross-cultural collaboration. Equally fluent in code, copy, and conversation.</p>
+    </div>
+
+    <div>
+      <h2>Experience</h2>
+
+      <div class="exp-item">
+        <div class="exp-header">
+          <span class="exp-title">AI Solutions Engineer</span>
+          <span class="exp-dates">Apr 2025 – Present</span>
+        </div>
+        <div class="exp-company">Jobilla DACH · Product Team · Remote (Germany)</div>
+        <ul class="exp-bullets">
+          <li>Architected prompt management infrastructure with Langfuse — <span class="metric">12 endpoints</span>, runtime updates without deployment, A/B testing</li>
+          <li>Built multi-provider AI orchestration (Claude, GPT, Gemini) with sequential fallbacks for production reliability</li>
+          <li>Shipped <span class="metric">5 production releases in 6 months</span>, owning LLM generation quality end-to-end</li>
+          <li>Engineered 3-database BI platform (JobiData): <span class="metric">24K campaigns</span>, <span class="metric">53K regional records</span>, <span class="metric">4.2M demographic events</span></li>
+          <li>Built ML forecasting system (Random Forest) — <span class="metric">R²=0.972</span>, <span class="metric">17.7% MAPE</span></li>
+          <li>Eliminated <span class="metric">€10K+ annual costs</span> via AI image-generation pipeline replacing stock photography</li>
+          <li>Developed Python CLI for mass data labeling (ISCO/NACE) — <span class="metric">26K campaigns, 99% reliability</span></li>
+        </ul>
+      </div>
+
+      <div class="exp-item">
+        <div class="exp-header">
+          <span class="exp-title">Gen AI & Content Specialist</span>
+          <span class="exp-dates">Aug 2023 – Apr 2025</span>
+        </div>
+        <div class="exp-company">Jobilla DACH · Service Production · Remote (Germany)</div>
+        <ul class="exp-bullets">
+          <li>Implemented AI-first creative workflow — <span class="metric">90% AI utilization</span> in campaign generation</li>
+          <li>Created multilingual content strategies across <span class="metric">6 languages</span> using AI-assisted localization</li>
+          <li>Designed and delivered AI tool training for all organizational levels</li>
+          <li>Built systematic prompt engineering frameworks adopted in production</li>
+        </ul>
+      </div>
+
+      <div class="exp-item">
+        <div class="exp-header">
+          <span class="exp-title">AI Consultant & Digital Craftsman</span>
+          <span class="exp-dates">Jan 2020 – Present</span>
+        </div>
+        <div class="exp-company">Ouroboros Creative Collective · Freelance</div>
+        <ul class="exp-bullets">
+          <li>Designed multilingual digital toolkit for YEEI (NGO) — <span class="metric">7+ languages, 3 continents</span></li>
+          <li>Built end-to-end websites for musicians, businesses, and portfolios (React, Next.js)</li>
+        </ul>
+      </div>
+
+      <div class="exp-item">
+        <div class="exp-header">
+          <span class="exp-title">Earlier Roles</span>
+          <span class="exp-dates">2014 – 2022</span>
+        </div>
+        <div class="exp-company">eDreams ODIGEO (Barcelona) · Maschinenfabrik Reinhausen · AMZ-Marketing · Bayer Bolivia</div>
+        <ul class="exp-bullets">
+          <li>Foundations in SQL/data (Salesforce, SAP ERP), graphic design (Amazon A+), and international trade</li>
+          <li>Cross-functional exposure across business development, HR, marketing, and logistics in 3 countries</li>
+        </ul>
+      </div>
+    </div>
+
+    <div>
+      <h2>Key Projects</h2>
+      <div class="project-grid">
+        <div class="project-card">
+          <div class="title">Langfuse Prompt Infrastructure</div>
+          <div class="desc">12-endpoint prompt management system enabling runtime updates, metrics tracking, and A/B testing without deployment</div>
+          <div class="tech">TypeScript · Langfuse · Vercel AI SDK · OpenTelemetry</div>
+        </div>
+        <div class="project-card">
+          <div class="title">JobiData BI Platform</div>
+          <div class="desc">Three-database analytics platform with ML forecasting (R²=0.972), regional attribution, and NUTS classification</div>
+          <div class="tech">Python · SQLite · scikit-learn · CLI</div>
+        </div>
+        <div class="project-card">
+          <div class="title">26K Campaign Labeling</div>
+          <div class="desc">Python CLI for mass ISCO/NACE classification using structured LLM outputs at 99% reliability</div>
+          <div class="tech">Python · Gemini Flash · Async Processing</div>
+        </div>
+        <div class="project-card">
+          <div class="title">AI Image Pipeline</div>
+          <div class="desc">Automated generation pipeline replacing €10K+ stock photography with quality validation and retry logic</div>
+          <div class="tech">Python · Midjourney · Imagen 3 · Laravel</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+</body>
+</html>

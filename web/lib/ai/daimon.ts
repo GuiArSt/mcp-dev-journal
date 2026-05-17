@@ -10,6 +10,7 @@
  */
 
 import { z } from "zod";
+import { getPrompt } from "@/lib/ai/prompt-store";
 
 // ============================================================================
 // Zod Schemas  (Anthropic-safe: no .min/.max on arrays)
@@ -80,7 +81,8 @@ Never alter these (they may look like misspellings but are intentional):
 `;
 
 export function getDaimonSystemPrompt(memory: DaimonMemory): string {
-  const sections: string[] = [DAIMON_SYSTEM];
+  const base = getPrompt("daimon-system", DAIMON_SYSTEM);
+  const sections: string[] = [base];
 
   if (memory.protectedTerms.length > 0) {
     sections.push(memory.protectedTerms.join(", "));

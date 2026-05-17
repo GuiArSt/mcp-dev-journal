@@ -20,6 +20,7 @@ const MODEL_SELECTIONS: ModelSelection[] = [
   "claude-sonnet-4.6",
   "claude-opus-4.6",
   "claude-opus-4.7",
+  "gpt-5.5",
   "gpt-5.4",
   "gpt-5.3-instant",
 ];

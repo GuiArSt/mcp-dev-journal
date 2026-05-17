@@ -485,7 +485,7 @@ export async function askKronus(
   const baseInstructions = `
 ## Instructions
 - Answer the question using the knowledge index above
-- Entry 0 (project_summaries) may be outdated - cross-check with recent journal entries dates
+- Entry 0 (repository_overviews) may be outdated - cross-check with recent journal entries dates
 - Be concise and direct
 - Cite sources by identifier (commit_hash, slug, ENG-XXX, project name, or UUID)
 - For dates, note recency - newest entries are most accurate for current state

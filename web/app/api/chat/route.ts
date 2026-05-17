@@ -1,4 +1,5 @@
 import { streamText, convertToModelMessages, type ModelMessage } from "ai";
+import { openAISpan, closeAISpan } from "@/lib/observability";
 import { anthropic, type AnthropicProviderOptions } from "@ai-sdk/anthropic";
 import { openai } from "@ai-sdk/openai";
 import { google, type GoogleGenerativeAIProviderOptions } from "@ai-sdk/google";
@@ -13,6 +14,309 @@ import { eq } from "drizzle-orm";
 import type { KronusSkill, SkillConfig, SkillInfo } from "@/lib/ai/skills";
 import { mergeSkillConfigs } from "@/lib/ai/skills";
 import { toolSpecs, toolCategories, type ToolName } from "@/lib/ai/tools";
+import { getDatabase } from "@/lib/db";
+import { lookupByUUID } from "@/lib/object-registry";
+
+/**
+ * Compact ref the Hourglass client sends with every message. Denormalized
+ * snapshot fields come from chat_conversations.artifact_refs.
+ */
+interface ShelfRefForPrompt {
+  uuid: string;
+  kind: string;
+  title: string;
+  summary?: string;
+  turnIndex?: number;
+}
+
+function isToolUIPartLike(part: unknown): part is Record<string, any> {
+  if (!part || typeof part !== "object") return false;
+  const type = (part as { type?: unknown }).type;
+  return (
+    type === "dynamic-tool" ||
+    (typeof type === "string" && type.startsWith("tool-"))
+  );
+}
+
+function getUIToolName(part: Record<string, any>): string {
+  if (typeof part.toolName === "string" && part.toolName.trim()) {
+    return part.toolName;
+  }
+  if (typeof part.type === "string" && part.type.startsWith("tool-")) {
+    return part.type.slice("tool-".length);
+  }
+  return "unknown_tool";
+}
+
+function hasGoogleThoughtSignature(part: Record<string, any>): boolean {
+  const google =
+    part.callProviderMetadata?.google ??
+    part.providerMetadata?.google ??
+    null;
+  const signature = google?.thoughtSignature ?? google?.thought_signature;
+  return (
+    typeof signature === "string" &&
+    signature.trim().length > 0
+  );
+}
+
+function compactToolValue(value: unknown, max = 1600): string | null {
+  if (value == null) return null;
+  let raw: string;
+  try {
+    raw = typeof value === "string" ? value : JSON.stringify(value);
+  } catch {
+    raw = String(value);
+  }
+  if (!raw) return null;
+  return raw.length > max ? `${raw.slice(0, max)}…[truncated]` : raw;
+}
+
+function summarizeUnsignedGeminiToolPart(part: Record<string, any>): string | null {
+  const toolName = getUIToolName(part);
+  const state = typeof part.state === "string" ? part.state : "unknown";
+  const lines = [
+    `[Tool ${toolName} ${
+      state === "output-error"
+        ? "failed"
+        : state === "output-available"
+          ? "completed"
+          : "was called"
+    }]`,
+  ];
+
+  const input = compactToolValue(part.input ?? part.rawInput, 900);
+  const output = compactToolValue(part.output, 1800);
+  const errorText = compactToolValue(part.errorText, 1200);
+
+  if (input) lines.push(`Input: ${input}`);
+  if (output) lines.push(`Output: ${output}`);
+  if (errorText) lines.push(`Error: ${errorText}`);
+
+  return lines.length > 1 ? lines.join("\n") : null;
+}
+
+/**
+ * Gemini requires `thoughtSignature` metadata on every structured historical
+ * tool-call. Some existing chats and client-side tool-result continuations can
+ * contain unsigned tool parts. Keeping those parts structured makes Gemini
+ * reject the entire request, so convert only the unsigned tool events to text.
+ */
+function repairUnsignedGeminiToolHistory(messages: any[]): { messages: any[]; repaired: number } {
+  let repaired = 0;
+  const repairedMessages = messages.map((message) => {
+    if (message?.role !== "assistant" || !Array.isArray(message.parts)) {
+      return message;
+    }
+
+    const parts = message.parts.flatMap((part: any) => {
+      if (!isToolUIPartLike(part) || hasGoogleThoughtSignature(part)) {
+        return [part];
+      }
+      repaired++;
+      const summary = summarizeUnsignedGeminiToolPart(part);
+      return summary ? [{ type: "text" as const, text: summary }] : [];
+    });
+
+    return { ...message, parts };
+  });
+
+  return { messages: repairedMessages, repaired };
+}
+
+/**
+ * Build the "# Shared Display Shelf" block injected into Kronus's system
+ * prompt. The currently-displayed artifact arrives in full; others are
+ * one-line refs so the context stays lean.
+ */
+function buildShelfBlock(
+  shelf: ShelfRefForPrompt[] | undefined,
+  displayedUuid: string | null | undefined,
+): string {
+  if (!Array.isArray(shelf) || shelf.length === 0) return "";
+
+  const displayed = displayedUuid ? shelf.find((r) => r.uuid === displayedUuid) : null;
+  const others = displayed ? shelf.filter((r) => r.uuid !== displayed.uuid) : shelf;
+
+  const parts: string[] = ["", "", "# Shared Display Shelf"];
+  parts.push(
+    "",
+    `You and the user share a display panel with ${shelf.length} artifact${shelf.length === 1 ? "" : "s"}.`,
+    "Only the currently-displayed one is included in full; others are compact refs.",
+    "To switch what's displayed, call the `set_artifact` tool with a uuid.",
+  );
+
+  if (displayed) {
+    parts.push("", "## Currently Displayed (full)");
+    const body = serializeDisplayedBody(displayed.uuid);
+    parts.push(
+      "",
+      `**UUID:** \`${displayed.uuid}\``,
+      `**Kind:** ${displayed.kind}`,
+      `**Title:** ${displayed.title}`,
+    );
+    if (displayed.turnIndex != null) parts.push(`**Turn:** ${displayed.turnIndex}`);
+    if (body) parts.push("", body);
+    else if (displayed.summary) parts.push("", displayed.summary);
+  }
+
+  if (others.length > 0) {
+    parts.push("", `## Other Shelf Refs (${others.length})`);
+    for (const r of others) {
+      const summary = r.summary ? ` — ${r.summary.slice(0, 120)}` : "";
+      const turn = r.turnIndex != null ? ` (turn ${String(r.turnIndex).padStart(2, "0")})` : "";
+      parts.push(`- \`${r.uuid}\` · ${r.kind} · *${r.title}*${turn}${summary}`);
+    }
+  }
+
+  return parts.join("\n");
+}
+
+/**
+ * Build the "# Chat Log" block — a compact, chronological view of recent
+ * events in this conversation (messages, tool calls, shelf adds, muse
+ * proposals/paints, session resumes). Helps Kronus see what's actually
+ * happened beyond the message transcript.
+ */
+function buildChatLogBlock(chatLog: unknown[] | undefined, max = 20): string {
+  if (!Array.isArray(chatLog) || chatLog.length === 0) return "";
+  // Reuse the same serializer the muse uses, just with a Kronus-sized cap.
+  // Dynamic import avoids pulling chat-log helpers into edge-only contexts.
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const { serializeForKronus } = require("@/lib/chat-log") as typeof import("@/lib/chat-log");
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const block = serializeForKronus(chatLog as any, max);
+  if (!block || block === "(empty)") return "";
+  return ["", "", "# Chat Log", "", "Recent events in this conversation (oldest → newest, compact):", "", block].join("\n");
+}
+
+/**
+ * Resolve a UUID to a short serialized body for the system prompt. Keeps
+ * things terse — never includes image base64, caps long documents.
+ */
+function serializeDisplayedBody(uuid: string): string | null {
+  const obj = lookupByUUID(uuid);
+  if (!obj) return null;
+  const db = getDatabase();
+
+  try {
+    switch (obj.source_table) {
+      case "documents": {
+        const row = db
+          .prepare(`SELECT type, title, content, summary, metadata FROM documents WHERE slug = ?`)
+          .get(obj.source_id) as { type: string; title: string; content: string; summary: string | null; metadata: string | null } | undefined;
+        if (!row) return null;
+        let tags: string[] = [];
+        try {
+          const meta = JSON.parse(row.metadata || "{}");
+          if (Array.isArray(meta.tags)) tags = meta.tags;
+        } catch { /* ignore */ }
+        // Poems render as-is (they're short).
+        if (row.type === "note" && tags.includes("muse") && tags.includes("poem")) {
+          return `*(muse poem)*\n\n${row.content}`;
+        }
+        // User notes, too.
+        if (row.type === "note" && tags.includes("user-note")) {
+          return `*(user note)*\n\n${row.content}`;
+        }
+        // Documents: cap body to 4000 chars so long writings don't flood context.
+        const body = row.content.length > 4000 ? `${row.content.slice(0, 4000)}\n\n*[truncated]*` : row.content;
+        return `${row.summary ? `_${row.summary}_\n\n` : ""}${body}`;
+      }
+      case "journal_entries": {
+        const row = db
+          .prepare(
+            `SELECT commit_hash, repository, branch, date, why, what_changed, decisions, technologies, kronus_wisdom, summary
+             FROM journal_entries WHERE commit_hash = ?`,
+          )
+          .get(obj.source_id) as
+          | {
+              commit_hash: string;
+              repository: string;
+              branch: string;
+              date: string;
+              why: string;
+              what_changed: string;
+              decisions: string;
+              technologies: string;
+              kronus_wisdom: string | null;
+              summary: string | null;
+            }
+          | undefined;
+        if (!row) return null;
+        const lines = [
+          `*Journal entry \`${row.commit_hash.slice(0, 12)}\` · ${row.repository}/${row.branch} · ${row.date}*`,
+          "",
+        ];
+        if (row.summary) lines.push(`**Summary:** ${row.summary}`, "");
+        if (row.why) lines.push(`**Why:** ${row.why.slice(0, 1500)}`, "");
+        if (row.what_changed) lines.push(`**What changed:** ${row.what_changed.slice(0, 1500)}`, "");
+        if (row.decisions) lines.push(`**Decisions:** ${row.decisions.slice(0, 1500)}`, "");
+        if (row.kronus_wisdom) lines.push(`**Kronus wisdom:** ${row.kronus_wisdom.slice(0, 1500)}`);
+        return lines.join("\n").trim();
+      }
+      case "media_assets": {
+        const row = db
+          .prepare(`SELECT filename, description, prompt, model, tags FROM media_assets WHERE id = ?`)
+          .get(Number(obj.source_id)) as
+          | { filename: string; description: string | null; prompt: string | null; model: string | null; tags: string | null }
+          | undefined;
+        if (!row) return null;
+        let tags: string[] = [];
+        try { if (row.tags) tags = JSON.parse(row.tags); } catch { /* ignore */ }
+        const isMuse = tags.includes("muse");
+        const lines = [
+          `*(${isMuse ? "muse image" : "media"} · ${row.filename})*`,
+          "",
+        ];
+        if (row.prompt) lines.push(`**Prompt:** ${row.prompt}`);
+        if (row.description) {
+          // Muse descriptions are JSON (reason + companionPoem); render friendly.
+          if (isMuse) {
+            try {
+              const parsed = JSON.parse(row.description) as { reason?: string; companionPoem?: { title: string; lines: string[] } };
+              if (parsed.reason) lines.push(`**Reason:** ${parsed.reason}`);
+              if (parsed.companionPoem) {
+                lines.push(`**Companion poem "${parsed.companionPoem.title}":**`);
+                for (const ln of parsed.companionPoem.lines) lines.push(`  > ${ln}`);
+              }
+            } catch {
+              lines.push(`**Description:** ${row.description}`);
+            }
+          } else {
+            lines.push(`**Description:** ${row.description}`);
+          }
+        }
+        if (row.model) lines.push(`**Painted with:** ${row.model}`);
+        lines.push(`*(image bytes omitted — call \`get_media\` with id ${obj.source_id} if you need them)*`);
+        return lines.join("\n").trim();
+      }
+      case "project_summaries":
+      case "repository_overviews": {
+        const row = db
+          .prepare(
+            `SELECT repository, summary, purpose, architecture, tech_stack, status
+             FROM repository_overviews WHERE repository = ?`,
+          )
+          .get(obj.source_id) as
+          | { repository: string; summary: string | null; purpose: string | null; architecture: string | null; tech_stack: string | null; status: string | null }
+          | undefined;
+        if (!row) return null;
+        const lines = [`*Repository overview · ${row.repository}${row.status ? ` · ${row.status}` : ""}*`, ""];
+        if (row.summary) lines.push(`**Summary:** ${row.summary}`);
+        if (row.purpose) lines.push(`**Purpose:** ${row.purpose.slice(0, 1500)}`);
+        if (row.architecture) lines.push(`**Architecture:** ${row.architecture.slice(0, 1500)}`);
+        if (row.tech_stack) lines.push(`**Tech stack:** ${row.tech_stack.slice(0, 800)}`);
+        return lines.join("\n").trim();
+      }
+      default:
+        return null;
+    }
+  } catch {
+    return null;
+  }
+}
+
 
 /**
  * Tool configuration - controls which tool categories are enabled
@@ -21,6 +325,7 @@ export interface ToolsConfig {
   // Core tools (always conceptually available, but can be toggled)
   journal: boolean; // Journal entries, project summaries
   repository: boolean; // Documents, skills, experience, education
+  cursorDelegate: boolean; // Cursor local agent on registered git roots (CURSOR_API_KEY)
   linear: boolean; // Linear issue tracking
   slite: boolean; // Slite knowledge base
   notion: boolean; // Notion workspace pages
@@ -33,6 +338,12 @@ export interface ToolsConfig {
 
   // External integrations
   google: boolean; // Google Workspace (Drive, Gmail, Calendar)
+
+  // Chat memory
+  memory: boolean; // Chat index summaries + full chat fetch by UUID/id
+
+  // AI Integration Library
+  aiIntegrations: boolean; // Agent configs, artifacts, logs, proposals
 }
 
 /** Opus 4.7: steer verbosity and literalism (see Anthropic migration guide). */
@@ -54,6 +365,7 @@ function stripLeadingAssistantMessages(messages: ModelMessage[]): ModelMessage[]
 export const DEFAULT_TOOLS_CONFIG: ToolsConfig = {
   journal: true,
   repository: true,
+  cursorDelegate: false,
   linear: true,
   slite: false, // Off by default - requires SLITE_API_KEY
   notion: false, // Off by default - requires NOTION_API_KEY
@@ -62,6 +374,8 @@ export const DEFAULT_TOOLS_CONFIG: ToolsConfig = {
   imageGeneration: false, // Off by default - heavy
   webSearch: false, // Off by default - requires API key
   google: false, // Off by default - requires gws auth setup
+  memory: false, // Off by default - enabled with chat index context
+  aiIntegrations: false, // Off by default - Library agent index tools
 };
 
 /**
@@ -74,6 +388,7 @@ export type ModelSelection =
   | "claude-sonnet-4.6" // Anthropic - best value, matches Opus performance
   | "claude-opus-4.6" // Anthropic - Opus 4.6, 1M context
   | "claude-opus-4.7" // Anthropic - Opus 4.7 (API: claude-opus-4-7; adaptive thinking only)
+  | "gpt-5.5" // OpenAI - GPT-5.5 lane (maps to API-safe model id below)
   | "gpt-5.4" // OpenAI - flagship, 1M context, extreme reasoning
   | "gpt-5.3-instant"; // OpenAI - fast everyday chat, low hallucination
 
@@ -113,6 +428,13 @@ const MODEL_CONFIG: Record<
     modelId: "claude-opus-4-7",
     hasThinking: true,
   },
+  "gpt-5.5": {
+    provider: "openai",
+    // GPT-5.5 is not consistently exposed as a direct API model id yet.
+    // Allow an override for early-access accounts and otherwise fall back.
+    modelId: process.env.OPENAI_GPT55_MODEL_ID || "gpt-5.4",
+    hasThinking: true,
+  },
   "gpt-5.4": {
     provider: "openai",
     modelId: "gpt-5.4",
@@ -134,6 +456,7 @@ const MODEL_CONFIG: Record<
  * - claude-sonnet-4.6: Claude Sonnet 4.6 (1M context, best value)
  * - claude-opus-4.6: Claude Opus 4.6 (1M context)
  * - claude-opus-4.7: Claude Opus 4.7 (1M context; adaptive thinking)
+ * - gpt-5.5: GPT-5.5 lane (uses OPENAI_GPT55_MODEL_ID override, defaults to gpt-5.4)
  * - gpt-5.4: GPT-5.4 (1M context, extreme reasoning, agentic)
  * - gpt-5.3-instant: GPT-5.3 Instant (200K context, fast chat)
  */
@@ -232,7 +555,18 @@ function buildTools(toolsConfig: ToolsConfig): Record<string, any> {
   const enabledTools: Record<string, any> = {};
 
   const configKeys: (keyof ToolsConfig)[] = [
-    "journal", "linear", "slite", "repository", "git", "media", "imageGeneration", "webSearch", "google",
+    "journal",
+    "linear",
+    "slite",
+    "repository",
+    "cursorDelegate",
+    "aiIntegrations",
+    "git",
+    "media",
+    "imageGeneration",
+    "webSearch",
+    "google",
+    "memory",
   ];
 
   for (const key of configKeys) {
@@ -259,8 +593,25 @@ function buildTools(toolsConfig: ToolsConfig): Record<string, any> {
 
 export async function POST(req: Request) {
   try {
-    const { messages, soulConfig, toolsConfig, modelConfig, activeSkillSlugs } =
+    const { messages, soulConfig, toolsConfig, modelConfig, activeSkillSlugs, displayedArtifactUuid, shelf, chatLog, conversationId } =
       await req.json();
+
+    const requestedSoulConfig: Partial<SoulConfig> | undefined = soulConfig
+      ? {
+          writings: soulConfig.writings ?? false,
+          portfolioProjects: soulConfig.portfolioProjects ?? false,
+          skills: soulConfig.skills ?? false,
+          workExperience: soulConfig.workExperience ?? false,
+          education: soulConfig.education ?? false,
+          journalEntries: soulConfig.journalEntries ?? false,
+          chatIndex: soulConfig.chatIndex ?? false,
+          linearProjects: soulConfig.linearProjects ?? false,
+          linearIssues: soulConfig.linearIssues ?? false,
+          linearIncludeCompleted: soulConfig.linearIncludeCompleted ?? false,
+          sliteNotes: soulConfig.sliteNotes ?? false,
+          notionPages: soulConfig.notionPages ?? false,
+        }
+      : undefined;
 
     // Determine system prompt and tools based on skill mode vs legacy mode
     let systemPrompt: string;
@@ -320,7 +671,11 @@ export async function POST(req: Request) {
         });
 
       // Build skill-aware system prompt with available skills reference
-      systemPrompt = await getKronusSystemPromptWithSkills(activeSkills, allAvailableSkills);
+      systemPrompt = await getKronusSystemPromptWithSkills(
+        activeSkills,
+        allAvailableSkills,
+        requestedSoulConfig,
+      );
 
       // Derive tools from skill merge (OR with any explicit toolsConfig from client)
       if (activeSkills.length > 0) {
@@ -328,6 +683,8 @@ export async function POST(req: Request) {
         enabledToolsConfig = {
           journal: merged.tools.journal || (toolsConfig?.journal ?? false),
           repository: merged.tools.repository || (toolsConfig?.repository ?? false),
+          cursorDelegate:
+            merged.tools.cursorDelegate || (toolsConfig?.cursorDelegate ?? false),
           linear: merged.tools.linear || (toolsConfig?.linear ?? false),
           slite: merged.tools.slite || (toolsConfig?.slite ?? false),
           notion: merged.tools.notion || (toolsConfig?.notion ?? false),
@@ -337,6 +694,13 @@ export async function POST(req: Request) {
             merged.tools.imageGeneration || (toolsConfig?.imageGeneration ?? false),
           webSearch: merged.tools.webSearch || (toolsConfig?.webSearch ?? false),
           google: merged.tools.google || (toolsConfig?.google ?? false),
+          aiIntegrations:
+            merged.tools.aiIntegrations || (toolsConfig?.aiIntegrations ?? false),
+          memory:
+            merged.tools.memory ||
+            merged.soul.chatIndex ||
+            requestedSoulConfig?.chatIndex ||
+            (toolsConfig?.memory ?? false),
         };
       } else {
         // Lean baseline tools (no skills active)
@@ -344,6 +708,7 @@ export async function POST(req: Request) {
           ? {
               journal: toolsConfig.journal ?? true,
               repository: toolsConfig.repository ?? true,
+              cursorDelegate: toolsConfig.cursorDelegate ?? false,
               linear: toolsConfig.linear ?? false,
               slite: toolsConfig.slite ?? false,
               notion: toolsConfig.notion ?? false,
@@ -352,8 +717,24 @@ export async function POST(req: Request) {
               imageGeneration: toolsConfig.imageGeneration ?? false,
               webSearch: toolsConfig.webSearch ?? false,
               google: toolsConfig.google ?? false,
+              aiIntegrations: toolsConfig.aiIntegrations ?? false,
+              memory: (toolsConfig.memory ?? false) || (requestedSoulConfig?.chatIndex ?? false),
             }
-          : { journal: true, repository: true, linear: false, slite: false, notion: false, git: false, media: false, imageGeneration: false, webSearch: false, google: false };
+          : {
+              journal: true,
+              repository: true,
+              cursorDelegate: false,
+              linear: false,
+              slite: false,
+              notion: false,
+              git: false,
+              media: false,
+              imageGeneration: false,
+              webSearch: false,
+              google: false,
+              memory: requestedSoulConfig?.chatIndex ?? false,
+              aiIntegrations: false,
+            };
       }
     } else {
       // ===== LEGACY MODE (backward compatible) =====
@@ -365,6 +746,7 @@ export async function POST(req: Request) {
             workExperience: soulConfig.workExperience ?? true,
             education: soulConfig.education ?? true,
             journalEntries: soulConfig.journalEntries ?? true,
+            chatIndex: soulConfig.chatIndex ?? false,
             linearProjects: soulConfig.linearProjects ?? true,
             linearIssues: soulConfig.linearIssues ?? true,
             linearIncludeCompleted: soulConfig.linearIncludeCompleted ?? false,
@@ -379,6 +761,7 @@ export async function POST(req: Request) {
         ? {
             journal: toolsConfig.journal ?? true,
             repository: toolsConfig.repository ?? true,
+            cursorDelegate: toolsConfig.cursorDelegate ?? false,
             linear: toolsConfig.linear ?? true,
             slite: toolsConfig.slite ?? false,
             notion: toolsConfig.notion ?? false,
@@ -387,6 +770,8 @@ export async function POST(req: Request) {
             imageGeneration: toolsConfig.imageGeneration ?? false,
             webSearch: toolsConfig.webSearch ?? false,
             google: toolsConfig.google ?? false,
+            aiIntegrations: toolsConfig.aiIntegrations ?? false,
+            memory: (toolsConfig.memory ?? false) || (soulConfig?.chatIndex ?? false),
           }
         : DEFAULT_TOOLS_CONFIG;
     }
@@ -404,11 +789,31 @@ export async function POST(req: Request) {
     const hasThinking = modelSupportsThinking && reasoningEnabled;
     const enabledTools = buildTools(enabledToolsConfig);
 
+    // Register `set_artifact` only when a shelf is present (Hourglass chat).
+    // Legacy /chat has no shelf, so Kronus shouldn't see this tool there.
+    if (Array.isArray(shelf) && shelf.length > 0) {
+      const setArtifactSpec = toolSpecs.set_artifact;
+      if (setArtifactSpec) enabledTools.set_artifact = setArtifactSpec;
+    }
+
+    const messagesForModel =
+      actualProvider === "google"
+        ? (() => {
+            const repaired = repairUnsignedGeminiToolHistory(messages as any[]);
+            if (repaired.repaired > 0) {
+              console.warn(
+                `[Gemini] Repaired ${repaired.repaired} unsigned tool-call part(s) by converting them to text history`
+              );
+            }
+            return repaired.messages;
+          })()
+        : messages;
+
     // Sanitize messages - remove control characters that can cause issues
     // (e.g., <ctrl46> from Delete key, other non-printable characters)
     // Also filter out messages with empty content (can happen when switching models,
     // e.g., Gemini thinking-only messages don't have content that Claude accepts)
-    const sanitizedMessages = messages
+    const sanitizedMessages = messagesForModel
       .map((msg: any) => {
         if (typeof msg.content === "string") {
           // Remove control character tags like <ctrl46>, <ctrl0>, etc.
@@ -446,38 +851,39 @@ export async function POST(req: Request) {
       modelMessages = stripLeadingAssistantMessages(modelMessages);
     }
 
-    // Gemini 3 requires a thoughtSignature on every historical tool-call it sees.
-    // If one is missing (stale conversation, metadata lost in transport, pre-SDK-6 data),
-    // the API 400s on the whole request. Drop unsigned tool-calls and their paired
-    // tool-result parts so the conversation can continue. The current turn's fresh
-    // tool-calls still carry their own signatures and are unaffected.
+    // Gemini 3 requires a thoughtSignature on every historical tool-call.
+    // Diagnostic: log the raw incoming UI tool-call parts to locate where
+    // callProviderMetadata is dropped, and log the converted ModelMessage state.
     if (actualProvider === "google") {
-      const droppedToolCallIds = new Set<string>();
+      for (const msg of messagesForModel as any[]) {
+        if (msg.role !== "assistant" || !Array.isArray(msg.parts)) continue;
+        for (const part of msg.parts) {
+          if (typeof part.type !== "string" || !part.type.startsWith("tool-")) continue;
+          console.log("[Gemini UI part]", {
+            type: part.type,
+            toolCallId: part.toolCallId,
+            state: part.state,
+            hasCallProviderMetadata: !!part.callProviderMetadata,
+            hasResultProviderMetadata: !!part.resultProviderMetadata,
+            callMetaKeys: part.callProviderMetadata ? Object.keys(part.callProviderMetadata) : null,
+          });
+        }
+      }
+      let unsignedCount = 0;
       for (const msg of modelMessages as any[]) {
         if (msg.role !== "assistant" || !Array.isArray(msg.content)) continue;
-        msg.content = msg.content.filter((part: any) => {
-          if (part.type !== "tool-call") return true;
-          const hasSig = !!part.providerOptions?.google?.thoughtSignature;
-          if (!hasSig) {
-            droppedToolCallIds.add(part.toolCallId);
-            console.warn("[Gemini] dropping unsigned tool-call", {
-              toolName: part.toolName,
-              toolCallId: part.toolCallId,
-            });
-            return false;
-          }
-          return true;
-        });
-      }
-      if (droppedToolCallIds.size > 0) {
-        for (const msg of modelMessages as any[]) {
-          if (msg.role !== "tool" || !Array.isArray(msg.content)) continue;
-          msg.content = msg.content.filter(
-            (part: any) => part.type !== "tool-result" || !droppedToolCallIds.has(part.toolCallId)
-          );
+        for (const part of msg.content) {
+          if (part.type !== "tool-call") continue;
+          if (!part.providerOptions?.google?.thoughtSignature) unsignedCount++;
         }
-        modelMessages = (modelMessages as any[]).filter(
-          (msg: any) => !Array.isArray(msg.content) || msg.content.length > 0
+      }
+      if (unsignedCount > 0) {
+        console.error(`[Gemini] ${unsignedCount} tool-call part(s) missing thoughtSignature — aborting to prevent runaway loop`);
+        return new Response(
+          JSON.stringify({
+            error: "Gemini thought_signature missing from tool-call history — start a new chat or switch provider.",
+          }),
+          { status: 422, headers: { "Content-Type": "application/json" } }
         );
       }
     }
@@ -515,9 +921,37 @@ export async function POST(req: Request) {
       }
     }
 
-    const effectiveSystemPrompt =
-      isOpus47 ? `${systemPrompt}\n${CLAUDE_OPUS_47_SYSTEM_SUFFIX}` : systemPrompt;
+    // ─── Shared Display Shelf injection (Hourglass chat) ───
+    // Kronus sees every ref on the shelf as a compact line, and the
+    // currently-displayed artifact in full. Lets him reference what the
+    // user is looking at without extra tool calls.
+    const shelfBlock = buildShelfBlock(shelf, displayedArtifactUuid);
+    // Append-only event log — what the conversation has actually done so
+    // far (messages, tool calls, shelf adds, muse proposals/paints,
+    // session resumes). Lets Kronus refer to events that aren't in the
+    // message transcript (e.g. "the muse painted the gate two turns ago").
+    const chatLogBlock = buildChatLogBlock(chatLog);
 
+    const effectiveSystemPrompt =
+      isOpus47
+        ? `${systemPrompt}${shelfBlock}${chatLogBlock}\n${CLAUDE_OPUS_47_SYSTEM_SUFFIX}`
+        : `${systemPrompt}${shelfBlock}${chatLogBlock}`;
+
+    // Capture the most recent user message as the trace input (the actual question).
+    const lastUser = [...modelMessages].reverse().find((m: { role?: string }) => m.role === "user");
+    const traceInput = lastUser
+      ? typeof (lastUser as { content?: unknown }).content === "string"
+        ? (lastUser as { content: string }).content
+        : (lastUser as { content: unknown }).content
+      : undefined;
+    const traceSpanId = openAISpan(
+      "chat",
+      activeModelId,
+      { provider: actualProvider },
+      traceInput,
+      "/api/chat",
+      typeof conversationId === "number" ? conversationId : undefined,
+    );
     const result = streamText({
       model,
       system: effectiveSystemPrompt,
@@ -536,7 +970,8 @@ export async function POST(req: Request) {
         });
       },
       onFinish: (event) => {
-        // Log completion with full details for debugging
+        const finalText = (event as { text?: string }).text ?? "";
+        closeAISpan(traceSpanId, event.usage, undefined, finalText);
         const isError = event.finishReason === "error" || event.finishReason === "other";
         const logFn = isError ? console.error : console.log;
         const label = isError ? "[Chat Finish Warning]" : "[Chat Complete]";

@@ -9,6 +9,8 @@ import { generateText, Output } from "ai";
 import { google } from "@ai-sdk/google";
 import { z } from "zod";
 import { NextResponse } from "next/server";
+import { registerRequest, deregisterRequest } from "@/lib/request-registry";
+import { traceAI } from "@/lib/observability";
 
 /**
  * Input schema for summary generation
@@ -49,11 +51,27 @@ const SummaryOutputSchema = z.object({
  * Generate a precise 3-sentence summary for indexing purposes
  */
 export async function POST(req: Request) {
+  const controller = new AbortController();
+  let registryId: string | null = null;
+
   try {
     const body = await req.json();
 
     // Validate input
     const input = SummarizeInputSchema.parse(body);
+
+    registryId = registerRequest({
+      controller,
+      endpoint: "summarize",
+      mode: input.type,
+      model: "gemini-3.1-flash-lite-preview",
+      startedAt: new Date(),
+      metadata: {
+        type: input.type,
+        title: input.title ?? null,
+        contentLength: input.content.length,
+      },
+    });
 
     // Use Gemini 3.1 Flash Lite for fast, cost-effective summarization
     const model = google("gemini-3.1-flash-lite-preview");
@@ -70,10 +88,13 @@ export async function POST(req: Request) {
       }
     }
 
-    // AI SDK 6.0 pattern: generateText with Output.object()
-    const result = await generateText({
-      model,
-      output: Output.object({ schema: SummaryOutputSchema }),
+    const result = await traceAI(
+      `summarize:${input.type}`,
+      "gemini-3.1-flash-lite-preview",
+      () => generateText({
+        model,
+        abortSignal: controller.signal,
+        output: Output.object({ schema: SummaryOutputSchema }),
       system: `You are a precise summarization engine for the Tartarus system.
 Your task is to generate dense, information-rich 3-sentence summaries for AI retrieval indexing.
 
@@ -109,7 +130,11 @@ ${input.type === "document" && input.metadata?.purpose ? `Purpose: ${input.metad
 
 Content:
 ${input.content}`,
-    });
+      }),
+      { type: input.type, title: input.title ?? null },
+      input.content,
+      "/api/ai/summarize",
+    );
 
     const parsed = result.output;
 
@@ -133,5 +158,7 @@ ${input.content}`,
       { error: error.message || "Failed to generate summary" },
       { status: 500 }
     );
+  } finally {
+    if (registryId) deregisterRequest(registryId);
   }
 }

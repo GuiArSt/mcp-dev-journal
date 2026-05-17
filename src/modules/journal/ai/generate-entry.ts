@@ -18,6 +18,15 @@ import os from "node:os";
 import { logger } from "../../../shared/logger.js";
 import { AIOutputSchema, type AIOutput, type AgentInput } from "../types.js";
 import type { JournalConfig } from "../../../shared/types.js";
+import { normalizeRepository } from "../../../shared/types.js";
+import {
+  JOURNAL_CREATE_CONTEXT_MAX_BRANCH_ENTRIES,
+  buildJournalCreateContextAppendix,
+  formatBranchJournalEntriesForPrompt,
+  formatRepositoryOverviewForPrompt,
+  type BranchEntryForContext,
+} from "../../../shared/journal-kronus-context.js";
+import { getEntriesByBranchPaginated, getProjectSummary } from "../db/database.js";
 
 /**
  * Get project root directory
@@ -192,6 +201,51 @@ Branch: ${input.branch}
 Commit: ${input.commit_hash}
 Author: ${input.author}
 Date: ${input.date}
+`;
+
+  try {
+    const repo = (input.repository || "").trim();
+    const branch = (input.branch || "").trim();
+    if (repo && branch) {
+      const norm = normalizeRepository(repo);
+      const exclude =
+        editMode && input.commit_hash
+          ? String(input.commit_hash).trim()
+          : undefined;
+      const { entries, total } = getEntriesByBranchPaginated(
+        norm,
+        branch,
+        JOURNAL_CREATE_CONTEXT_MAX_BRANCH_ENTRIES,
+        0,
+      );
+      const chronological = [...entries].reverse();
+      const slice: BranchEntryForContext[] = chronological
+        .filter((e) => !exclude || e.commit_hash !== exclude)
+        .map((e) => ({
+          commit_hash: e.commit_hash,
+          date: e.date,
+          why: e.why,
+          what_changed: e.what_changed,
+          decisions: e.decisions,
+          technologies: e.technologies,
+          kronus_wisdom: e.kronus_wisdom,
+        }));
+      const overview = getProjectSummary(norm);
+      systemPrompt += buildJournalCreateContextAppendix(
+        norm,
+        branch,
+        formatRepositoryOverviewForPrompt(overview),
+        formatBranchJournalEntriesForPrompt(slice, total),
+      );
+    }
+  } catch (e) {
+    logger.warn(
+      "Skipping repository/branch memory context for journal generation:",
+      e,
+    );
+  }
+
+  systemPrompt += `
 
 ## Agent Report${newContext ? " / New Context" : ""}
 

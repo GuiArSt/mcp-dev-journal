@@ -1,6 +1,7 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  serverExternalPackages: ["@cursor/sdk", "sqlite3"],
   // Enable server-side features
   experimental: {
     serverActions: {

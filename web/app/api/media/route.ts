@@ -135,6 +135,20 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
 
   console.log(`[Media] Saved asset with id: ${result.lastInsertRowid}`);
 
+  // Register in object registry so the artifact shelf + Kronus tools can find it.
+  try {
+    const { registerObject } = await import("@/lib/object-registry");
+    const tagList: string[] = Array.isArray(body.tags) ? body.tags : [];
+    registerObject({
+      type: "media_asset",
+      sourceTable: "media_assets",
+      sourceId: String(result.lastInsertRowid),
+      title: body.filename,
+      summary: body.description || body.prompt || undefined,
+      tags: tagList,
+    });
+  } catch { /* registry is non-critical */ }
+
   return NextResponse.json({
     id: result.lastInsertRowid,
     filename: body.filename,

@@ -96,14 +96,14 @@ async function exportToSupabase() {
   }
   console.log(`    ✅ Exported ${entries.length} entries`);
 
-  // Export project summaries
-  console.log("  Exporting project summaries...");
-  const summaries = sqlite.prepare("SELECT * FROM project_summaries").all() as ProjectSummary[];
+  // Export Repository overviews (Entry 0)
+  console.log("  Exporting repository overviews...");
+  const summaries = sqlite.prepare("SELECT * FROM repository_overviews").all() as ProjectSummary[];
 
   for (const summary of summaries) {
     const { id, ...data } = summary;
     const { error } = await supabase
-      .from("project_summaries")
+      .from("repository_overviews")
       .upsert(data, { onConflict: "repository" });
 
     if (error) {
@@ -182,17 +182,17 @@ async function importFromSupabase() {
     console.log(`    ✅ Imported ${entries.length} entries`);
   }
 
-  // Import project summaries
-  console.log("  Importing project summaries...");
+  // Import Repository overviews
+  console.log("  Importing repository overviews...");
   const { data: summaries, error: summariesError } = await supabase
-    .from("project_summaries")
+    .from("repository_overviews")
     .select("*");
 
   if (summariesError) {
     console.error("    ❌ Error fetching summaries:", summariesError.message);
   } else if (summaries) {
     const stmt = sqlite.prepare(`
-      INSERT OR REPLACE INTO project_summaries 
+      INSERT OR REPLACE INTO repository_overviews 
       (repository, git_url, summary, purpose, architecture, key_decisions, technologies, status, linear_project_id, linear_issue_id, updated_at)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
@@ -292,13 +292,15 @@ async function compareDatabases() {
     if (onlyRemote.length > 5) console.log(`    ... and ${onlyRemote.length - 5} more`);
   }
 
-  // Compare project summaries
-  console.log("\n📊 Project Summaries:");
-  const localSummaries = sqlite.prepare("SELECT repository FROM project_summaries").all() as any[];
-  const { data: remoteSummaries } = await supabase.from("project_summaries").select("repository");
+  // Compare Repository overviews
+  console.log("\n📊 Repository overviews (Entry 0):");
+  const localSummaries = sqlite.prepare("SELECT repository FROM repository_overviews").all() as any[];
+  const { data: remoteSummaries } = await supabase
+    .from("repository_overviews")
+    .select("repository");
 
-  console.log(`  Local: ${localSummaries.length} summaries`);
-  console.log(`  Remote: ${(remoteSummaries || []).length} summaries`);
+  console.log(`  Local: ${localSummaries.length} rows`);
+  console.log(`  Remote: ${(remoteSummaries || []).length} rows`);
 
   // Compare conversations
   console.log("\n💬 Conversations:");

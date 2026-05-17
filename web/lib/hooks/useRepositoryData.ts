@@ -15,6 +15,10 @@ import type {
   ChatConversation,
   MediaAsset,
   SkillCategory,
+  AiIntegration,
+  AiArtifact,
+  AiLogSession,
+  AiProposal,
 } from "@/lib/types/repository";
 
 interface DocumentType {
@@ -76,6 +80,13 @@ export function useRepositoryData(activeTab: string) {
   const [mediaAssets, setMediaAssets] = useState<MediaAsset[]>([]);
   const [mediaTotal, setMediaTotal] = useState<number>(0);
 
+  // AI Integration Library state
+  const [aiIntegrations, setAiIntegrations] = useState<AiIntegration[]>([]);
+  const [aiArtifacts, setAiArtifacts] = useState<AiArtifact[]>([]);
+  const [aiLogSessions, setAiLogSessions] = useState<AiLogSession[]>([]);
+  const [aiProposals, setAiProposals] = useState<AiProposal[]>([]);
+  const [aiIntegrationsScanning, setAiIntegrationsScanning] = useState(false);
+
   // Tab data cache
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [tabDataCache, setTabDataCache] = useState<Record<string, { data: any; fetchedAt: number }>>(
@@ -132,6 +143,12 @@ export function useRepositoryData(activeTab: string) {
       case "media":
         setMediaAssets(data.assets || []);
         setMediaTotal(data.total || 0);
+        break;
+      case "ai-integrations":
+        setAiIntegrations(data.integrations || []);
+        setAiArtifacts(data.artifacts || []);
+        setAiLogSessions(data.sessions || []);
+        setAiProposals(data.proposals || []);
         break;
     }
   }, []);
@@ -258,6 +275,18 @@ export function useRepositoryData(activeTab: string) {
             const data = await res.json();
             fetchedData = { assets: data.assets || [], total: data.total || 0 };
           }
+        } else if (activeTab === "ai-integrations") {
+          const [integrationsRes, artifactsRes, sessionsRes, proposalsRes] = await Promise.all([
+            fetch("/api/ai-integrations", { signal }),
+            fetch("/api/ai-integrations/artifacts?limit=80", { signal }),
+            fetch("/api/ai-integrations/sessions?limit=80", { signal }),
+            fetch("/api/ai-integrations/proposals?limit=40", { signal }),
+          ]);
+          fetchedData = {};
+          if (integrationsRes.ok) fetchedData.integrations = (await integrationsRes.json()).integrations || [];
+          if (artifactsRes.ok) fetchedData.artifacts = (await artifactsRes.json()).artifacts || [];
+          if (sessionsRes.ok) fetchedData.sessions = (await sessionsRes.json()).sessions || [];
+          if (proposalsRes.ok) fetchedData.proposals = (await proposalsRes.json()).proposals || [];
         }
 
         applyTabData(activeTab, fetchedData);
@@ -297,6 +326,11 @@ export function useRepositoryData(activeTab: string) {
         } else if (activeTab === "media") {
           setMediaAssets([]);
           setMediaTotal(0);
+        } else if (activeTab === "ai-integrations") {
+          setAiIntegrations([]);
+          setAiArtifacts([]);
+          setAiLogSessions([]);
+          setAiProposals([]);
         }
       } finally {
         setLoading(false);
@@ -384,6 +418,20 @@ export function useRepositoryData(activeTab: string) {
     }
   }, []);
 
+  const scanAiIntegrations = useCallback(async () => {
+    setAiIntegrationsScanning(true);
+    try {
+      const res = await fetch("/api/ai-integrations/scan", { method: "POST" });
+      if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
+      invalidateTabCache("ai-integrations");
+      await fetchData(true);
+    } catch (error) {
+      console.error("Failed to scan AI integrations:", error);
+    } finally {
+      setAiIntegrationsScanning(false);
+    }
+  }, [fetchData, invalidateTabCache]);
+
   useEffect(() => {
     fetchData();
     return () => {
@@ -422,6 +470,12 @@ export function useRepositoryData(activeTab: string) {
     conversationsPagination,
     mediaAssets,
     mediaTotal,
+    aiIntegrations,
+    aiArtifacts,
+    aiLogSessions,
+    aiProposals,
+    aiIntegrationsScanning,
+    scanAiIntegrations,
     fetchData,
     invalidateTabCache,
     syncLinearData,

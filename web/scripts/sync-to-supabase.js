@@ -42,15 +42,15 @@ async function syncToSupabase() {
   }
   console.log('   ✅', entries.length, 'entries synced');
 
-  // 2. Project summaries
-  console.log('2️⃣ Project summaries...');
-  const summaries = sqlite.prepare('SELECT * FROM project_summaries').all();
+  // 2. Repository overviews (Entry 0)
+  console.log('2️⃣ Repository overviews...');
+  const summaries = sqlite.prepare('SELECT * FROM repository_overviews').all();
   for (const s of summaries) {
     const { id, ...data } = s;
-    const { error } = await supabase.from('project_summaries').upsert(data, { onConflict: 'repository' });
+    const { error } = await supabase.from('repository_overviews').upsert(data, { onConflict: 'repository' });
     if (error) console.log('   ❌', s.repository, error.message);
   }
-  console.log('   ✅', summaries.length, 'summaries synced');
+  console.log('   ✅', summaries.length, 'overviews synced');
 
   // 3. Documents
   console.log('3️⃣ Documents...');
@@ -140,7 +140,7 @@ async function syncToSupabase() {
 
   // Final counts
   console.log('\n📊 Supabase now has:');
-  for (const table of ['journal_entries', 'project_summaries', 'documents', 'skills', 'work_experience', 'education', 'media_assets', 'chat_conversations']) {
+  for (const table of ['journal_entries', 'repository_overviews', 'documents', 'skills', 'work_experience', 'education', 'media_assets', 'chat_conversations']) {
     const { count } = await supabase.from(table).select('*', { count: 'exact', head: true });
     console.log('  ', table + ':', count);
   }

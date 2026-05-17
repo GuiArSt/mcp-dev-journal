@@ -19,7 +19,9 @@ export function middleware(request: NextRequest) {
     request.nextUrl.pathname.startsWith("/api/documents") ||
     request.nextUrl.pathname.startsWith("/api/cv/") ||
     request.nextUrl.pathname.startsWith("/api/portfolio-projects") ||
-    request.nextUrl.pathname.startsWith("/api/media")
+    request.nextUrl.pathname.startsWith("/api/media") ||
+    request.nextUrl.pathname.startsWith("/api/memory/chats") ||
+    request.nextUrl.pathname.startsWith("/api/ai-integrations")
   );
 
   // Cron-accessible endpoints and MCP-callable integration endpoints (localhost only, no auth needed)
@@ -56,7 +58,6 @@ export function middleware(request: NextRequest) {
 export const config = {
   matcher: ["/((?!_next/static|_next/image|favicon.ico).*)"],
 };
-
 
 
 

@@ -1,63 +1,7 @@
-/**
- * Observability - Lightweight self-hosted tracing for AI calls
- *
- * Tracks:
- * - AI model calls (input/output tokens, latency, cost)
- * - Trace hierarchy (parent-child spans)
- * - Errors and retries
- *
- * Storage: SQLite table `ai_traces`
- * Logging: Console output for real-time visibility
- */
-
+import { AsyncLocalStorage } from "async_hooks";
 import { getDatabase } from "./db";
 
-// ============================================================================
-// Logging
-// ============================================================================
-
-const LOG_PREFIX = "[AI Trace]";
-
-function logSpanStart(name: string, spanId: string, traceId: string, model?: string) {
-  const modelInfo = model ? ` model=${model}` : "";
-  console.log(`${LOG_PREFIX} START ${name} span=${spanId} trace=${traceId}${modelInfo}`);
-}
-
-function logSpanEnd(
-  name: string,
-  spanId: string,
-  latencyMs: number,
-  tokens?: { input?: number; output?: number },
-  cost?: number,
-  error?: string
-) {
-  const status = error ? "ERROR" : "OK";
-  const tokenInfo =
-    tokens?.input || tokens?.output ? ` tokens=${tokens.input ?? 0}/${tokens.output ?? 0}` : "";
-  const costInfo = cost ? ` cost=$${cost.toFixed(4)}` : "";
-  const errorInfo = error ? ` error="${error}"` : "";
-  console.log(
-    `${LOG_PREFIX} END ${name} span=${spanId} ${status} latency=${latencyMs}ms${tokenInfo}${costInfo}${errorInfo}`
-  );
-}
-
-function logTraceStart(name: string, traceId: string) {
-  console.log(`\n${LOG_PREFIX} ========== TRACE START: ${name} ==========`);
-  console.log(`${LOG_PREFIX} trace_id=${traceId}`);
-}
-
-function logTraceEnd(latencyMs: number, totalCost?: number, error?: string) {
-  const status = error ? "ERROR" : "OK";
-  const costInfo = totalCost ? ` total_cost=$${totalCost.toFixed(4)}` : "";
-  const errorInfo = error ? ` error="${error}"` : "";
-  console.log(
-    `${LOG_PREFIX} ========== TRACE END: ${status} latency=${latencyMs}ms${costInfo}${errorInfo} ==========\n`
-  );
-}
-
-// ============================================================================
-// Types
-// ============================================================================
+// ─── Types ───────────────────────────────────────────────────────────────────
 
 export interface TraceSpan {
   id: string;
@@ -66,6 +10,7 @@ export interface TraceSpan {
   name: string;
   type: "generation" | "span" | "event";
   model?: string;
+  endpoint?: string;
   input?: unknown;
   output?: unknown;
   input_tokens?: number;
@@ -85,42 +30,53 @@ export interface TraceContext {
   spanId: string;
 }
 
-// ============================================================================
-// Cost calculation (per 1M tokens)
-// ============================================================================
+// ─── Cost table (per 1M tokens) ──────────────────────────────────────────────
 
-// NOTE: Canonical source is src/shared/model-costs.ts - keep in sync
 const MODEL_COSTS: Record<string, { input: number; output: number }> = {
-  // Full model IDs
+  // Anthropic
   "claude-sonnet-4-6": { input: 3.0, output: 15.0 },
   "claude-sonnet-4-5-20250929": { input: 3.0, output: 15.0 },
+  "claude-sonnet-4-5": { input: 3.0, output: 15.0 },
   "claude-haiku-4-5-20250514": { input: 0.8, output: 4.0 },
+  "claude-haiku-4-5": { input: 0.8, output: 4.0 },
   "claude-opus-4-5-20251101": { input: 15.0, output: 75.0 },
+  "claude-opus-4-5": { input: 15.0, output: 75.0 },
   "claude-opus-4-6": { input: 5.0, output: 25.0 },
   "claude-opus-4-7": { input: 5.0, output: 25.0 },
-  // AI SDK model aliases
-  "claude-haiku-4-5": { input: 0.8, output: 4.0 },
-  "claude-sonnet-4-5": { input: 3.0, output: 15.0 },
-  "claude-opus-4-5": { input: 15.0, output: 75.0 },
+  "claude-3-5-haiku-20241022": { input: 0.8, output: 4.0 },
+  // OpenAI
+  "gpt-5.4": { input: 2.5, output: 15.0 },
+  "gpt-5.5": { input: 5.0, output: 30.0 },
+  "gpt-image-2": { input: 0, output: 0 }, // image priced per-image, not per-token
+  // Google Gemini
+  "gemini-3-pro": { input: 1.25, output: 5.0 },
+  "gemini-3-pro-image-preview": { input: 0, output: 0 },
+  "gemini-3-flash": { input: 0.075, output: 0.30 },
+  "gemini-3-flash-preview": { input: 0.075, output: 0.30 },
+  "gemini-3.1-pro-preview": { input: 1.25, output: 5.0 },
+  "gemini-3.1-flash-image-preview": { input: 0, output: 0 },
+  "gemini-3.1-flash-lite-preview": { input: 0.038, output: 0.15 },
+  "gemini-2.5-flash": { input: 0.075, output: 0.30 },
+  "gemini-2.5-flash-image": { input: 0, output: 0 },
 };
 
-function calculateCost(model: string, inputTokens: number, outputTokens: number): number {
-  const costs = MODEL_COSTS[model];
-  if (!costs) return 0;
-  return (inputTokens * costs.input + outputTokens * costs.output) / 1_000_000;
+function calculateCost(model: string, input: number, output: number): number {
+  const c = MODEL_COSTS[model];
+  if (!c) return 0;
+  if ((model === "gpt-5.4" || model === "gpt-5.5") && input > 272_000) {
+    return (input * c.input * 2 + output * c.output * 1.5) / 1_000_000;
+  }
+  return (input * c.input + output * c.output) / 1_000_000;
 }
 
-// ============================================================================
-// ID Generation
-// ============================================================================
+// ─── Internals ────────────────────────────────────────────────────────────────
 
 function generateId(): string {
   return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 9)}`;
 }
 
-// ============================================================================
-// Database Schema
-// ============================================================================
+// Per-request context stored in AsyncLocalStorage — safe under concurrent requests.
+const traceStore = new AsyncLocalStorage<{ traceId: string; parentSpanId: string; conversationId?: number }>();
 
 export function ensureTracesTable(): void {
   const db = getDatabase();
@@ -146,283 +102,376 @@ export function ensureTracesTable(): void {
       ended_at TEXT,
       created_at TEXT DEFAULT (datetime('now'))
     );
-
     CREATE INDEX IF NOT EXISTS idx_ai_traces_trace_id ON ai_traces(trace_id);
     CREATE INDEX IF NOT EXISTS idx_ai_traces_started_at ON ai_traces(started_at DESC);
     CREATE INDEX IF NOT EXISTS idx_ai_traces_name ON ai_traces(name);
   `);
+
+  // Soft migration: add endpoint column to existing installs (idempotent).
+  try {
+    db.exec(`ALTER TABLE ai_traces ADD COLUMN endpoint TEXT`);
+  } catch { /* column already exists */ }
+  try {
+    db.exec(`CREATE INDEX IF NOT EXISTS idx_ai_traces_endpoint ON ai_traces(endpoint)`);
+  } catch { /* ignore */ }
+
+  // Soft migration: conversation_id ties this trace to a chat_conversations row.
+  // Lets us aggregate "cost of this chat" with one indexed query.
+  try {
+    db.exec(`ALTER TABLE ai_traces ADD COLUMN conversation_id INTEGER`);
+  } catch { /* column already exists */ }
+  try {
+    db.exec(`CREATE INDEX IF NOT EXISTS idx_ai_traces_conversation_id ON ai_traces(conversation_id)`);
+  } catch { /* ignore */ }
 }
 
-// ============================================================================
-// Trace Management
-// ============================================================================
+// Track span start times in-process so latency uses monotonic epoch ms,
+// not SQLite's `datetime('now')` text (which caused a tz-mismatch bug).
+const spanStartedAt = new Map<string, number>();
 
-let currentContext: TraceContext | null = null;
+function insertSpan(row: {
+  id: string;
+  traceId: string;
+  parentSpanId: string | null;
+  name: string;
+  type: string;
+  model?: string;
+  metadata?: Record<string, unknown>;
+  input?: unknown;
+  endpoint?: string | null;
+  /** When set, ties this trace span to a chat_conversations row.
+   *  Falls back to the AsyncLocalStorage context when omitted, so any
+   *  span created inside a `withTrace({ conversationId })` block is
+   *  automatically tagged. */
+  conversationId?: number | null;
+}): void {
+  const db = getDatabase();
+  const nowMs = Date.now();
+  spanStartedAt.set(row.id, nowMs);
+  // Store started_at as ISO 8601 with explicit Z so clients parse correctly.
+  const iso = new Date(nowMs).toISOString();
+  // Inherit conversationId from the trace context if not explicitly supplied.
+  const conversationId =
+    row.conversationId ?? traceStore.getStore()?.conversationId ?? null;
+  db.prepare(
+    `INSERT INTO ai_traces (id, trace_id, parent_span_id, name, type, model, status, metadata, input, endpoint, conversation_id, started_at)
+     VALUES (?, ?, ?, ?, ?, ?, 'running', ?, ?, ?, ?, ?)`
+  ).run(
+    row.id,
+    row.traceId,
+    row.parentSpanId,
+    row.name,
+    row.type,
+    row.model ?? null,
+    row.metadata ? JSON.stringify(row.metadata) : null,
+    row.input != null ? truncateForStorage(row.input) : null,
+    row.endpoint ?? null,
+    conversationId,
+    iso
+  );
+}
+
+/** Cap stored input/output at ~8KB to keep the trace table small. */
+function truncateForStorage(v: unknown): string {
+  let s: string;
+  if (typeof v === "string") s = v;
+  else { try { s = JSON.stringify(v); } catch { s = String(v); } }
+  const MAX = 8000;
+  return s.length > MAX ? s.slice(0, MAX) + `… [truncated, ${s.length} total chars]` : s;
+}
+
+function completeSpan(
+  spanId: string,
+  usage?: { inputTokens?: number; outputTokens?: number },
+  error?: unknown,
+  output?: unknown,
+): void {
+  const db = getDatabase();
+  const row = db.prepare("SELECT model FROM ai_traces WHERE id = ?").get(spanId) as
+    | { model: string | null }
+    | undefined;
+  if (!row) return;
+
+  // Use the in-memory start time we recorded at insert; immune to SQLite tz weirdness.
+  const startedAtMs = spanStartedAt.get(spanId);
+  const endMs = Date.now();
+  const latencyMs = startedAtMs != null ? endMs - startedAtMs : 0;
+  spanStartedAt.delete(spanId);
+
+  const endedIso = new Date(endMs).toISOString();
+  const inp = usage?.inputTokens ?? 0;
+  const out = usage?.outputTokens ?? 0;
+  const cost = calculateCost(row.model ?? "", inp, out);
+  const outputText = output != null ? truncateForStorage(output) : null;
+
+  if (error) {
+    const msg = error instanceof Error ? error.message : String(error);
+    db.prepare(
+      `UPDATE ai_traces SET status='error', error_message=?, latency_ms=?, ended_at=?, output=? WHERE id=?`
+    ).run(msg, latencyMs, endedIso, outputText, spanId);
+    console.log(`[AI Trace] ERROR span=${spanId} ${latencyMs}ms "${msg}"`);
+  } else {
+    db.prepare(
+      `UPDATE ai_traces SET status='success', input_tokens=?, output_tokens=?, total_tokens=?,
+       latency_ms=?, cost_usd=?, ended_at=?, output=? WHERE id=?`
+    ).run(inp || null, out || null, (inp + out) || null, latencyMs, cost || null, endedIso, outputText, spanId);
+    console.log(
+      `[AI Trace] END span=${spanId} ${latencyMs}ms tokens=${inp}/${out} cost=$${cost.toFixed(4)}`
+    );
+  }
+}
+
+// ─── Public API ──────────────────────────────────────────────────────────────
 
 /**
- * Start a new trace (top-level operation)
+ * Wrap multiple AI calls under one parent trace.
+ * Each traceAI() inside fn() will share the same trace_id.
+ *
+ * Pass `conversationId` to tag every span inside this trace with the
+ * chat_conversations row — used by the per-chat cost meter.
  */
-export function startTrace(name: string): TraceContext {
+export async function withTrace<T>(
+  name: string,
+  fn: () => Promise<T>,
+  metadata?: Record<string, unknown>,
+  endpoint?: string,
+  conversationId?: number,
+): Promise<T> {
   ensureTracesTable();
   const traceId = generateId();
   const spanId = generateId();
+  insertSpan({ id: spanId, traceId, parentSpanId: null, name, type: "span", metadata, endpoint, conversationId });
+  console.log(`[AI Trace] TRACE START ${name} endpoint=${endpoint ?? "—"} trace=${traceId}${conversationId ? ` chat=${conversationId}` : ""}`);
 
   const db = getDatabase();
-  db.prepare(
-    `
-    INSERT INTO ai_traces (id, trace_id, parent_span_id, name, type, status, started_at)
-    VALUES (?, ?, NULL, ?, 'span', 'running', datetime('now'))
-  `
-  ).run(spanId, traceId, name);
-
-  currentContext = { traceId, spanId };
-
-  // Log trace start
-  logTraceStart(name, traceId);
-
-  return currentContext;
+  try {
+    const result = await traceStore.run({ traceId, parentSpanId: spanId, conversationId }, fn);
+    const totals = db
+      .prepare(
+        `SELECT SUM(cost_usd) as c, SUM(input_tokens) as i, SUM(output_tokens) as o
+         FROM ai_traces WHERE trace_id = ? AND parent_span_id = ?`
+      )
+      .get(traceId, spanId) as { c: number | null; i: number | null; o: number | null };
+    completeSpan(spanId, { inputTokens: totals.i ?? 0, outputTokens: totals.o ?? 0 });
+    // Recompute the conversation's running cost after the trace closes.
+    if (conversationId) recomputeConversationCost(conversationId);
+    return result;
+  } catch (err) {
+    completeSpan(spanId, undefined, err);
+    if (conversationId) recomputeConversationCost(conversationId);
+    throw err;
+  }
 }
 
 /**
- * Start a child span under the current context
+ * Wrap a single non-streaming AI call (generateText / generateObject).
+ * Creates its own trace when called standalone; becomes a child when inside withTrace().
  */
-export function startSpan(
+export async function traceAI<
+  T extends { usage?: { inputTokens?: number; outputTokens?: number } },
+>(
   name: string,
-  options: {
-    type?: "generation" | "span" | "event";
-    model?: string;
-    input?: unknown;
-    metadata?: Record<string, unknown>;
-  } = {}
+  modelId: string,
+  fn: () => Promise<T>,
+  metadata?: Record<string, unknown>,
+  input?: unknown,
+  endpoint?: string,
+  conversationId?: number,
+): Promise<T> {
+  ensureTracesTable();
+  const ctx = traceStore.getStore();
+  const traceId = ctx?.traceId ?? generateId();
+  const spanId = generateId();
+  // Resolve conversationId: explicit > metadata.conversationId > store.
+  const resolvedConvId =
+    conversationId
+    ?? (typeof (metadata as { conversationId?: unknown } | undefined)?.conversationId === "number"
+      ? ((metadata as { conversationId: number }).conversationId)
+      : undefined)
+    ?? ctx?.conversationId;
+
+  insertSpan({
+    id: spanId,
+    traceId,
+    parentSpanId: ctx?.parentSpanId ?? null,
+    name,
+    type: "generation",
+    model: modelId,
+    metadata,
+    input,
+    endpoint,
+    conversationId: resolvedConvId,
+  });
+  console.log(`[AI Trace] START ${name} model=${modelId} trace=${traceId}${resolvedConvId ? ` chat=${resolvedConvId}` : ""}`);
+
+  try {
+    const result = await fn();
+    // Try to capture the textual output; AI SDK shapes vary so we fall back gracefully.
+    const r = result as unknown as { text?: string; output?: unknown; object?: unknown };
+    const captured = r.text ?? r.output ?? r.object ?? null;
+    completeSpan(spanId, result.usage, undefined, captured);
+    if (resolvedConvId) recomputeConversationCost(resolvedConvId);
+    return result;
+  } catch (err) {
+    completeSpan(spanId, undefined, err);
+    if (resolvedConvId) recomputeConversationCost(resolvedConvId);
+    throw err;
+  }
+}
+
+/**
+ * Open a generation span for streaming routes.
+ * Call closeAISpan() from onFinish with the returned spanId.
+ */
+export function openAISpan(
+  name: string,
+  modelId: string,
+  metadata?: Record<string, unknown>,
+  input?: unknown,
+  endpoint?: string,
+  conversationId?: number,
 ): string {
   ensureTracesTable();
+  const ctx = traceStore.getStore();
+  const traceId = ctx?.traceId ?? generateId();
   const spanId = generateId();
-  const traceId = currentContext?.traceId ?? generateId();
-  const parentSpanId = currentContext?.spanId ?? null;
-
-  const db = getDatabase();
-  db.prepare(
-    `
-    INSERT INTO ai_traces (id, trace_id, parent_span_id, name, type, model, input, status, metadata, started_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?, 'running', ?, datetime('now'))
-  `
-  ).run(
-    spanId,
+  insertSpan({
+    id: spanId,
     traceId,
-    parentSpanId,
+    parentSpanId: ctx?.parentSpanId ?? null,
+    conversationId,
     name,
-    options.type ?? "span",
-    options.model ?? null,
-    options.input ? JSON.stringify(options.input) : null,
-    options.metadata ? JSON.stringify(options.metadata) : null
-  );
-
-  // Log span start
-  logSpanStart(name, spanId, traceId, options.model);
-
-  // Store previous context for restoration
-  const previousContext = currentContext;
-  (globalThis as Record<string, unknown>)[`_trace_parent_${spanId}`] = previousContext;
-
-  // Update current context to this span
-  currentContext = { traceId, spanId };
-
+    type: "generation",
+    model: modelId,
+    metadata,
+    input,
+    endpoint,
+  });
+  console.log(`[AI Trace] START ${name} model=${modelId} trace=${traceId}`);
   return spanId;
 }
 
-/**
- * End a span with results
- */
-export function endSpan(
+export function closeAISpan(
   spanId: string,
-  options: {
-    output?: unknown;
-    inputTokens?: number;
-    outputTokens?: number;
-    error?: Error | string;
-  } = {}
+  usage?: { inputTokens?: number; outputTokens?: number },
+  error?: unknown,
+  output?: unknown,
 ): void {
-  const db = getDatabase();
-  const spanData = db
-    .prepare("SELECT started_at, model FROM ai_traces WHERE id = ?")
-    .get(spanId) as { started_at: string; model: string | null } | undefined;
-
-  if (!spanData) {
-    console.warn(`[Observability] Span ${spanId} not found`);
-    return;
-  }
-
-  const latencyMs = Date.now() - new Date(spanData.started_at).getTime();
-  const totalTokens = (options.inputTokens ?? 0) + (options.outputTokens ?? 0);
-
-  const cost = spanData.model
-    ? calculateCost(spanData.model, options.inputTokens ?? 0, options.outputTokens ?? 0)
-    : 0;
-
-  db.prepare(
-    `
-    UPDATE ai_traces SET
-      output = ?,
-      input_tokens = ?,
-      output_tokens = ?,
-      total_tokens = ?,
-      latency_ms = ?,
-      cost_usd = ?,
-      status = ?,
-      error_message = ?,
-      ended_at = datetime('now')
-    WHERE id = ?
-  `
-  ).run(
-    options.output ? JSON.stringify(options.output) : null,
-    options.inputTokens ?? null,
-    options.outputTokens ?? null,
-    totalTokens || null,
-    latencyMs,
-    cost || null,
-    options.error ? "error" : "success",
-    options.error
-      ? typeof options.error === "string"
-        ? options.error
-        : options.error.message
-      : null,
-    spanId
-  );
-
-  // Log span end
-  const spanName = db.prepare("SELECT name FROM ai_traces WHERE id = ?").get(spanId) as
-    | { name: string }
-    | undefined;
-  logSpanEnd(
-    spanName?.name ?? spanId,
-    spanId,
-    latencyMs,
-    { input: options.inputTokens, output: options.outputTokens },
-    cost || undefined,
-    options.error
-      ? typeof options.error === "string"
-        ? options.error
-        : options.error.message
-      : undefined
-  );
-
-  // Restore parent context
-  const previousContext = (globalThis as Record<string, unknown>)[
-    `_trace_parent_${spanId}`
-  ] as TraceContext | null;
-  currentContext = previousContext;
-  delete (globalThis as Record<string, unknown>)[`_trace_parent_${spanId}`];
+  completeSpan(spanId, usage, error, output);
+  // Recompute the chat's cost meter after this span closes.
+  try {
+    const db = getDatabase();
+    const row = db
+      .prepare("SELECT conversation_id FROM ai_traces WHERE id = ?")
+      .get(spanId) as { conversation_id: number | null } | undefined;
+    if (row?.conversation_id) recomputeConversationCost(row.conversation_id);
+  } catch { /* non-critical */ }
 }
+
+// ─── Per-conversation aggregation ────────────────────────────────────────────
 
 /**
- * End the current trace
+ * Recompute and persist the running cost for a chat conversation by
+ * summing every successful trace tagged with this conversation_id.
+ *
+ * Writes to chat_conversations.cost_usd / actual_input_tokens /
+ * actual_output_tokens. Called automatically at the end of withTrace()
+ * when conversationId is set; can also be called explicitly by image
+ * paint paths via recordImageCost().
  */
-export function endTrace(options: { error?: Error | string } = {}): void {
-  if (!currentContext) return;
-
+export function recomputeConversationCost(conversationId: number): void {
+  if (!conversationId) return;
   const db = getDatabase();
-  const traceId = currentContext.traceId;
+  ensureTracesTable();
+  const totals = db
+    .prepare(
+      `SELECT
+         COALESCE(SUM(cost_usd), 0) AS cost,
+         COALESCE(SUM(input_tokens), 0) AS inp,
+         COALESCE(SUM(output_tokens), 0) AS out
+       FROM ai_traces
+       WHERE conversation_id = ? AND status = 'success'`
+    )
+    .get(conversationId) as { cost: number; inp: number; out: number };
 
-  // Find root span
-  const rootSpan = db
-    .prepare("SELECT id, started_at FROM ai_traces WHERE trace_id = ? AND parent_span_id IS NULL")
-    .get(traceId) as { id: string; started_at: string } | undefined;
-
-  if (rootSpan) {
-    const latencyMs = Date.now() - new Date(rootSpan.started_at).getTime();
-
-    // Calculate total cost for trace
-    const totals = db
-      .prepare(
-        `
-        SELECT SUM(cost_usd) as total_cost, SUM(input_tokens) as total_input, SUM(output_tokens) as total_output
-        FROM ai_traces WHERE trace_id = ? AND type = 'generation'
-      `
-      )
-      .get(traceId) as {
-      total_cost: number | null;
-      total_input: number | null;
-      total_output: number | null;
-    };
-
+  try {
     db.prepare(
-      `
-      UPDATE ai_traces SET
-        input_tokens = ?, output_tokens = ?, total_tokens = ?,
-        latency_ms = ?, cost_usd = ?, status = ?, error_message = ?, ended_at = datetime('now')
-      WHERE id = ?
-    `
-    ).run(
-      totals.total_input,
-      totals.total_output,
-      (totals.total_input ?? 0) + (totals.total_output ?? 0),
-      latencyMs,
-      totals.total_cost,
-      options.error ? "error" : "success",
-      options.error
-        ? typeof options.error === "string"
-          ? options.error
-          : options.error.message
-        : null,
-      rootSpan.id
-    );
-
-    // Log trace end
-    logTraceEnd(
-      latencyMs,
-      totals.total_cost ?? undefined,
-      options.error
-        ? typeof options.error === "string"
-          ? options.error
-          : options.error.message
-        : undefined
-    );
+      `UPDATE chat_conversations
+         SET cost_usd = ?, actual_input_tokens = ?, actual_output_tokens = ?
+       WHERE id = ?`
+    ).run(totals.cost || 0, totals.inp || 0, totals.out || 0, conversationId);
+  } catch {
+    /* table or columns may not exist yet — migration runs lazily on
+       first conversation save; ignore. */
   }
-
-  currentContext = null;
 }
 
-// ============================================================================
-// Wrapper: Observe an async function
-// ============================================================================
-
-type ObserveOptions = {
-  name: string;
-  type?: "generation" | "span" | "event";
-  model?: string;
-  extractTokens?: (result: unknown) => { inputTokens?: number; outputTokens?: number };
+/** Per-image fixed-cost rates (USD). Image paints are not token-based;
+ *  these are flat per-render costs aligned with the providers' pricing. */
+const IMAGE_COSTS: Record<string, number> = {
+  // OpenAI GPT Image 2 — varies by quality
+  "gpt-image-2:low": 0.04,
+  "gpt-image-2:medium": 0.07,
+  "gpt-image-2:high": 0.19,
+  "gpt-image-2": 0.07, // default = medium
+  // Google Gemini image models
+  "nano-banana-2": 0.04,
+  "nano-banana-pro": 0.10,
+  "nano-banana": 0.04,
 };
 
-export function observe<T extends unknown[], R>(
-  fn: (...args: T) => Promise<R>,
-  options: ObserveOptions
-): (...args: T) => Promise<R> {
-  return async (...args: T): Promise<R> => {
-    const spanId = startSpan(options.name, {
-      type: options.type,
-      model: options.model,
-      input: args.length === 1 ? args[0] : args,
-    });
+/**
+ * Record a fixed image-generation cost as a synthetic trace row so the
+ * per-conversation cost meter sees it. Returns the cost (USD).
+ */
+export function recordImageCost(opts: {
+  model: string;
+  quality?: "low" | "medium" | "high";
+  conversationId?: number;
+  endpoint?: string;
+  /** Distinguish image-to-image vs text-to-image in trace metadata. */
+  operation?: "generate" | "edit";
+}): number {
+  ensureTracesTable();
+  const lookupKey =
+    opts.quality && opts.model === "gpt-image-2"
+      ? `${opts.model}:${opts.quality}`
+      : opts.model;
+  const cost = IMAGE_COSTS[lookupKey] ?? IMAGE_COSTS[opts.model] ?? 0;
+  if (!cost) return 0;
 
-    try {
-      const result = await fn(...args);
-      const tokens = options.extractTokens?.(result) ?? {};
-      endSpan(spanId, {
-        output: result,
-        inputTokens: tokens.inputTokens,
-        outputTokens: tokens.outputTokens,
-      });
-      return result;
-    } catch (error) {
-      endSpan(spanId, { error: error instanceof Error ? error : String(error) });
-      throw error;
-    }
-  };
+  const db = getDatabase();
+  const ctx = traceStore.getStore();
+  const traceId = ctx?.traceId ?? generateId();
+  const spanId = generateId();
+  const conversationId = opts.conversationId ?? ctx?.conversationId ?? null;
+  const nowIso = new Date().toISOString();
+  // Synthetic span: not a generation but a cost event. Status=success so
+  // recomputeConversationCost picks it up.
+  db.prepare(
+    `INSERT INTO ai_traces (id, trace_id, parent_span_id, name, type, model, status,
+                            cost_usd, latency_ms, input_tokens, output_tokens,
+                            metadata, endpoint, conversation_id, started_at, ended_at)
+     VALUES (?, ?, ?, ?, 'image', ?, 'success', ?, 0, 0, 0, ?, ?, ?, ?, ?)`
+  ).run(
+    spanId,
+    traceId,
+    ctx?.parentSpanId ?? null,
+    `image:${opts.model}${opts.quality ? `:${opts.quality}` : ""}`,
+    opts.model,
+    cost,
+    JSON.stringify({ quality: opts.quality, operation: opts.operation ?? "generate" }),
+    opts.endpoint ?? null,
+    conversationId,
+    nowIso,
+    nowIso,
+  );
+
+  if (conversationId) recomputeConversationCost(conversationId);
+  return cost;
 }
 
-// ============================================================================
-// Query: Get recent traces
-// ============================================================================
+// ─── Queries ─────────────────────────────────────────────────────────────────
 
 export function getRecentTraces(limit = 50): TraceSpan[] {
   const db = getDatabase();
@@ -441,6 +490,16 @@ export function getTraceSpans(traceId: string): TraceSpan[] {
     .all(traceId) as TraceSpan[];
 }
 
+export function getRecentRunningTraces(limit = 20): TraceSpan[] {
+  const db = getDatabase();
+  ensureTracesTable();
+  return db
+    .prepare(
+      "SELECT * FROM ai_traces WHERE status = 'running' ORDER BY started_at DESC LIMIT ?"
+    )
+    .all(limit) as TraceSpan[];
+}
+
 export function getTraceStats(days = 7): {
   total_traces: number;
   total_tokens: number;
@@ -457,15 +516,13 @@ export function getTraceStats(days = 7): {
 
   const stats = db
     .prepare(
-      `
-      SELECT
+      `SELECT
         COUNT(DISTINCT trace_id) as total_traces,
         SUM(CASE WHEN type = 'generation' THEN total_tokens ELSE 0 END) as total_tokens,
         SUM(CASE WHEN type = 'generation' THEN cost_usd ELSE 0 END) as total_cost,
         AVG(CASE WHEN parent_span_id IS NULL THEN latency_ms END) as avg_latency_ms,
         AVG(CASE WHEN status = 'error' THEN 1.0 ELSE 0.0 END) as error_rate
-      FROM ai_traces WHERE started_at >= ?
-    `
+      FROM ai_traces WHERE started_at >= ?`
     )
     .get(cutoff.toISOString()) as {
     total_traces: number;
@@ -477,17 +534,10 @@ export function getTraceStats(days = 7): {
 
   const byModel = db
     .prepare(
-      `
-      SELECT model, COUNT(*) as count, SUM(total_tokens) as tokens, SUM(cost_usd) as cost
-      FROM ai_traces WHERE started_at >= ? AND model IS NOT NULL GROUP BY model
-    `
+      `SELECT model, COUNT(*) as count, SUM(total_tokens) as tokens, SUM(cost_usd) as cost
+       FROM ai_traces WHERE started_at >= ? AND model IS NOT NULL GROUP BY model`
     )
-    .all(cutoff.toISOString()) as Array<{
-    model: string;
-    count: number;
-    tokens: number;
-    cost: number;
-  }>;
+    .all(cutoff.toISOString()) as Array<{ model: string; count: number; tokens: number; cost: number }>;
 
   return {
     ...stats,

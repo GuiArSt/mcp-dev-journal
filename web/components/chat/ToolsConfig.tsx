@@ -14,6 +14,9 @@ import {
   Search,
   Sparkles,
   Cloud,
+  MessageSquareText,
+  Bot,
+  Code2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -28,6 +31,7 @@ import {
 export interface ToolsConfigState {
   journal: boolean;
   repository: boolean;
+  cursorDelegate: boolean;
   linear: boolean;
   slite: boolean;
   notion: boolean;
@@ -36,6 +40,8 @@ export interface ToolsConfigState {
   imageGeneration: boolean;
   webSearch: boolean;
   google: boolean;
+  memory: boolean;
+  aiIntegrations: boolean;
 }
 
 interface ToolsConfigProps {
@@ -46,6 +52,7 @@ interface ToolsConfigProps {
 const DEFAULT_CONFIG: ToolsConfigState = {
   journal: true,
   repository: true,
+  cursorDelegate: false,
   linear: false,
   slite: false,
   notion: false,
@@ -54,6 +61,8 @@ const DEFAULT_CONFIG: ToolsConfigState = {
   imageGeneration: false,
   webSearch: false,
   google: false,
+  memory: false,
+  aiIntegrations: false,
 };
 
 // Tool category metadata
@@ -67,10 +76,24 @@ const CORE_TOOLS = [
   },
   {
     key: "repository",
-    name: "Repository",
+    name: "Library",
     icon: GitBranch,
     description: "Docs, skills, CV",
     count: 11,
+  },
+  {
+    key: "cursorDelegate",
+    name: "Cursor code",
+    icon: Code2,
+    description: "Local agent on git clones",
+    count: 1,
+  },
+  {
+    key: "aiIntegrations",
+    name: "AI Integrations",
+    icon: Bot,
+    description: "Agent configs & logs",
+    count: 8,
   },
   { key: "linear", name: "Linear", icon: Briefcase, description: "Issues & projects", count: 7 },
   { key: "slite", name: "Slite", icon: BookOpen, description: "Knowledge base", count: 5 },
@@ -78,6 +101,13 @@ const CORE_TOOLS = [
   { key: "git", name: "Git", icon: Github, description: "GitHub/GitLab repos", count: 3 },
   { key: "media", name: "Media", icon: Image, description: "Asset management", count: 3 },
   { key: "google", name: "Google", icon: Cloud, description: "Drive, Gmail, Calendar", count: 11 },
+  {
+    key: "memory",
+    name: "Memory",
+    icon: MessageSquareText,
+    description: "Chat index & fetch",
+    count: 2,
+  },
 ] as const;
 
 const MULTIMODAL_TOOLS = [
@@ -102,6 +132,7 @@ export function ToolsConfig({ config, onChange }: ToolsConfigProps) {
     onChange({
       journal: true,
       repository: true,
+      cursorDelegate: true,
       linear: true,
       slite: true,
       notion: true,
@@ -110,6 +141,8 @@ export function ToolsConfig({ config, onChange }: ToolsConfigProps) {
       imageGeneration: true,
       webSearch: true,
       google: true,
+      memory: true,
+      aiIntegrations: true,
     });
   };
 
@@ -117,6 +150,7 @@ export function ToolsConfig({ config, onChange }: ToolsConfigProps) {
     onChange({
       journal: true,
       repository: true,
+      cursorDelegate: false,
       linear: true,
       slite: true,
       notion: true,
@@ -125,6 +159,8 @@ export function ToolsConfig({ config, onChange }: ToolsConfigProps) {
       imageGeneration: false,
       webSearch: false,
       google: true,
+      memory: false,
+      aiIntegrations: true,
     });
   };
 
@@ -132,6 +168,7 @@ export function ToolsConfig({ config, onChange }: ToolsConfigProps) {
   const enabledToolCount = [
     ...(config.journal ? [12] : []),
     ...(config.repository ? [11] : []),
+    ...(config.cursorDelegate ? [1] : []),
     ...(config.linear ? [7] : []),
     ...(config.slite ? [5] : []),
     ...(config.notion ? [4] : []),
@@ -140,6 +177,8 @@ export function ToolsConfig({ config, onChange }: ToolsConfigProps) {
     ...(config.imageGeneration ? [1] : []),
     ...(config.webSearch ? [5] : []),
     ...(config.google ? [11] : []),
+    ...(config.memory ? [2] : []),
+    ...(config.aiIntegrations ? [8] : []),
   ].reduce((a, b) => a + b, 0);
 
   const hasMultimodal = config.imageGeneration || config.webSearch;

@@ -24,6 +24,9 @@ export const MODEL_COSTS: Record<string, { input: number; output: number }> = {
   "gemini-3-flash-preview": { input: 0.5, output: 3.0 },
   "gemini-3-pro": { input: 2.0, output: 12.0 },
   "gemini-3-pro-preview": { input: 2.0, output: 12.0 },
+  // OpenAI models
+  "gpt-5.4": { input: 2.5, output: 15.0 },
+  "gpt-5.5": { input: 5.0, output: 30.0 },
 };
 
 export function calculateCost(
@@ -33,5 +36,8 @@ export function calculateCost(
 ): number {
   const costs = MODEL_COSTS[model];
   if (!costs) return 0;
+  if ((model === "gpt-5.4" || model === "gpt-5.5") && inputTokens > 272_000) {
+    return (inputTokens * costs.input * 2 + outputTokens * costs.output * 1.5) / 1_000_000;
+  }
   return (inputTokens * costs.input + outputTokens * costs.output) / 1_000_000;
 }

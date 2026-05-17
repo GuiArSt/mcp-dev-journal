@@ -10,6 +10,8 @@ import {
   type Conversation,
 } from "@/lib/db-conversations";
 import { withErrorHandler } from "@/lib/api-handler";
+import { getPrompt } from "@/lib/ai/prompt-store";
+import { CONVERSATION_SUMMARY_BACKFILL_DEFAULT } from "@/lib/ai/prompt-defaults";
 import { ValidationError } from "@/lib/errors";
 
 const SummarySchema = z.object({
@@ -55,20 +57,7 @@ async function generateConversationSummary(
     const result = await generateText({
       model,
       output: Output.object({ schema: SummarySchema }),
-      system: `You are a conversation summarizer for a developer chat system.
-Your task is to create a title and "living summary" for the conversation.
-
-## Title Guidelines
-- Short and descriptive: 3-6 words maximum
-- Capture the main topic, question, or intent
-- Use title case (capitalize important words)
-- Examples: "React Hooks Best Practices", "Debugging API Timeout", "Git Merge Conflict Help"
-
-## Summary Guidelines
-- Be concise: 2-3 sentences maximum
-- Focus on the essence: What was the user asking? What did the assistant explain?
-- Include context: Mention technologies, concepts, or specific topics if relevant
-- Keep it factual and informative`,
+      system: getPrompt("conversation-summary-backfill", CONVERSATION_SUMMARY_BACKFILL_DEFAULT),
       prompt: `Generate a title and living summary for this conversation:\n\n${conversationText}`,
     });
 

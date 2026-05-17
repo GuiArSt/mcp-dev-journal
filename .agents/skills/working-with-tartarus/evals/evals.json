@@ -1,0 +1,23 @@
+{
+  "skill_name": "working-with-tartarus",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Today we are working on the Tartarus UI. Find the right app, inspect the design system, and make a small dashboard polish change.",
+      "expected_output": "The agent identifies web/ as the main Tartarus dashboard, reads web/DESIGN_SYSTEM.md and relevant components, edits only the needed dashboard files, then runs a focused validation command.",
+      "files": []
+    },
+    {
+      "id": 2,
+      "prompt": "Add a new MCP tool to Tartarus and update the project memory afterwards.",
+      "expected_output": "The agent works in src/, checks existing MCP tool patterns, builds/tests the MCP server, and distinguishes journal entry updates from Entry 0 technical updates.",
+      "files": []
+    },
+    {
+      "id": 3,
+      "prompt": "The public website portfolio page needs a visual fix, not the dashboard.",
+      "expected_output": "The agent routes the task to website/, uses pnpm commands, preserves the separate public-site architecture, and avoids editing web/ unless a shared schema sync is required.",
+      "files": []
+    }
+  ]
+}

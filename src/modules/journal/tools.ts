@@ -61,6 +61,14 @@ import {
   searchTartarusObjects,
   getDocumentBySlug,
   getConversationById,
+  listAiIntegrations,
+  getAiIntegration,
+  listAiArtifacts,
+  getAiArtifact,
+  listAiLogSessions,
+  getAiLogSession,
+  listAiProposals,
+  getAiProposal,
 } from "./db/database.js";
 import {
   AgentInputSchema,
@@ -393,6 +401,9 @@ export async function registerJournalTools(
 - author: Commit author name
 - date: Commit date in ISO 8601 format (e.g., "2026-01-12T10:30:00Z")
 - raw_agent_report: Your detailed report of what was done (see below)
+
+## What Kronus Sees Besides Your Report
+The model also receives the **Repository overview** (Entry 0 row for this repo, if any) and up to **150 prior journal entries on the same branch** (most recent window, chronological in the prompt), so new entries stay consistent with existing narrative. Regenerating an entry excludes that commit from the branch list.
 
 ## What Kronus Generates From Your Report
 Kronus (AI) analyzes your raw_agent_report and extracts:
@@ -1379,7 +1390,7 @@ Returns a paginated index with download URLs that models can fetch directly, avo
         source_table: z
           .string()
           .optional()
-          .describe("Source table name (e.g. documents, project_summaries, entry_attachments)"),
+          .describe("Source table name (e.g. documents, repository_overviews, entry_attachments)"),
         source_id: z
           .string()
           .optional()
@@ -1438,6 +1449,239 @@ Returns a paginated index with download URLs that models can fetch directly, avo
   );
 
   // ============================================
+  // AI INTEGRATION LIBRARY TOOLS - read-only V1
+  // External agent configs/logs are indexed into Library tables. These tools
+  // expose redacted rows and proposal copies; they never write to external files.
+  // ============================================
+
+  server.registerTool(
+    "ai_integrations_list",
+    {
+      title: "List AI Integrations",
+      description:
+        "List AI coding-agent integrations indexed by the Tartarus Library, including status, auth status, source paths, and registry UUIDs.",
+      inputSchema: {},
+    },
+    async () => {
+      try {
+        const integrations = listAiIntegrations();
+        const text = JSON.stringify(
+          {
+            total: integrations.length,
+            integrations,
+          },
+          null,
+          2,
+        );
+        return { content: [{ type: "text" as const, text: truncateOutput(text) }] };
+      } catch (error) {
+        throw toMcpError(error);
+      }
+    },
+  );
+
+  server.registerTool(
+    "ai_integration_fetch",
+    {
+      title: "Fetch AI Integration",
+      description:
+        "Fetch one Library AI integration by key, such as codex, claude_code, gemini_cli, cursor, or coderabbit.",
+      inputSchema: {
+        key: z.string().describe("Integration key, for example codex or coderabbit"),
+      },
+    },
+    async ({ key }) => {
+      try {
+        const integration = getAiIntegration(key);
+        if (!integration) {
+          return {
+            content: [{ type: "text" as const, text: JSON.stringify({ error: "Integration not found", key }, null, 2) }],
+            isError: true as const,
+          };
+        }
+        return { content: [{ type: "text" as const, text: truncateOutput(JSON.stringify(integration, null, 2)) }] };
+      } catch (error) {
+        throw toMcpError(error);
+      }
+    },
+  );
+
+  server.registerTool(
+    "ai_artifacts_list",
+    {
+      title: "List AI Artifacts",
+      description:
+        "List indexed AI integration artifacts such as configs, skills, rules, prompts, AGENTS/GEMINI files, Cursor rules, and CodeRabbit Skills.",
+      inputSchema: {
+        integrationKey: z.string().optional().describe("Optional integration key filter"),
+        limit: z.number().optional().describe("Max results, default 50, max 100"),
+        offset: z.number().optional().describe("Pagination offset"),
+      },
+    },
+    async ({ integrationKey, limit, offset }) => {
+      try {
+        const artifacts = listAiArtifacts(integrationKey, limit ?? 50, offset ?? 0);
+        const text = JSON.stringify(
+          {
+            integrationKey: integrationKey ?? null,
+            limit: Math.min(limit ?? 50, 100),
+            offset: offset ?? 0,
+            total_returned: artifacts.length,
+            artifacts,
+          },
+          null,
+          2,
+        );
+        return { content: [{ type: "text" as const, text: truncateOutput(text) }] };
+      } catch (error) {
+        throw toMcpError(error);
+      }
+    },
+  );
+
+  server.registerTool(
+    "ai_artifact_fetch",
+    {
+      title: "Fetch AI Artifact",
+      description: "Fetch one indexed AI artifact by database ID, including redacted content when stored.",
+      inputSchema: {
+        id: z.number().int().positive().describe("AI artifact ID"),
+      },
+    },
+    async ({ id }) => {
+      try {
+        const artifact = getAiArtifact(id);
+        if (!artifact) {
+          return {
+            content: [{ type: "text" as const, text: JSON.stringify({ error: "Artifact not found", id }, null, 2) }],
+            isError: true as const,
+          };
+        }
+        return { content: [{ type: "text" as const, text: truncateOutput(JSON.stringify(artifact, null, 2)) }] };
+      } catch (error) {
+        throw toMcpError(error);
+      }
+    },
+  );
+
+  server.registerTool(
+    "ai_log_sessions_list",
+    {
+      title: "List AI Log Sessions",
+      description:
+        "List normalized AI agent log sessions indexed into the canonical timestamp/sequence/actor/eventType/text/tooling/params shape.",
+      inputSchema: {
+        integrationKey: z.string().optional().describe("Optional integration key filter"),
+        limit: z.number().optional().describe("Max results, default 50, max 100"),
+        offset: z.number().optional().describe("Pagination offset"),
+      },
+    },
+    async ({ integrationKey, limit, offset }) => {
+      try {
+        const sessions = listAiLogSessions(integrationKey, limit ?? 50, offset ?? 0);
+        const text = JSON.stringify(
+          {
+            integrationKey: integrationKey ?? null,
+            limit: Math.min(limit ?? 50, 100),
+            offset: offset ?? 0,
+            total_returned: sessions.length,
+            sessions,
+          },
+          null,
+          2,
+        );
+        return { content: [{ type: "text" as const, text: truncateOutput(text) }] };
+      } catch (error) {
+        throw toMcpError(error);
+      }
+    },
+  );
+
+  server.registerTool(
+    "ai_log_session_fetch",
+    {
+      title: "Fetch AI Log Session",
+      description: "Fetch one normalized AI log session with its canonical log events.",
+      inputSchema: {
+        id: z.number().int().positive().describe("AI log session ID"),
+      },
+    },
+    async ({ id }) => {
+      try {
+        const session = getAiLogSession(id);
+        if (!session) {
+          return {
+            content: [{ type: "text" as const, text: JSON.stringify({ error: "Log session not found", id }, null, 2) }],
+            isError: true as const,
+          };
+        }
+        return { content: [{ type: "text" as const, text: truncateOutput(JSON.stringify(session, null, 2)) }] };
+      } catch (error) {
+        throw toMcpError(error);
+      }
+    },
+  );
+
+  server.registerTool(
+    "ai_proposals_list",
+    {
+      title: "List AI Proposals",
+      description:
+        "List Library-managed proposal copies for AI integration artifacts. Proposals are flagged tartarus_proposal and are never auto-applied externally.",
+      inputSchema: {
+        integrationKey: z.string().optional().describe("Optional integration key filter"),
+        limit: z.number().optional().describe("Max results, default 50, max 100"),
+        offset: z.number().optional().describe("Pagination offset"),
+      },
+    },
+    async ({ integrationKey, limit, offset }) => {
+      try {
+        const proposals = listAiProposals(integrationKey, limit ?? 50, offset ?? 0);
+        const text = JSON.stringify(
+          {
+            integrationKey: integrationKey ?? null,
+            limit: Math.min(limit ?? 50, 100),
+            offset: offset ?? 0,
+            total_returned: proposals.length,
+            proposals,
+          },
+          null,
+          2,
+        );
+        return { content: [{ type: "text" as const, text: truncateOutput(text) }] };
+      } catch (error) {
+        throw toMcpError(error);
+      }
+    },
+  );
+
+  server.registerTool(
+    "ai_proposal_fetch",
+    {
+      title: "Fetch AI Proposal",
+      description:
+        "Fetch one Library-managed AI integration proposal copy, including the replacement payload and tartarus_proposal metadata.",
+      inputSchema: {
+        id: z.number().int().positive().describe("AI proposal ID"),
+      },
+    },
+    async ({ id }) => {
+      try {
+        const proposal = getAiProposal(id);
+        if (!proposal) {
+          return {
+            content: [{ type: "text" as const, text: JSON.stringify({ error: "Proposal not found", id }, null, 2) }],
+            isError: true as const,
+          };
+        }
+        return { content: [{ type: "text" as const, text: truncateOutput(JSON.stringify(proposal, null, 2)) }] };
+      } catch (error) {
+        throw toMcpError(error);
+      }
+    },
+  );
+
+  // ============================================
   // REPOSITORY TOOLS - Fetch from Tartarus API
   // These tools fetch repository data (documents, skills, experience, etc.)
   // from the Tartarus web app via HTTP API
@@ -1470,7 +1714,7 @@ Returns a paginated index with download URLs that models can fetch directly, avo
   //
   // 6. PORTFOLIO PROJECTS
   //    - Showcased deliverables, case studies, shipped work
-  //    - Distinct from journal project_summaries (which are living docs)
+    //    - Distinct from journal repository_overviews (which are living docs)
   //
   // NOTE: Documents have a two-level categorization:
   //   - Primary: type field ('writing', 'prompt', 'note')
@@ -1849,7 +2093,7 @@ Showcased deliverables and case studies:
 - Featured flag for highlighting
 
 ## Important Distinction
-These are DISTINCT from journal project_summaries:
+These are DISTINCT from journal repository_overviews (Entry 0):
 - **Portfolio Projects**: Showcased deliverables, case studies, shipped work
 - **Journal Project Summaries (Entry 0)**: Living documentation of active projects (created via journal_create_project_summary)
 
@@ -3865,14 +4109,14 @@ Requires TARTARUS_URL and MCP_API_KEY to be configured.`,
   server.registerResource(
     "repository-documents-by-type",
     new ResourceTemplate("repository://documents/{type}", {
-      list: async () => {
-        // Return list of available types
-        return [
+      // MCP SDK 1.25+ expects { resources: [...] }, not a bare array (see ListResources handler).
+      list: async () => ({
+        resources: [
           { uri: "repository://documents/writing", name: "Writings" },
           { uri: "repository://documents/prompt", name: "Prompts" },
           { uri: "repository://documents/note", name: "Notes" },
-        ];
-      },
+        ],
+      }),
     }),
     {
       description:

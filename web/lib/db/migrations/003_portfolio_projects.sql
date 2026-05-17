@@ -1,5 +1,5 @@
 -- Migration 003: Portfolio Projects Table
--- Creates table for portfolio showcase projects (distinct from project_summaries)
+-- Creates table for portfolio showcase projects (distinct from repository_overviews / Entry 0)
 -- Created: 2025-12-27
 
 CREATE TABLE IF NOT EXISTS portfolio_projects (

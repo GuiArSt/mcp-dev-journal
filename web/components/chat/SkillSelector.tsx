@@ -48,6 +48,7 @@ const SOUL_SECTIONS: { key: keyof SoulConfigState; label: string }[] = [
   { key: "workExperience", label: "Experience" },
   { key: "education", label: "Education" },
   { key: "journalEntries", label: "Journal" },
+  { key: "chatIndex", label: "Chat Index" },
   { key: "linearProjects", label: "Linear Projects" },
   { key: "linearIssues", label: "Linear Issues" },
   { key: "sliteNotes", label: "Slite Notes" },
@@ -56,7 +57,9 @@ const SOUL_SECTIONS: { key: keyof SoulConfigState; label: string }[] = [
 // Tools config section labels
 const TOOL_SECTIONS: { key: keyof ToolsConfigState; label: string }[] = [
   { key: "journal", label: "Journal" },
-  { key: "repository", label: "Repository" },
+  { key: "repository", label: "Library" },
+  { key: "cursorDelegate", label: "Cursor code" },
+  { key: "aiIntegrations", label: "AI Integrations" },
   { key: "linear", label: "Linear" },
   { key: "slite", label: "Slite" },
   { key: "git", label: "Git" },
@@ -64,6 +67,7 @@ const TOOL_SECTIONS: { key: keyof ToolsConfigState; label: string }[] = [
   { key: "imageGeneration", label: "Image Gen" },
   { key: "webSearch", label: "Web Search" },
   { key: "google", label: "Google" },
+  { key: "memory", label: "Memory" },
 ];
 
 // ============================================================================

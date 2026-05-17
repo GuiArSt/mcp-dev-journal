@@ -51,14 +51,14 @@ async function migrate() {
     let summaryCount = { count: 0 };
     try {
       summaryCount = db
-        .prepare("SELECT COUNT(*) as count FROM project_summaries WHERE repository = 'Jobilla'")
+        .prepare("SELECT COUNT(*) as count FROM repository_overviews WHERE repository = 'Jobilla'")
         .get() as { count: number };
     } catch {
-      console.log("ℹ️  project_summaries table not found, skipping");
+      console.log("ℹ️  repository_overviews table not found, skipping");
     }
 
     console.log(`\n📊 Found ${journalCount.count} journal entries with 'Jobilla'`);
-    console.log(`📊 Found ${summaryCount.count} project summaries with 'Jobilla'`);
+    console.log(`📊 Found ${summaryCount.count} repository overviews (Entry 0) with 'Jobilla'`);
 
     if (journalCount.count === 0 && summaryCount.count === 0) {
       console.log("\n✅ No records to update. Already migrated or no data.");
@@ -76,9 +76,9 @@ async function migrate() {
 
     try {
       const summaryResult = db
-        .prepare("UPDATE project_summaries SET repository = 'jobilla' WHERE repository = 'Jobilla'")
+        .prepare("UPDATE repository_overviews SET repository = 'jobilla' WHERE repository = 'Jobilla'")
         .run();
-      console.log(`   ✅ Updated ${summaryResult.changes} project summaries`);
+      console.log(`   ✅ Updated ${summaryResult.changes} repository overviews`);
     } catch {
       // Table might not exist
     }

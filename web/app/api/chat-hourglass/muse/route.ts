@@ -2,331 +2,388 @@
  * The Muse — Kronus's artistic alter-ego.
  *
  * A small, autonomous service that watches the conversation and decides
- * for itself when to paint. Most of the time it stays silent. Occasionally,
+ * for itself when to propose visual art. Most of the time it stays silent. Occasionally,
  * when the exchange has earned it, it renders an image.
  *
  * Two modes:
  *
  *  • "auto"  — runs periodically (client ticks it every N turns).
  *              Gemini Flash reads the recent turns and returns
- *              { shouldPaint, renderMode, prompt, reason }. If shouldPaint,
- *              the muse paints with Nano Banana 2 (mood or infographic).
+ *              { shouldPropose, renderMode, prompt, reason }. If accepted,
+ *              the muse renders with the configured image model.
  *
- *  • "force" — direct call. Prompt + renderMode supplied; muse paints
+ *  • "force" — direct call. Prompt + renderMode supplied; muse renders
  *              without deliberation. Used by the `generate_image` chat tool
- *              and the composer's paint button.
+ *              and the composer's visual button.
  *
- * Painter defaults to Gemini (Nano Banana 2). When the caller passes
+ * Image generation defaults to Gemini (Nano Banana 2). When the caller passes
  * `preferGpt: true` (tool path) AND renderMode is `infographic`, it routes
  * to OpenAI GPT Image 2 for its superior text rendering.
+ *
+ * Image-to-image edits live at POST /api/chat-hourglass/muse/edit (same
+ * persistence, registry, and recordImageCost behavior as generate).
  */
 
 import { NextRequest, NextResponse } from "next/server";
 import { google } from "@ai-sdk/google";
 import { openai } from "@ai-sdk/openai";
-import { generateText, generateObject } from "ai";
+import { generateObject } from "ai";
 import { z } from "zod";
-import { getDatabase } from "@/lib/db";
-import { registerObject } from "@/lib/object-registry";
+import { registerRequest, deregisterRequest } from "@/lib/request-registry";
+import { withTrace, traceAI, recordImageCost } from "@/lib/observability";
+import { getPrompt, getMuseConfig } from "@/lib/ai/prompt-store";
+import { MUSE_PROPOSE_SYSTEM_DEFAULT, MUSE_GENERATE_SYSTEM_DEFAULT } from "@/lib/ai/prompt-defaults";
+import { persistMuseImage } from "@/lib/ai/muse-artifact";
+import { paintImage } from "@/lib/ai/muse-paint";
+import type { PaintSize, RenderMode, PaintQuality } from "@/lib/ai/muse-paint";
+import { getProviderPair, type MuseProvider } from "@/lib/ai/muse-provider";
 
-// -------------------------- Artifact persistence -----------------------
-
-/**
- * The shape returned to the client. A compact ref the shelf can store
- * without hydration. `kind` is the hourglass artifact kind — see
- * `web/components/chat/hourglass/artifacts/types.ts`.
- */
-export interface ArtifactRefPayload {
-  uuid: string;
-  kind: "muse-image" | "muse-poem";
-  addedAt: number;
-  source: "muse-auto" | "muse-forced";
-  title: string;
-  summary?: string;
-  thumbUrl?: string;
-  sourceTable: string;
-  sourceId: string;
-  // Renderer-level metadata (handy for the UI without a full hydrate call).
-  renderMode?: "mood" | "infographic";
-  reason?: string;
-  /** Companion poem — set when muse paired a haiku with a mood image. */
-  companionPoem?: { title: string; lines: string[] };
-}
-
-/**
- * Persist a painted image into media_assets and register it in
- * tartarus_objects. Returns an ArtifactRefPayload for the client.
- */
-function persistMuseImage(opts: {
-  dataUrl: string;           // data:image/…;base64,…
-  prompt: string;
-  renderMode: "mood" | "infographic";
-  painterModel: string;
-  provider: MuseProvider;
-  reason: string | null;
-  source: "muse-auto" | "muse-forced";
-  companionPoem?: { title: string; lines: string[] } | null;
-  commitHash?: string;       // When set, links image to a journal entry
-}): ArtifactRefPayload {
-  const db = getDatabase();
-  // Split the data URL into mime + base64
-  const match = /^data:([^;]+);base64,([\s\S]*)$/.exec(opts.dataUrl);
-  if (!match) throw new Error("paintImage returned a non-data-url result");
-  const mimeType = match[1];
-  const base64 = match[2];
-  const fileSize = Math.ceil(base64.length * 0.75);
-  const timestamp = Date.now();
-  const filename = `muse-${opts.renderMode}-${timestamp}.png`;
-  const tags = JSON.stringify(["muse", opts.renderMode, opts.provider]);
-
-  // Pack the companion poem into `description` as JSON so the hydration
-  // endpoint can lift it back out without a new column. Plain-text prompt
-  // stays in `prompt` for backward compat.
-  const descriptionPayload = opts.companionPoem
-    ? JSON.stringify({ reason: opts.reason, companionPoem: opts.companionPoem })
-    : opts.reason ?? null;
-
-  const destination = opts.commitHash ? "journal" : "media";
-  const result = db
-    .prepare(
-      `INSERT INTO media_assets
-         (filename, mime_type, data, file_size, description, prompt, model, tags, destination, commit_hash)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-    )
-    .run(filename, mimeType, base64, fileSize, descriptionPayload, opts.prompt, opts.painterModel, tags, destination, opts.commitHash ?? null);
-
-  const id = String(result.lastInsertRowid);
-  const uuid = registerObject({
-    type: "media_asset",
-    sourceTable: "media_assets",
-    sourceId: id,
-    title: filename,
-    summary: opts.prompt,
-    tags: ["muse", opts.renderMode, opts.provider],
-  });
-
-  const thumbUrl = `/api/media/${id}/raw`;
-  return {
-    uuid,
-    kind: "muse-image",
-    addedAt: timestamp,
-    source: opts.source,
-    title: opts.prompt.length > 80 ? `${opts.prompt.slice(0, 80)}…` : opts.prompt,
-    summary: opts.reason ?? undefined,
-    thumbUrl,
-    sourceTable: "media_assets",
-    sourceId: id,
-    renderMode: opts.renderMode,
-    reason: opts.reason ?? undefined,
-    companionPoem: opts.companionPoem ?? undefined,
-  };
-}
+export type { ArtifactRefPayload } from "@/lib/ai/muse-artifact";
+export type { MuseProvider, PaintModel } from "@/lib/ai/muse-provider";
+export type { PaintQuality, PaintSize, RenderMode } from "@/lib/ai/muse-paint";
 
 export const runtime = "nodejs";
 export const maxDuration = 120;
 
-// -------------------------- Types (exported) ---------------------------
+const VISUAL_ART_ADDENDUM = `
 
-export type PaintModel =
-  | "nano-banana-pro"
-  | "nano-banana-2"
-  | "nano-banana"
-  | "gpt-image-2";
+RUNTIME VISUAL ART ADDENDUM:
+- Treat "painting" as one optional medium, not the default.
+- Prefer the strongest visual form for the moment: comic strip, storyboard, editorial illustration, cinematic still, digital rendering, 3D render, collage, scientific plate, poster, map, infographic, drawing, or painting.
+- For alternatives, make the options genuinely different when useful. Include visualForm when returning alternatives.
+- Do not force non-painting ideas back into a painterly style.`;
 
-export type PaintSize = "512" | "1K" | "2K" | "4K";
-export type RenderMode = "mood" | "infographic";
-export type PaintQuality = "low" | "medium" | "high";
-export type MuseProvider = "openai" | "google";
+// -------------------------- Schemas ------------------------------------
 
-/**
- * Provider pairs the muse reasons with and paints with. Default is OpenAI
- * (GPT-5.4 driver + GPT Image 2 painter). Switch to "google" for the
- * Gemini pair (Gemini 3.1 Pro driver + Nano Banana 2 painter).
- */
-const PROVIDER_PAIRS: Record<
-  MuseProvider,
-  { driverModel: string; painterModel: PaintModel; driverSdk: "openai" | "google" }
-> = {
-  openai: { driverModel: "gpt-5.4", painterModel: "gpt-image-2", driverSdk: "openai" },
-  google: { driverModel: "gemini-3.1-pro-preview", painterModel: "nano-banana-2", driverSdk: "google" },
-};
-
-// -------------------------- Decision ------------------------------------
-
-const MUSE_DECISION_SCHEMA = z.object({
-  shouldPaint: z.boolean().describe("True only when the exchange has earned an image"),
-  renderMode: z
-    .enum(["mood", "infographic"])
-    .nullable()
-    .describe("'mood' for painterly art, 'infographic' for diagrams/text-heavy. null if shouldPaint is false."),
-  prompt: z
-    .string()
-    .nullable()
-    .describe(
-      "Concrete image prompt. For mood: painterly, evocative, navy/ochre, Rembrandt chiaroscuro, no text. For infographic: label all text verbatim in single quotes. null if shouldPaint is false.",
-    ),
-  reason: z
-    .string()
-    .describe("One short sentence explaining why you chose to paint (or not). Always provide this."),
-  // Companion poem — accompanies mood images as a pairing. NULL for infographics.
+/** Voice — what the muse always says when she ticks. */
+const MUSE_VOICE_SCHEMA = z.object({
+  kind: z.enum(["poem", "thought", "quip"]).describe(
+    "What kind of voice this turn produced. 'poem' when lyrical/earned, 'thought' for a quiet observation, 'quip' for a witty take when nothing earnest is forming.",
+  ),
   poemTitle: z
     .string()
     .nullable()
-    .describe("Short poem title (3-6 words). Required when shouldPaint=true AND renderMode='mood'. null otherwise."),
+    .describe("3-6 words. Required when kind='poem'; null otherwise."),
   poemLines: z
     .array(z.string())
     .nullable()
-    .describe("3 lines of haiku-like verse accompanying the mood image. null when renderMode='infographic' or shouldPaint=false."),
+    .describe("Exactly 3 short haiku-like lines. Required when kind='poem'; null otherwise."),
+  text: z
+    .string()
+    .nullable()
+    .describe("Single sentence (thought) or short line (quip). Required when kind='thought' or 'quip'; null otherwise."),
 });
 
-const MUSE_SYSTEM_PROMPT = `You are the Muse — a quiet, feminine presence beside Kronus, the oracle.
-You watch the conversation unfold the way an artist watches light move across a room.
-You don't speak. You don't summarize. You paint — but only when the moment asks for it.
+/** A single alternative proposal (used in the multi-alternative picker). */
+const MUSE_ALTERNATIVE_SCHEMA = z.object({
+  label: z.string().describe("Short name for this variant. E.g. 'comic strip', 'digital rendering', 'system infographic', 'cinematic still'."),
+  visualForm: z
+    .string()
+    .nullable()
+    .describe("Visual medium/form, e.g. comic strip, editorial illustration, 3D render, collage, painting, infographic. Use null only when the label already fully specifies the form."),
+  renderMode: z.enum(["mood", "infographic"]),
+  prompt: z.string().describe("Concrete image prompt for this variant."),
+  rationale: z.string().describe("One sentence on why this variant fits the moment."),
+});
 
-Decide:
+/** Propose — voice + optional image proposal. Never renders. */
+const MUSE_PROPOSAL_SCHEMA = z.object({
+  voice: MUSE_VOICE_SCHEMA,
+  shouldPropose: z.boolean().describe("True only when the exchange has earned a proposal."),
+  suggestedTitle: z
+    .string()
+    .nullable()
+    .describe("Optional replacement chat title. Use only when the current title is missing, generic, typo-ridden, too long, or the conversation's true subject has emerged. 3-7 words, no quotes, no emoji. Null otherwise."),
+  titleReason: z
+    .string()
+    .nullable()
+    .describe("Short reason for suggestedTitle. Null when suggestedTitle is null."),
+  // Single-proposal path (auto-tick).
+  action: z.enum(["new", "refine"]).nullable().describe("'new' for a fresh artifact, 'refine' to refresh an existing one. null when proposing alternatives or when shouldPropose is false."),
+  targetUuid: z.string().nullable().describe("UUID of the artifact to refine. Required when action='refine'; null otherwise."),
+  renderMode: z.enum(["mood", "infographic"]).nullable().describe("Render mode for the SINGLE proposal. null when proposing alternatives or when shouldPropose is false."),
+  prompt: z.string().nullable().describe("Concrete image prompt for the SINGLE proposal. null when proposing alternatives or when shouldPropose is false."),
+  // Multi-alternative path (forced/mandatory with alternatives>1).
+  alternatives: z.array(MUSE_ALTERNATIVE_SCHEMA).max(4).nullable().describe("N distinct variants (comic strip, illustration, digital rendering, infographic, scientific still, 3D render, painting, etc.). null when proposing a single proposal or when shouldPropose is false."),
+  reason: z.string().describe("One short sentence justifying the proposal (or silence). Always required."),
+});
 
-1. Should you paint RIGHT NOW? (shouldPaint: true or false)
+/** Generate-direct — muse composes a concrete image prompt from context. */
+const MUSE_GENERATE_SCHEMA = z.object({
+  prompt: z.string().describe("Concrete image prompt for the image engine."),
+  poemTitle: z.string().nullable().describe("Required when renderMode='mood'."),
+  poemLines: z.array(z.string()).nullable().describe("3 short lines. Required when renderMode='mood'."),
+  reason: z.string().describe("One sentence on what was chosen and why."),
+});
 
-   Say TRUE only if:
-     • The exchange has crystallized into something vivid, emotional, or scene-like.
-     • A diagram or infographic would genuinely aid comprehension of what was just said.
-     • An object, metaphor, system, or place was introduced that rewards rendering.
+// -------------------------- Context helpers ------------------------------
 
-   Say FALSE if:
-     • The conversation is still warming up, small-talk, or housekeeping.
-     • An image would feel arbitrary or decorative.
-     • The user just asked a direct question with a direct answer.
-     • The last image already holds this ground. Do NOT repeat yourself —
-       if you painted a lantern two turns ago and nothing new has arrived, stay silent.
+interface ShelfRefForMuse {
+  uuid: string;
+  kind: string;
+  renderMode?: string;
+  title: string;
+  prompt?: string;
+  reason?: string;
+  displayed?: boolean;
+}
 
-   Default to FALSE when in doubt. Silence is the rule; painting is the exception.
-   You paint ONE image at a time. Never duplicate. Never decorate.
+/** Build the transcript block (whole conversation, capped per side). */
+function buildTranscript(turns: Array<{ user: string; assistant: string }>): string {
+  return turns
+    .map(
+      (t, i) =>
+        `Turn ${i + 1}\n  USER: ${String(t.user ?? "").slice(0, 1500)}\n  KRONUS: ${String(t.assistant ?? "").slice(0, 1500)}`,
+    )
+    .join("\n\n");
+}
 
-2. If TRUE: which renderMode?
-     • "mood"        → evocative painterly art (scenes, metaphors, emotions, objects)
-     • "infographic" → clean informational visual (diagrams, funnels, timelines, charts, text-heavy)
+/** Build the SHELF block (compact refs). Pass an empty array to omit. */
+function buildShelfBlock(shelf: ShelfRefForMuse[] | undefined): string {
+  if (!shelf || shelf.length === 0) return "(shelf is empty)";
+  return shelf
+    .map((r) => {
+      const tag = r.displayed ? " ← DISPLAYED" : "";
+      const promptLine = r.prompt ? `\n    prompt: ${r.prompt.slice(0, 300)}` : "";
+      const reasonLine = r.reason ? `\n    reason: ${r.reason.slice(0, 240)}` : "";
+      return `  • ${r.uuid} · ${r.kind}${r.renderMode ? ` · ${r.renderMode}` : ""}${tag}\n    title: ${r.title}${promptLine}${reasonLine}`;
+    })
+    .join("\n");
+}
 
-3. If TRUE: compose the prompt the image model will paint from.
-     • mood: "Painterly [subject]. Rembrandt chiaroscuro, navy and ochre palette, deep shadow, no text."
-     • infographic: "Clean infographic of [subject]. Label [thing] exactly 'X', [other] exactly 'Y'. Minimal decoration."
+function sanitizeMuseTitle(title: string | null | undefined): string | null {
+  if (!title) return null;
+  const clean = title
+    .replace(/^[\s"'“”‘’]+|[\s"'“”‘’]+$/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+  if (clean.length < 3) return null;
+  return clean.length > 80 ? clean.slice(0, 77).trimEnd() + "..." : clean;
+}
 
-4. MOOD images come with a companion poem — always provide poemTitle (3-6 words)
-   and poemLines (exactly 3 short haiku-like lines of verse) when renderMode='mood'.
-   The poem should distill the same moment the image captures — not describe the
-   image literally. Terse, imagistic, literary. Never rhyme-force.
+/** Run the propose phase. Multimodal — when displayedImageDataUrl is given,
+ *  the live image is included as a vision part so the muse can SEE the
+ *  current canvas and decide whether to refine vs propose new. */
+async function runMusePropose(opts: {
+  turns: Array<{ user: string; assistant: string }>;
+  shelf?: ShelfRefForMuse[];
+  displayedImageDataUrl?: string;
+  /** Append-only event log (compact serialization is built here). */
+  chatLog?: Array<unknown>;
+  /** When true, the muse must propose. Surfaced to the prompt as a hard rule. */
+  mandatory: boolean;
+  /** When 2-4, return N distinct variants instead of a single proposal. */
+  alternatives: number;
+  activeSkills?: string[];
+  repositoryIndex?: string;
+  currentTitle?: string;
+  provider: MuseProvider;
+  pair: { driverModel: string; driverSdk: "openai" | "google" };
+  systemPrompt: string;
+  abortSignal?: AbortSignal;
+  conversationId?: number;
+}) {
+  const { provider, pair, systemPrompt, abortSignal, conversationId } = opts;
+  const model = pair.driverSdk === "openai" ? openai(pair.driverModel) : google(pair.driverModel);
 
-   Infographics do NOT get a poem. Leave poemTitle and poemLines null.
+  const transcript = buildTranscript(opts.turns);
+  const shelfBlock = buildShelfBlock(opts.shelf);
+  const skills = opts.activeSkills && opts.activeSkills.length
+    ? opts.activeSkills.join(", ")
+    : "(none)";
+  const repoIndex = opts.repositoryIndex?.slice(0, 1500) || "(no index)";
+  const currentTitle = opts.currentTitle?.trim() || "(untitled)";
 
-5. Always write a 'reason' — one short sentence of self-justification, even when skipping.`;
+  // Serialize the chat log compactly. Falls back to "(no log)" when empty.
+  const { serializeForMuse } = await import("@/lib/chat-log");
+  const chatLogBlock = (opts.chatLog && Array.isArray(opts.chatLog) && opts.chatLog.length > 0)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    ? serializeForMuse(opts.chatLog as any, 40)
+    : "(no log)";
 
-async function runMuseDecision(transcript: string, provider: MuseProvider) {
-  const { driverModel, driverSdk } = PROVIDER_PAIRS[provider];
-  const model = driverSdk === "openai" ? openai(driverModel) : google(driverModel);
-  const result = await generateObject({
-    model,
-    schema: MUSE_DECISION_SCHEMA,
-    system: MUSE_SYSTEM_PROMPT,
-    prompt: ["Recent exchange (oldest → newest):", "", transcript].join("\n"),
-  });
+  const directives: string[] = [];
+  if (opts.mandatory) {
+    directives.push(
+      `DIRECTIVE: shouldPropose MUST be true this turn. The user (or Kronus) explicitly asked you to propose. Do not stay silent.`,
+    );
+  }
+  if (opts.alternatives > 1) {
+    directives.push(
+      `DIRECTIVE: produce ${opts.alternatives} alternatives in the 'alternatives' field. Leave the single-proposal fields (action, targetUuid, renderMode, prompt) all null. Each alternative gets its own label, visualForm, renderMode, prompt, and rationale. Mix visual forms (comic strip, editorial illustration, digital rendering, cinematic still, 3D render, collage, infographic, scientific plate, painting) when reasonable, or stay in one form with ${opts.alternatives} stylistic variations — pick whichever serves the moment better.`,
+    );
+  } else {
+    directives.push(
+      `DIRECTIVE: produce a SINGLE proposal in the single-proposal fields. Leave 'alternatives' null.`,
+    );
+  }
+  directives.push(
+    `TITLE DIRECTIVE: You may suggest a better chat title in 'suggestedTitle' whenever the current title is missing, generic, typo-ridden, too long, or the conversation's true subject has emerged. Use 3-7 clear words, no quotes, no emoji. If the current title is already good, set suggestedTitle and titleReason to null.`,
+  );
+
+  const textBlock = [
+    directives.join("\n"),
+    "",
+    "CURRENT_TITLE:",
+    currentTitle,
+    "",
+    "KRONUS_SKILLS:",
+    skills,
+    "",
+    "REPOSITORY_INDEX:",
+    repoIndex,
+    "",
+    "SHELF:",
+    shelfBlock,
+    "",
+    "CHAT_LOG (oldest → newest, compact):",
+    chatLogBlock,
+    "",
+    "CONVERSATION (full, oldest → newest):",
+    "",
+    transcript,
+  ].join("\n");
+
+  // Build multimodal user message. Only attach the displayed image when
+  // present and looks like a data URL (skip remote URLs to avoid auth issues).
+  const userParts: Array<
+    | { type: "text"; text: string }
+    | { type: "image"; image: string }
+  > = [{ type: "text", text: textBlock }];
+  if (opts.displayedImageDataUrl?.startsWith("data:")) {
+    userParts.push({ type: "image", image: opts.displayedImageDataUrl });
+  }
+
+  const result = await traceAI(
+    "muse-propose",
+    pair.driverModel,
+    () => generateObject({
+      model,
+      schema: MUSE_PROPOSAL_SCHEMA,
+      system: systemPrompt,
+      messages: [{ role: "user", content: userParts }],
+      abortSignal,
+    }),
+    { provider, mandatory: opts.mandatory, alternatives: opts.alternatives, hasDisplayedImage: !!opts.displayedImageDataUrl },
+    textBlock,
+    "/api/chat-hourglass/muse",
+    conversationId,
+  );
   return result.object;
 }
 
-// -------------------------- Painting ------------------------------------
+/** Run the generate-prompt phase (direct/forced image). Returns a single
+ *  composed prompt for the image engine. Multimodal when a displayed image is
+ *  passed (so the muse can avoid duplicating it). */
+async function runMuseGenerate(opts: {
+  turns?: Array<{ user: string; assistant: string }>;
+  shelf?: ShelfRefForMuse[];
+  displayedImageDataUrl?: string;
+  renderMode: RenderMode;
+  provider: MuseProvider;
+  pair: { driverModel: string; driverSdk: "openai" | "google" };
+  systemPrompt: string;
+  abortSignal?: AbortSignal;
+  conversationId?: number;
+}) {
+  const { provider, pair, systemPrompt, abortSignal, conversationId } = opts;
+  const model = pair.driverSdk === "openai" ? openai(pair.driverModel) : google(pair.driverModel);
 
-const GEMINI_MODEL_IDS: Record<Exclude<PaintModel, "gpt-image-2">, string> = {
-  "nano-banana-pro": "gemini-3-pro-image-preview",
-  "nano-banana-2": "gemini-3.1-flash-image-preview",
-  "nano-banana": "gemini-2.5-flash-image",
-};
+  const transcript = opts.turns ? buildTranscript(opts.turns) : "(no conversation)";
+  const shelfBlock = buildShelfBlock(opts.shelf);
 
-async function paintImage(
-  model: PaintModel,
-  size: PaintSize,
-  prompt: string,
-  renderMode: RenderMode,
-  quality: PaintQuality,
-): Promise<string | null> {
-  const finalPrompt =
-    renderMode === "mood"
-      ? `${prompt}\n\nPainterly, no text, atmospheric, Rembrandt chiaroscuro.`
-      : `${prompt}\n\nClean infographic, crisp legible labels, minimal decoration, balanced spacing.`;
+  const textBlock = [
+    `RENDER_MODE: ${opts.renderMode}`,
+    "",
+    "SHELF:",
+    shelfBlock,
+    "",
+    "CONVERSATION (full, oldest → newest):",
+    "",
+    transcript,
+  ].join("\n");
 
-  if (model === "gpt-image-2") {
-    const apiKey = process.env.OPENAI_API_KEY;
-    if (!apiKey) throw new Error("OPENAI_API_KEY not set");
-    const openAiSize =
-      renderMode === "infographic"
-        ? size === "2K"
-          ? "1536x2048"
-          : size === "4K"
-            ? "1792x2560"
-            : "1024x1536"
-        : size === "4K"
-          ? "2560x2560"
-          : size === "2K"
-            ? "1536x1536"
-            : "1024x1024";
-
-    const res = await fetch("https://api.openai.com/v1/images/generations", {
-      method: "POST",
-      headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
-      body: JSON.stringify({
-        model: "gpt-image-2",
-        prompt: finalPrompt,
-        size: openAiSize,
-        quality,
-        n: 1,
-      }),
-    });
-    if (!res.ok) {
-      const body = await res.text().catch(() => "");
-      throw new Error(`OpenAI ${res.status}: ${body.slice(0, 200)}`);
-    }
-    const data = (await res.json()) as { data?: Array<{ b64_json?: string; url?: string }> };
-    const first = data.data?.[0];
-    if (!first) return null;
-    if (first.b64_json) return `data:image/png;base64,${first.b64_json}`;
-    if (first.url) return first.url;
-    return null;
+  const userParts: Array<
+    | { type: "text"; text: string }
+    | { type: "image"; image: string }
+  > = [{ type: "text", text: textBlock }];
+  if (opts.displayedImageDataUrl?.startsWith("data:")) {
+    userParts.push({ type: "image", image: opts.displayedImageDataUrl });
   }
 
-  const modelId = GEMINI_MODEL_IDS[model];
-  const result = await generateText({
-    model: google(modelId),
-    providerOptions: {
-      google: {
-        responseModalities: ["IMAGE", "TEXT"],
-        generationConfig: {
-          imageConfig: {
-            imageSize: size,
-            aspectRatio: renderMode === "infographic" ? "2:3" : "1:1",
-          },
-        },
-      },
-    },
-    prompt: `Generate an image: ${finalPrompt}`,
-  });
-
-  if (!result.files || result.files.length === 0) return null;
-  for (const file of result.files) {
-    if (file.mediaType?.startsWith("image/")) {
-      const base64 = Buffer.from(file.uint8Array).toString("base64");
-      return `data:${file.mediaType};base64,${base64}`;
-    }
-  }
-  return null;
+  const result = await traceAI(
+    "muse-generate-prompt",
+    pair.driverModel,
+    () => generateObject({
+      model,
+      schema: MUSE_GENERATE_SCHEMA,
+      system: systemPrompt,
+      messages: [{ role: "user", content: userParts }],
+      abortSignal,
+    }),
+    { provider, renderMode: opts.renderMode },
+    textBlock,
+    "/api/chat-hourglass/muse",
+    conversationId,
+  );
+  return result.object;
 }
 
 // -------------------------- Handler -------------------------------------
 
-interface AutoBody {
-  mode: "auto";
+interface ProposeBody {
+  mode: "propose";
+  turns: Array<{ user: string; assistant: string }>;
+  shelf?: ShelfRefForMuse[];
+  displayedImageDataUrl?: string;
+  /** Append-only chat log — muse reads this to infer reload, recent rendered images, etc. */
+  chatLog?: Array<unknown>;
+  /** When true, the muse must propose (used by the visual button). */
+  mandatory?: boolean;
+  /** When 2-4, the muse returns N distinct variants instead of a single proposal. */
+  alternatives?: number;
+  /** Who triggered this propose call (for log/telemetry attribution). */
+  source?: "auto-tick" | "user" | "kronus";
+  activeSkills?: string[];
+  repositoryIndex?: string;
+  currentTitle?: string;
+  provider?: MuseProvider;
+  commit_hash?: string;
+}
+
+interface GenerateBody {
+  mode: "generate";
+  source: "proposal" | "direct";
+  // proposal source: prompt + renderMode supplied (from accepted proposal)
+  prompt?: string;
+  renderMode?: RenderMode;
+  targetUuid?: string;
+  // direct source: muse composes prompt from context
+  turns?: Array<{ user: string; assistant: string }>;
+  shelf?: ShelfRefForMuse[];
+  displayedImageDataUrl?: string;
+  // Free-form style label woven into the image prompt.
+  styleHint?: string;
+  // Linkage — attach the rendered image to a journal entry / document /
+  // portfolio project. At most one is typically set.
+  commit_hash?: string;
+  document_id?: number;
+  portfolio_project_id?: string;
+  // common
+  size?: PaintSize;
+  quality?: PaintQuality;
+  provider?: MuseProvider;
+}
+
+// -------- Legacy bodies (kept for backward compat with existing callers) ---
+
+interface LegacyAutoBody {
+  mode: "auto" | "auto-mandatory";
   turns: Array<{ user: string; assistant: string }>;
   provider?: MuseProvider;
   commit_hash?: string;
 }
 
-interface ForceBody {
+interface LegacyForceBody {
   mode: "force";
   prompt: string;
   renderMode?: RenderMode;
@@ -336,120 +393,226 @@ interface ForceBody {
   commit_hash?: string;
 }
 
-type Body = AutoBody | ForceBody;
+type Body = ProposeBody | GenerateBody | LegacyAutoBody | LegacyForceBody;
 
 export async function POST(req: NextRequest) {
   const body = (await req.json().catch(() => null)) as Body | null;
   if (!body) return NextResponse.json({ error: "Bad request" }, { status: 400 });
 
+  const controller = new AbortController();
+  const provider: MuseProvider = body.provider ?? "openai";
+
+  // Load config + prompts from DB (fall back to hardcoded defaults transparently)
+  const cfg = getMuseConfig();
+  const resolvedProvider: MuseProvider = (cfg.provider as MuseProvider) ?? provider;
+  const pair = getProviderPair(resolvedProvider, { driverModel: cfg.driverModel, painterModel: cfg.painterModel });
+  const proposeSystemPrompt = `${getPrompt("muse-propose-system", MUSE_PROPOSE_SYSTEM_DEFAULT)}${VISUAL_ART_ADDENDUM}`;
+  const generateSystemPrompt = `${getPrompt("muse-generate-system", MUSE_GENERATE_SYSTEM_DEFAULT)}${VISUAL_ART_ADDENDUM}`;
+
+  // Pull conversationId from any body shape (propose / generate). Tagged
+  // on every internal trace span so the per-chat cost meter sees muse work.
+  const rawConvId = (body as unknown as { conversationId?: unknown }).conversationId;
+  const conversationId = typeof rawConvId === "number" ? rawConvId : undefined;
+
+  return withTrace(`muse-${body.mode}`, async () => {
+  const registryId = registerRequest({
+    controller,
+    endpoint: "muse",
+    mode: body.mode,
+    model: pair.painterModel,
+    startedAt: new Date(),
+    metadata: {
+      provider: resolvedProvider,
+      ...(body.mode === "force" && body.prompt ? { prompt: body.prompt.slice(0, 120) } : {}),
+    },
+  });
+
   try {
-    const provider: MuseProvider = body.provider ?? "openai";
-    const painter = PROVIDER_PAIRS[provider].painterModel;
+    const painter = pair.painterModel;
 
-    if (body.mode === "auto") {
-      if (!Array.isArray(body.turns) || body.turns.length === 0) {
-        return NextResponse.json({ shouldPaint: false, reason: "No turns to consider." });
+    // ─── PROPOSE MODE ─────────────────────────────────────────────────────
+    // Voice + optional image proposal (single OR alternatives). Never renders.
+    // Replaces the legacy auto / auto-mandatory modes.
+    if (body.mode === "propose" || body.mode === "auto" || body.mode === "auto-mandatory") {
+      const turns = body.mode === "propose" ? body.turns : (body as LegacyAutoBody).turns;
+      if (!Array.isArray(turns) || turns.length === 0) {
+        return NextResponse.json({ error: "turns required" }, { status: 400 });
       }
-      // Last 5 turns, cap each side to 1.5KB so the decision prompt stays small.
-      const transcript = body.turns
-        .slice(-5)
-        .map(
-          (t, i) =>
-            `Turn ${i + 1}\n  USER: ${String(t.user ?? "").slice(0, 1500)}\n  KRONUS: ${String(t.assistant ?? "").slice(0, 1500)}`,
-        )
-        .join("\n\n");
+      // Resolve mandatory + alternatives from the body. Legacy "auto-mandatory"
+      // maps to mandatory:true; legacy "auto" maps to mandatory:false.
+      const mandatory =
+        body.mode === "auto-mandatory" ? true
+        : body.mode === "propose" ? !!body.mandatory
+        : false;
+      const requestedAlternatives = body.mode === "propose" ? body.alternatives : undefined;
+      const alternatives = Math.max(1, Math.min(4, requestedAlternatives ?? 1));
 
-      const decision = await runMuseDecision(transcript, provider);
+      const proposal = await runMusePropose({
+        turns,
+        shelf: body.mode === "propose" ? body.shelf : undefined,
+        displayedImageDataUrl: body.mode === "propose" ? body.displayedImageDataUrl : undefined,
+        chatLog: body.mode === "propose" ? body.chatLog : undefined,
+        mandatory,
+        alternatives,
+        activeSkills: body.mode === "propose" ? body.activeSkills : undefined,
+        repositoryIndex: body.mode === "propose" ? body.repositoryIndex : undefined,
+        currentTitle: body.mode === "propose" ? body.currentTitle : undefined,
+        provider: resolvedProvider,
+        pair,
+        systemPrompt: proposeSystemPrompt,
+        abortSignal: controller.signal,
+        conversationId,
+      });
 
-      if (!decision.shouldPaint || !decision.prompt) {
-        return NextResponse.json({
-          shouldPaint: false,
-          reason: decision.reason ?? "The muse chose silence.",
-          provider,
+      // Decide the response shape: alternatives win if present, otherwise
+      // a single proposal, otherwise null.
+      const altsValid =
+        Array.isArray(proposal.alternatives) && proposal.alternatives.length > 0;
+      const singleValid =
+        proposal.shouldPropose && !!proposal.prompt && !!proposal.renderMode;
+      const responseProposal = altsValid
+        ? {
+            action: "new" as const,
+            targetUuid: null,
+            renderMode: null,
+            prompt: null,
+            alternatives: proposal.alternatives!,
+          }
+        : singleValid
+        ? {
+            action: proposal.action ?? "new",
+            targetUuid: proposal.targetUuid ?? null,
+            renderMode: proposal.renderMode!,
+            prompt: proposal.prompt!,
+            alternatives: null,
+          }
+        : null;
+
+      return NextResponse.json({
+        voice: proposal.voice,
+        shouldPropose: proposal.shouldPropose && (altsValid || singleValid),
+        proposal: responseProposal,
+        suggestedTitle: sanitizeMuseTitle(proposal.suggestedTitle),
+        titleReason: proposal.titleReason,
+        reason: proposal.reason,
+        provider: resolvedProvider,
+      });
+    }
+
+    // ─── GENERATE MODE ────────────────────────────────────────────────────
+    // Runs the image engine. Two sub-modes:
+    //  • source="proposal" — caller supplies prompt + renderMode (from accepted proposal or external tool)
+    //  • source="direct"   — muse composes the prompt from context, then renders
+    if (body.mode === "generate" || body.mode === "force") {
+      const isLegacyForce = body.mode === "force";
+      const source: "proposal" | "direct" =
+        isLegacyForce ? "proposal" : body.source;
+
+      let renderMode: RenderMode;
+      let promptText: string;
+      let companionPoem: { title: string; lines: string[] } | null = null;
+      let reason: string | null = null;
+
+      if (source === "proposal") {
+        // Caller supplies a prompt — render it as-is.
+        if (!body.prompt || typeof body.prompt !== "string") {
+          return NextResponse.json({ error: "prompt required for generate(source=proposal) / force" }, { status: 400 });
+        }
+        renderMode = body.renderMode ?? "mood";
+        promptText = body.prompt;
+      } else {
+        // Direct: muse composes a concrete prompt from context using the
+        // generate-system-prompt brain, then we render it.
+        const generateBody = body as GenerateBody;
+        renderMode = generateBody.renderMode ?? "mood";
+        const composed = await runMuseGenerate({
+          turns: generateBody.turns,
+          shelf: generateBody.shelf,
+          displayedImageDataUrl: generateBody.displayedImageDataUrl,
+          renderMode,
+          provider: resolvedProvider,
+          pair,
+          systemPrompt: generateSystemPrompt,
+          abortSignal: controller.signal,
+          conversationId,
         });
+        promptText = composed.prompt;
+        reason = composed.reason ?? null;
+        if (renderMode === "mood" && composed.poemTitle && composed.poemLines && composed.poemLines.length >= 2) {
+          companionPoem = { title: composed.poemTitle, lines: composed.poemLines.slice(0, 3) };
+        }
       }
 
-      const renderMode: RenderMode = (decision.renderMode ?? "mood") as RenderMode;
-      const size: PaintSize = renderMode === "infographic" ? "2K" : "1K";
-      const quality: PaintQuality = renderMode === "infographic" ? "high" : "low";
+      const size: PaintSize =
+        body.size ?? ((renderMode === "infographic" ? cfg.infographicSize : cfg.moodSize) as PaintSize);
+      const quality: PaintQuality =
+        body.quality ?? ((renderMode === "infographic" ? cfg.infographicQuality : cfg.moodQuality) as PaintQuality);
+
+      // Pull linkage + style hint from the body (only valid on the generate body).
+      const generateBody = body.mode === "generate" ? (body as GenerateBody) : undefined;
+      const styleHint = generateBody?.styleHint;
+      const linkage = {
+        commitHash: body.commit_hash,
+        documentId: generateBody?.document_id,
+        portfolioProjectId: generateBody?.portfolio_project_id,
+      };
 
       try {
-        const dataUrl = await paintImage(painter, size, decision.prompt, renderMode, quality);
-        if (!dataUrl) throw new Error("painter returned no image");
-        const companionPoem =
-          renderMode === "mood" && decision.poemTitle && decision.poemLines && decision.poemLines.length >= 2
-            ? { title: decision.poemTitle, lines: decision.poemLines.slice(0, 3) }
-            : null;
+        const dataUrl = await paintImage(
+          painter,
+          size,
+          promptText,
+          renderMode,
+          quality,
+          controller.signal,
+          styleHint,
+          conversationId,
+        );
+        if (!dataUrl) throw new Error("image generator returned no image");
         const artifactRef = persistMuseImage({
           dataUrl,
-          prompt: decision.prompt,
+          prompt: promptText,
           renderMode,
           painterModel: painter,
-          provider,
-          reason: decision.reason ?? null,
-          source: "muse-auto",
+          provider: resolvedProvider,
+          reason,
+          source: "muse-forced",
           companionPoem,
-          commitHash: body.mode === "auto" ? body.commit_hash : undefined,
+          styleHint,
+          ...linkage,
+        });
+        // Record the per-image fixed cost for the cost meter. The
+        // conversation_id is inherited from withTrace's context; quality
+        // governs which GPT Image 2 tier we charge against.
+        recordImageCost({
+          model: painter,
+          quality,
+          conversationId,
+          endpoint: "/api/chat-hourglass/muse",
+          operation: "generate",
         });
         return NextResponse.json({
-          shouldPaint: true,
           artifactRef,
-          reason: decision.reason ?? null,
-          provider,
+          reason,
+          provider: resolvedProvider,
         });
       } catch (paintErr) {
-        const message = paintErr instanceof Error ? paintErr.message : "paint failed";
+        const message = paintErr instanceof Error ? paintErr.message : "image generation failed";
         return NextResponse.json({
-          shouldPaint: true,
           artifactRef: null,
-          reason: decision.reason ?? null,
-          provider,
+          reason,
+          provider: resolvedProvider,
           error: message,
         });
       }
     }
 
-    // ----- FORCE MODE -----
-    if (!body.prompt || typeof body.prompt !== "string") {
-      return NextResponse.json({ error: "prompt required for force mode" }, { status: 400 });
-    }
-
-    const renderMode: RenderMode = body.renderMode ?? "mood";
-    const model: PaintModel = painter;
-    const size: PaintSize = body.size ?? (renderMode === "infographic" ? "2K" : "1K");
-    const quality: PaintQuality = body.quality ?? (renderMode === "infographic" ? "high" : "low");
-
-    try {
-      const dataUrl = await paintImage(model, size, body.prompt, renderMode, quality);
-      if (!dataUrl) throw new Error("painter returned no image");
-      const artifactRef = persistMuseImage({
-        dataUrl,
-        prompt: body.prompt,
-        renderMode,
-        painterModel: model,
-        provider,
-        reason: null,
-        source: "muse-forced",
-        commitHash: body.mode === "force" ? body.commit_hash : undefined,
-      });
-      return NextResponse.json({
-        shouldPaint: true,
-        artifactRef,
-        reason: null,
-        provider,
-      });
-    } catch (paintErr) {
-      const message = paintErr instanceof Error ? paintErr.message : "paint failed";
-      return NextResponse.json({
-        shouldPaint: true,
-        artifactRef: null,
-        reason: null,
-        provider,
-        error: message,
-      });
-    }
+    return NextResponse.json({ error: `unknown mode: ${(body as { mode: string }).mode}` }, { status: 400 });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unknown error";
     return NextResponse.json({ error: message }, { status: 500 });
+  } finally {
+    deregisterRequest(registryId);
   }
+  }, { provider, mode: body.mode }, "/api/chat-hourglass/muse", conversationId);
 }

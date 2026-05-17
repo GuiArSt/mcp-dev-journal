@@ -95,40 +95,68 @@ export const journalExecutors: Record<string, ToolExecutor> = {
 
   journal_get_project_summary: async (args) => {
     const res = await fetch(
-      `/api/entries?repository=${args.repository}&summary=true`
+      `/api/repository-overviews/${encodeURIComponent(String(args.repository))}`
     );
     const data = await res.json();
+    if (!res.ok) throw new Error(data.error || data.message || "Overview not found");
     return { output: JSON.stringify(data, null, 2) };
   },
 
-  journal_list_project_summaries: async () => {
-    const res = await fetch(`/api/repositories?summaries=true`);
+  journal_list_project_summaries: async (args) => {
+    const res = await fetch(`/api/repository-overviews`);
     const data = await res.json();
-    return { output: JSON.stringify(data, null, 2) };
+    const summaries = (data.summaries || []) as unknown[];
+    const limit = Math.max(1, Math.min(Number(args.limit) || 30, 200));
+    const offset = Math.max(0, Number(args.offset) || 0);
+    const slice = summaries.slice(offset, offset + limit);
+    return {
+      output: JSON.stringify(
+        { summaries: slice, total: data.total ?? summaries.length, limit, offset },
+        null,
+        2
+      ),
+    };
   },
 
   journal_upsert_project_summary: async (args) => {
+    const payload: Record<string, unknown> = {};
+    const keys = [
+      "git_url",
+      "summary",
+      "purpose",
+      "architecture",
+      "key_decisions",
+      "technologies",
+      "status",
+      "file_structure",
+      "tech_stack",
+      "frontend",
+      "backend",
+      "database_info",
+      "services",
+      "custom_tooling",
+      "data_flow",
+      "patterns",
+      "commands",
+      "extended_notes",
+    ] as const;
+    for (const k of keys) {
+      const v = (args as Record<string, unknown>)[k];
+      if (v !== undefined) payload[k] = v;
+    }
     const res = await fetch(
-      `/api/repositories/${encodeURIComponent(String(args.repository))}`,
+      `/api/repository-overviews/${encodeURIComponent(String(args.repository))}`,
       {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          git_url: args.git_url,
-          summary: args.summary,
-          purpose: args.purpose,
-          architecture: args.architecture,
-          key_decisions: args.key_decisions,
-          technologies: args.technologies,
-          status: args.status,
-        }),
+        body: JSON.stringify(payload),
       }
     );
     const data = await res.json();
     if (!res.ok)
-      throw new Error(data.error || "Failed to upsert project summary");
+      throw new Error(data.error || "Failed to upsert Repository overview");
     return {
-      output: `✅ Project summary for **${args.repository}** has been ${data.created ? "created" : "updated"}`,
+      output: `✅ Repository overview (Entry 0) for **${args.repository}** has been ${data.created ? "created" : "updated"}`,
     };
   },
 

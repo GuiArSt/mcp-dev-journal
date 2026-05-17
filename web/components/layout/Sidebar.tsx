@@ -13,6 +13,7 @@ import {
   PanelLeftClose,
   PanelLeft,
   Menu,
+  Activity,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -35,7 +36,13 @@ const navItems = [
     title: "Chat",
     href: "/chat",
     icon: MessageSquare,
-    description: "Talk with Kronus",
+    description: "Kronus and the Muse",
+  },
+  {
+    title: "Legacy",
+    href: "/legacy-chat",
+    icon: MessageSquare,
+    description: "Old Kronus chat",
   },
   {
     title: "Reader",
@@ -44,8 +51,8 @@ const navItems = [
     description: "Browse journal entries",
   },
   {
-    title: "Repository",
-    href: "/repository",
+    title: "Library",
+    href: "/library",
     icon: Archive,
     description: "Unified knowledge base",
   },
@@ -53,13 +60,16 @@ const navItems = [
 
 // Page title mapping for mobile header
 const pageTitles: Record<string, string> = {
-  "/chat": "Kronus",
+  "/chat": "Chat",
+  "/legacy-chat": "Legacy Chat",
   "/reader": "Reader",
-  "/repository": "Repository",
+  "/library": "Library",
+  "/repository": "Library",
   "/kronus": "Kronus History",
   "/multimedia": "Multimedia",
   "/prompts": "Prompts",
   "/integrations": "Integrations",
+  "/monitor": "Monitor",
 };
 
 function getPageTitle(pathname: string): string {
@@ -174,6 +184,39 @@ function SidebarContent({
       </nav>
 
       <Separator className="bg-[var(--tartarus-border)]" />
+
+      {/* Control Panel link (was Monitor) */}
+      <div className={cn("pt-1", expanded ? "px-4" : "px-2")}>
+        {!expanded ? (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Link
+                href="/monitor"
+                className={cn(
+                  "flex w-full items-center justify-center rounded-md p-2 text-[var(--tartarus-ivory-dim)] transition-colors hover:bg-[var(--tartarus-surface)] hover:text-[var(--tartarus-ivory)]",
+                  pathname === "/monitor" && "text-[var(--tartarus-teal)]"
+                )}
+                onClick={onNavigate}
+              >
+                <Settings className="h-4 w-4" />
+              </Link>
+            </TooltipTrigger>
+            <TooltipContent side="right">AI Control Panel</TooltipContent>
+          </Tooltip>
+        ) : (
+          <Link
+            href="/monitor"
+            className={cn(
+              "flex w-full items-center gap-2 rounded-md px-2 py-2 text-sm text-[var(--tartarus-ivory-dim)] transition-colors hover:bg-[var(--tartarus-surface)] hover:text-[var(--tartarus-ivory)]",
+              pathname === "/monitor" && "text-[var(--tartarus-teal)]"
+            )}
+            onClick={onNavigate}
+          >
+            <Settings className="h-4 w-4" />
+            Control Panel
+          </Link>
+        )}
+      </div>
 
       {/* Footer Actions */}
       <div className={cn("space-y-2", expanded ? "p-4" : "p-2")}>

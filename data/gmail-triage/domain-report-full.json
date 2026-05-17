@@ -1,0 +1,7730 @@
+[
+  {
+    "domain": "indeed.com",
+    "count": 6821,
+    "name": "Indeed",
+    "automated": 6251
+  },
+  {
+    "domain": "immobilienscout24.de",
+    "count": 3131,
+    "name": "Anna von ImmoScout24",
+    "automated": 916
+  },
+  {
+    "domain": "email.hotelcareer.de",
+    "count": 1795,
+    "name": "Hotelcareer",
+    "automated": 1789
+  },
+  {
+    "domain": "paypal.de",
+    "count": 1632,
+    "name": "PayPal",
+    "automated": 0
+  },
+  {
+    "domain": "email.hm.com",
+    "count": 1611,
+    "name": "H&M Fashion News",
+    "automated": 1608
+  },
+  {
+    "domain": "amazon.de",
+    "count": 1467,
+    "name": "Amazon.de",
+    "automated": 68
+  },
+  {
+    "domain": "asana.com",
+    "count": 1437,
+    "name": "Asana",
+    "automated": 0
+  },
+  {
+    "domain": "linkedin.com",
+    "count": 1384,
+    "name": "LinkedIn",
+    "automated": 1368
+  },
+  {
+    "domain": "oth-regensburg.de",
+    "count": 1313,
+    "name": "Veronika Schardt",
+    "automated": 0
+  },
+  {
+    "domain": "mail.beehiiv.com",
+    "count": 1140,
+    "name": "Nextool AI",
+    "automated": 1140
+  },
+  {
+    "domain": "e-reply.eis.de",
+    "count": 1120,
+    "name": "EIS: Hei\u00dfe Preise! -97% auf \u00fcber 1.000 Artikel",
+    "automated": 1120
+  },
+  {
+    "domain": "jobrapidoalert.com",
+    "count": 1012,
+    "name": "Jobrapido willkommen",
+    "automated": 1012
+  },
+  {
+    "domain": "news.dominos.de",
+    "count": 991,
+    "name": "Dein Domino's Regensburg",
+    "automated": 588
+  },
+  {
+    "domain": "creators.gumroad.com",
+    "count": 884,
+    "name": "Hasan",
+    "automated": 0
+  },
+  {
+    "domain": "russianpod101.com",
+    "count": 864,
+    "name": "RussianPod101.com",
+    "automated": 864
+  },
+  {
+    "domain": "nytimes.com",
+    "count": 848,
+    "name": "NYTimes.com",
+    "automated": 776
+  },
+  {
+    "domain": "promo.newegg.com",
+    "count": 842,
+    "name": "Newegg.com",
+    "automated": 842
+  },
+  {
+    "domain": "recruit.net",
+    "count": 745,
+    "name": "Recruit.net Job Alert",
+    "automated": 673
+  },
+  {
+    "domain": "gmail.com",
+    "count": 724,
+    "name": "La Mejor Pelicula del Mundo",
+    "automated": 84
+  },
+  {
+    "domain": "getpocket.com",
+    "count": 680,
+    "name": "Pocket",
+    "automated": 0
+  },
+  {
+    "domain": "mail301.jh.edu",
+    "count": 616,
+    "name": "Johns Hopkins Center for Health Security",
+    "automated": 616
+  },
+  {
+    "domain": "update.lieferando.de",
+    "count": 607,
+    "name": "Lieferando",
+    "automated": 561
+  },
+  {
+    "domain": "wg-gesucht.de",
+    "count": 596,
+    "name": "WG-Gesucht.de",
+    "automated": 0
+  },
+  {
+    "domain": "steampowered.com",
+    "count": 589,
+    "name": "Steam",
+    "automated": 0
+  },
+  {
+    "domain": "em.gamestop.com",
+    "count": 537,
+    "name": "GameStop",
+    "automated": 536
+  },
+  {
+    "domain": "r.groupon.com",
+    "count": 520,
+    "name": "Groupon Goods",
+    "automated": 520
+  },
+  {
+    "domain": "google.com",
+    "count": 518,
+    "name": "Google One",
+    "automated": 110
+  },
+  {
+    "domain": "novedades.elpais.com",
+    "count": 506,
+    "name": "EL PA\u00cdS",
+    "automated": 485
+  },
+  {
+    "domain": "lb2.recruit.net",
+    "count": 497,
+    "name": "Recruit.net Job Alert",
+    "automated": 497
+  },
+  {
+    "domain": "vip.dominos.de",
+    "count": 486,
+    "name": "Dein Domino's Regensburg",
+    "automated": 486
+  },
+  {
+    "domain": "substack.com",
+    "count": 479,
+    "name": "kamilkazani from kamilkazani",
+    "automated": 479
+  },
+  {
+    "domain": "tldrnewsletter.com",
+    "count": 477,
+    "name": "TLDR AI",
+    "automated": 476
+  },
+  {
+    "domain": "foreignaffairs.com",
+    "count": 472,
+    "name": "Foreign Affairs",
+    "automated": 466
+  },
+  {
+    "domain": "immobilienzentrum.de",
+    "count": 446,
+    "name": "Immobilien Zentrum",
+    "automated": 428
+  },
+  {
+    "domain": "c.rituals.com",
+    "count": 445,
+    "name": "Rituals Cosmetics",
+    "automated": 445
+  },
+  {
+    "domain": "lieferando.de",
+    "count": 429,
+    "name": "Lieferando.de",
+    "automated": 0
+  },
+  {
+    "domain": "email2.gog.com",
+    "count": 420,
+    "name": "GOG.com Team",
+    "automated": 419
+  },
+  {
+    "domain": "mp1.tripadvisor.com",
+    "count": 401,
+    "name": "Tripadvisor",
+    "automated": 383
+  },
+  {
+    "domain": "irm-net.com",
+    "count": 392,
+    "name": "IRM Network e.V.",
+    "automated": 332
+  },
+  {
+    "domain": "newsletter.mountainwarehouse.com",
+    "count": 391,
+    "name": "Mountain Warehouse",
+    "automated": 391
+  },
+  {
+    "domain": "avaaz.org",
+    "count": 384,
+    "name": "John Senior - Avaaz",
+    "automated": 384
+  },
+  {
+    "domain": "mailing.rewe.de",
+    "count": 377,
+    "name": "REWE PAYBACK Vorteilsmail",
+    "automated": 377
+  },
+  {
+    "domain": "e.economist.com",
+    "count": 357,
+    "name": "The Economist Today",
+    "automated": 335
+  },
+  {
+    "domain": "hej.news.email.ikea.de",
+    "count": 342,
+    "name": "IKEA Family",
+    "automated": 342
+  },
+  {
+    "domain": "rz.uni-regensburg.de",
+    "count": 339,
+    "name": "Sophie Schlecht (\u00fcber GRIPS)",
+    "automated": 306
+  },
+  {
+    "domain": "discover.zinio.com",
+    "count": 330,
+    "name": "Zinio Digital Magazines",
+    "automated": 329
+  },
+  {
+    "domain": "m.mail.coursera.org",
+    "count": 328,
+    "name": "Columbia University",
+    "automated": 328
+  },
+  {
+    "domain": "xmail.square-enix.com",
+    "count": 317,
+    "name": "SQUARE ENIX",
+    "automated": 163
+  },
+  {
+    "domain": "playstationemail.com",
+    "count": 311,
+    "name": "PlayStation Store",
+    "automated": 307
+  },
+  {
+    "domain": "payback.de",
+    "count": 306,
+    "name": "PAYBACK gratuliert",
+    "automated": 301
+  },
+  {
+    "domain": "newsletter.dw.com",
+    "count": 293,
+    "name": "DW | Deutsch mit Nachrichten",
+    "automated": 293
+  },
+  {
+    "domain": "st.oth-regensburg.de",
+    "count": 288,
+    "name": "Guillermo Arce",
+    "automated": 88
+  },
+  {
+    "domain": "academia-mail.com",
+    "count": 276,
+    "name": "PDF By Daniel Treisman",
+    "automated": 275
+  },
+  {
+    "domain": "email.nfl.com",
+    "count": 267,
+    "name": "Super Bowl LX",
+    "automated": 267
+  },
+  {
+    "domain": "ahkbol.com",
+    "count": 264,
+    "name": "C\u00e1mara Boliviano - Alemana",
+    "automated": 156
+  },
+  {
+    "domain": "e.fanatics.com",
+    "count": 264,
+    "name": "Fanatics.com",
+    "automated": 264
+  },
+  {
+    "domain": "ebay-kleinanzeigen.de",
+    "count": 260,
+    "name": "Kleinanzeigen",
+    "automated": 0
+  },
+  {
+    "domain": "email.flixbus.com",
+    "count": 255,
+    "name": "FlixBus",
+    "automated": 255
+  },
+  {
+    "domain": "eml.nflshop.com",
+    "count": 252,
+    "name": "NFLShop.com",
+    "automated": 252
+  },
+  {
+    "domain": "noreply12.jobs2web.com",
+    "count": 237,
+    "name": "avllistp-jobnotification@noreply12.jobs2web.com",
+    "automated": 237
+  },
+  {
+    "domain": "wegweiser-duales-studium.de",
+    "count": 232,
+    "name": "Studddy - wegweiser duales studium",
+    "automated": 231
+  },
+  {
+    "domain": "plus.gamestop.de",
+    "count": 218,
+    "name": "GameStop Plus",
+    "automated": 218
+  },
+  {
+    "domain": "news.devred.fr",
+    "count": 215,
+    "name": "Devred 1902",
+    "automated": 215
+  },
+  {
+    "domain": "email.gog.com",
+    "count": 211,
+    "name": "GOG.com Team",
+    "automated": 24
+  },
+  {
+    "domain": "jobagent.stepstone.de",
+    "count": 207,
+    "name": "Emma Jacobs from Stepstone",
+    "automated": 207
+  },
+  {
+    "domain": "medium.com",
+    "count": 206,
+    "name": "Medium",
+    "automated": 206
+  },
+  {
+    "domain": "hm.com",
+    "count": 206,
+    "name": "noreply.cs@hm.com",
+    "automated": 205
+  },
+  {
+    "domain": "spotify.com",
+    "count": 205,
+    "name": "Spotify",
+    "automated": 47
+  },
+  {
+    "domain": "mein-grundeinkommen.de",
+    "count": 202,
+    "name": "Mein Grundeinkommen",
+    "automated": 101
+  },
+  {
+    "domain": "deeplearning.ai",
+    "count": 201,
+    "name": "DeepLearning.AI",
+    "automated": 199
+  },
+  {
+    "domain": "getsmarter.com",
+    "count": 198,
+    "name": "Oxford Online",
+    "automated": 198
+  },
+  {
+    "domain": "reply.ebay.de",
+    "count": 195,
+    "name": "eBay",
+    "automated": 136
+  },
+  {
+    "domain": "crecer.bo",
+    "count": 195,
+    "name": "Raul Antonio Arce Barreda",
+    "automated": 0
+  },
+  {
+    "domain": "news.goflink.com",
+    "count": 191,
+    "name": "Flink",
+    "automated": 191
+  },
+  {
+    "domain": "mubi.com",
+    "count": 189,
+    "name": "MUBI",
+    "automated": 10
+  },
+  {
+    "domain": "accounts.google.com",
+    "count": 184,
+    "name": "Google",
+    "automated": 2
+  },
+  {
+    "domain": "gruender.de",
+    "count": 184,
+    "name": "Thomas Klu\u00dfmann (Gr\u00fcnder.de)",
+    "automated": 104
+  },
+  {
+    "domain": "afs.de",
+    "count": 182,
+    "name": "AFS-Jubil\u00e4ums-Komitee",
+    "automated": 0
+  },
+  {
+    "domain": "hotmail.com",
+    "count": 177,
+    "name": "Angie Stumpf",
+    "automated": 1
+  },
+  {
+    "domain": "nucly.com",
+    "count": 175,
+    "name": "Rikard Rodin",
+    "automated": 155
+  },
+  {
+    "domain": "list.maven.com",
+    "count": 174,
+    "name": "Maven",
+    "automated": 174
+  },
+  {
+    "domain": "info.kununu.com",
+    "count": 173,
+    "name": "kununu Updates",
+    "automated": 164
+  },
+  {
+    "domain": "hogapage.de",
+    "count": 167,
+    "name": "Jobs bei Hogapage",
+    "automated": 166
+  },
+  {
+    "domain": "family-newsletter.de",
+    "count": 167,
+    "name": "IKEA Family Newsletter",
+    "automated": 0
+  },
+  {
+    "domain": "skillshare.com",
+    "count": 162,
+    "name": "Skillshare",
+    "automated": 162
+  },
+  {
+    "domain": "mail.paypal.de",
+    "count": 162,
+    "name": "PayPal",
+    "automated": 162
+  },
+  {
+    "domain": "freedom-writer.de",
+    "count": 161,
+    "name": "Philipp Follmer",
+    "automated": 161
+  },
+  {
+    "domain": "send.doktorabc.com",
+    "count": 160,
+    "name": "DoktorABC",
+    "automated": 156
+  },
+  {
+    "domain": "intotheam.com",
+    "count": 156,
+    "name": "INTO THE AM",
+    "automated": 156
+  },
+  {
+    "domain": "mail.heyjobs.co",
+    "count": 153,
+    "name": "HeyJobs",
+    "automated": 0
+  },
+  {
+    "domain": "careerjet.co.ke",
+    "count": 152,
+    "name": "Careerjet",
+    "automated": 0
+  },
+  {
+    "domain": "flipboard.com",
+    "count": 144,
+    "name": "Flipboard",
+    "automated": 1
+  },
+  {
+    "domain": "duolingo.com",
+    "count": 142,
+    "name": "Duolingo",
+    "automated": 0
+  },
+  {
+    "domain": "emails.avast.com",
+    "count": 141,
+    "name": "Avast",
+    "automated": 140
+  },
+  {
+    "domain": "mailing.bnb.com.bo",
+    "count": 139,
+    "name": "Banco Nacional de Bolivia",
+    "automated": 139
+  },
+  {
+    "domain": "ship30for30.com",
+    "count": 136,
+    "name": "Dickie & Cole",
+    "automated": 136
+  },
+  {
+    "domain": "email-telekom.de",
+    "count": 133,
+    "name": "Telekom",
+    "automated": 8
+  },
+  {
+    "domain": "email.blockchain.com",
+    "count": 132,
+    "name": "Blockchain",
+    "automated": 130
+  },
+  {
+    "domain": "email.masterclass.com",
+    "count": 127,
+    "name": "MasterClass",
+    "automated": 124
+  },
+  {
+    "domain": "trello.com",
+    "count": 127,
+    "name": "Trello",
+    "automated": 68
+  },
+  {
+    "domain": "e.comixology.com",
+    "count": 125,
+    "name": "Comixology",
+    "automated": 120
+  },
+  {
+    "domain": "email.eis.de",
+    "count": 124,
+    "name": "EIS: Pro 2 Ikone + Fun Factory Neuheit heute 0,00 \u20ac",
+    "automated": 124
+  },
+  {
+    "domain": "windscribe.com",
+    "count": 123,
+    "name": "Windscribe",
+    "automated": 123
+  },
+  {
+    "domain": "update.lieferando.at",
+    "count": 121,
+    "name": "Lieferando",
+    "automated": 121
+  },
+  {
+    "domain": "mpd.ucb.edu.bo",
+    "count": 121,
+    "name": "Marianne Gassenmeier",
+    "automated": 0
+  },
+  {
+    "domain": "news.vueling.com",
+    "count": 120,
+    "name": "Vueling",
+    "automated": 120
+  },
+  {
+    "domain": "contentbird.io",
+    "count": 119,
+    "name": "contentbird GmbH",
+    "automated": 119
+  },
+  {
+    "domain": "wordpress.com",
+    "count": 119,
+    "name": "WordPress.com",
+    "automated": 17
+  },
+  {
+    "domain": "a.nflshop.com",
+    "count": 118,
+    "name": "NFLShop.com",
+    "automated": 118
+  },
+  {
+    "domain": "nl-de.dw.com",
+    "count": 118,
+    "name": "Deutsche Welle",
+    "automated": 118
+  },
+  {
+    "domain": "mail.ebay-kleinanzeigen.de",
+    "count": 116,
+    "name": "Aleks \u00fcber Kleinanzeigen",
+    "automated": 0
+  },
+  {
+    "domain": "gastro-mis.de",
+    "count": 116,
+    "name": "noreply@gastro-mis.de",
+    "automated": 0
+  },
+  {
+    "domain": "m.learn.coursera.org",
+    "count": 115,
+    "name": "Coursera",
+    "automated": 115
+  },
+  {
+    "domain": "crecer.org.bo",
+    "count": 115,
+    "name": "CRECER-LPZ Raul Arce",
+    "automated": 0
+  },
+  {
+    "domain": "targroup-media.de",
+    "count": 111,
+    "name": "Wegweiser-Duales-Studium.de",
+    "automated": 111
+  },
+  {
+    "domain": "mailer.netflix.com",
+    "count": 111,
+    "name": "Netflix",
+    "automated": 111
+  },
+  {
+    "domain": "jhu.edu",
+    "count": 111,
+    "name": "Johns Hopkins Center for Health Security",
+    "automated": 111
+  },
+  {
+    "domain": "extern.oth-regensburg.de",
+    "count": 110,
+    "name": "Elena Rottmeier",
+    "automated": 22
+  },
+  {
+    "domain": "sm.ihg.com",
+    "count": 109,
+    "name": "IHG Rewards Club",
+    "automated": 54
+  },
+  {
+    "domain": "email.coursera.org",
+    "count": 105,
+    "name": "Coursera",
+    "automated": 105
+  },
+  {
+    "domain": "dialog.ebay-kleinanzeigen.de",
+    "count": 105,
+    "name": "Frida von eBay Kleinanzeigen",
+    "automated": 105
+  },
+  {
+    "domain": "karte.galeria.de",
+    "count": 102,
+    "name": "GALERIA Kundenprogramm",
+    "automated": 102
+  },
+  {
+    "domain": "discordapp.com",
+    "count": 102,
+    "name": "Discord",
+    "automated": 0
+  },
+  {
+    "domain": "doktorabc.com",
+    "count": 100,
+    "name": "Doktorabc.com",
+    "automated": 0
+  },
+  {
+    "domain": "sparkasse-regensburg.de",
+    "count": 98,
+    "name": "Elektronisches Postfach Ihrer Sparkasse",
+    "automated": 12
+  },
+  {
+    "domain": "cwmun.org",
+    "count": 98,
+    "name": "Change the World",
+    "automated": 98
+  },
+  {
+    "domain": "latecheckout.studio",
+    "count": 98,
+    "name": "Startup Empire",
+    "automated": 98
+  },
+  {
+    "domain": "googlemail.com",
+    "count": 98,
+    "name": "Mail Delivery Subsystem",
+    "automated": 0
+  },
+  {
+    "domain": "mail.hbo.com",
+    "count": 97,
+    "name": "HBO",
+    "automated": 0
+  },
+  {
+    "domain": "jobteaser.com",
+    "count": 96,
+    "name": "JobTeaser",
+    "automated": 0
+  },
+  {
+    "domain": "info.dominospizza.es",
+    "count": 93,
+    "name": "Domino's Pizza",
+    "automated": 93
+  },
+  {
+    "domain": "email.feverup.com",
+    "count": 89,
+    "name": "Fever",
+    "automated": 88
+  },
+  {
+    "domain": "e.gamestop.com",
+    "count": 88,
+    "name": "GameStop PowerUp Rewards",
+    "automated": 88
+  },
+  {
+    "domain": "aiartweekly.com",
+    "count": 85,
+    "name": "newsletter@aiartweekly.com",
+    "automated": 84
+  },
+  {
+    "domain": "slack.com",
+    "count": 83,
+    "name": "Slack",
+    "automated": 9
+  },
+  {
+    "domain": "shu.edu",
+    "count": 81,
+    "name": "Seton Hall University Graduate Admissions",
+    "automated": 80
+  },
+  {
+    "domain": "newsletter.mubi.com",
+    "count": 80,
+    "name": "MUBI",
+    "automated": 80
+  },
+  {
+    "domain": "facebookmail.com",
+    "count": 78,
+    "name": "Facebook",
+    "automated": 58
+  },
+  {
+    "domain": "masterworks.com",
+    "count": 78,
+    "name": "Masterworks",
+    "automated": 39
+  },
+  {
+    "domain": "news.paradoxinteractive.com",
+    "count": 76,
+    "name": "Crusader Kings III",
+    "automated": 75
+  },
+  {
+    "domain": "wechselpilot.com",
+    "count": 75,
+    "name": "Tobias von Wechselpilot",
+    "automated": 6
+  },
+  {
+    "domain": "emails.paypal.com",
+    "count": 72,
+    "name": "PayPal",
+    "automated": 72
+  },
+  {
+    "domain": "discord.com",
+    "count": 71,
+    "name": "Discord",
+    "automated": 0
+  },
+  {
+    "domain": "lionbridge.com",
+    "count": 71,
+    "name": "Colloridi, Gianfranco [TELUS International]",
+    "automated": 0
+  },
+  {
+    "domain": "e.alsa.com",
+    "count": 69,
+    "name": "Alsa",
+    "automated": 68
+  },
+  {
+    "domain": "eml.condenast.com",
+    "count": 69,
+    "name": "WIRED",
+    "automated": 69
+  },
+  {
+    "domain": "bethesda.net",
+    "count": 69,
+    "name": "Bethesda.net",
+    "automated": 64
+  },
+  {
+    "domain": "commercial.vueling.com",
+    "count": 69,
+    "name": "Vueling",
+    "automated": 69
+  },
+  {
+    "domain": "rechnung.o2online.de",
+    "count": 68,
+    "name": "o2 Team",
+    "automated": 0
+  },
+  {
+    "domain": "parlermailer.com",
+    "count": 67,
+    "name": "James O'Keefe",
+    "automated": 67
+  },
+  {
+    "domain": "masterworks.io",
+    "count": 66,
+    "name": "Masterworks",
+    "automated": 16
+  },
+  {
+    "domain": "grupobisa.com",
+    "count": 65,
+    "name": "Banco BISA",
+    "automated": 0
+  },
+  {
+    "domain": "motorola-mail.com",
+    "count": 65,
+    "name": "Motorola",
+    "automated": 65
+  },
+  {
+    "domain": "uber.com",
+    "count": 64,
+    "name": "Uber Belege",
+    "automated": 0
+  },
+  {
+    "domain": "visitor.koelnmesse.de",
+    "count": 63,
+    "name": "gamescom 2026",
+    "automated": 15
+  },
+  {
+    "domain": "nordvpn.com",
+    "count": 63,
+    "name": "The NordVPN team",
+    "automated": 57
+  },
+  {
+    "domain": "studentenrabatt.com",
+    "count": 63,
+    "name": "Studentenrabatt.com",
+    "automated": 63
+  },
+  {
+    "domain": "bayer.com",
+    "count": 62,
+    "name": "Janet Menacho Justiniano",
+    "automated": 0
+  },
+  {
+    "domain": "deutschebahn.com",
+    "count": 61,
+    "name": "",
+    "automated": 0
+  },
+  {
+    "domain": "isb.ie",
+    "count": 60,
+    "name": "Damien Kelly",
+    "automated": 0
+  },
+  {
+    "domain": "member.sonyrewards.com",
+    "count": 59,
+    "name": "Sony Rewards",
+    "automated": 59
+  },
+  {
+    "domain": "afs-koeln.de",
+    "count": 59,
+    "name": "Elisabeth Klein (stellv. Sendingkoordination AFS K\u00f6ln)",
+    "automated": 0
+  },
+  {
+    "domain": "motiondesign.school",
+    "count": 58,
+    "name": "Iaroslav from Motion Design School",
+    "automated": 56
+  },
+  {
+    "domain": "annarogan.com",
+    "count": 58,
+    "name": "Anna Rogan",
+    "automated": 0
+  },
+  {
+    "domain": "mail.neatprompts.com",
+    "count": 58,
+    "name": "Prompts Daily",
+    "automated": 58
+  },
+  {
+    "domain": "e.klarna.com",
+    "count": 57,
+    "name": "Klarna",
+    "automated": 57
+  },
+  {
+    "domain": "edm.shein.com",
+    "count": 57,
+    "name": "SHEIN",
+    "automated": 57
+  },
+  {
+    "domain": "auth.magnific.ai",
+    "count": 56,
+    "name": "Magnific Team",
+    "automated": 0
+  },
+  {
+    "domain": "storebethsoft.com",
+    "count": 56,
+    "name": "Bethesda Store",
+    "automated": 56
+  },
+  {
+    "domain": "nvidia.com",
+    "count": 55,
+    "name": "NVIDIA",
+    "automated": 55
+  },
+  {
+    "domain": "freidurchwebdesign.de",
+    "count": 54,
+    "name": "Freidurchwebdesign",
+    "automated": 54
+  },
+  {
+    "domain": "newsletter.q-dance.com",
+    "count": 53,
+    "name": "Defqon.1",
+    "automated": 49
+  },
+  {
+    "domain": "telis-finanz.de",
+    "count": 52,
+    "name": "",
+    "automated": 0
+  },
+  {
+    "domain": "bleeperbike.com",
+    "count": 52,
+    "name": "Bleeper",
+    "automated": 52
+  },
+  {
+    "domain": "newsletters.wired.com",
+    "count": 52,
+    "name": "WIRED Fast Forward",
+    "automated": 52
+  },
+  {
+    "domain": "yahoo.com",
+    "count": 51,
+    "name": "",
+    "automated": 0
+  },
+  {
+    "domain": "info.o2.de",
+    "count": 50,
+    "name": "o2 Team",
+    "automated": 47
+  },
+  {
+    "domain": "newsletter.rockstargames.com",
+    "count": 50,
+    "name": "Rockstar Propaganda",
+    "automated": 48
+  },
+  {
+    "domain": "e.cheaptickets.de",
+    "count": 49,
+    "name": "CheapTickets.de",
+    "automated": 44
+  },
+  {
+    "domain": "comms.vueling.com",
+    "count": 49,
+    "name": "Vueling Club",
+    "automated": 49
+  },
+  {
+    "domain": "amazon.com",
+    "count": 49,
+    "name": "amazon.com",
+    "automated": 0
+  },
+  {
+    "domain": "info.kleinanzeigen.de",
+    "count": 49,
+    "name": "Olivia von Kleinanzeigen",
+    "automated": 49
+  },
+  {
+    "domain": "dhl.de",
+    "count": 48,
+    "name": "DHL Paket",
+    "automated": 19
+  },
+  {
+    "domain": "docs.google.com",
+    "count": 48,
+    "name": "Louis Wiers (Google Docs)",
+    "automated": 0
+  },
+  {
+    "domain": "axsbolivia.net",
+    "count": 48,
+    "name": "",
+    "automated": 3
+  },
+  {
+    "domain": "datacamp.com",
+    "count": 48,
+    "name": "DataCamp",
+    "automated": 0
+  },
+  {
+    "domain": "eneba.deals",
+    "count": 47,
+    "name": "Eneba",
+    "automated": 47
+  },
+  {
+    "domain": "mail.notion.so",
+    "count": 46,
+    "name": "Notion Team",
+    "automated": 44
+  },
+  {
+    "domain": "info.masterworks.com",
+    "count": 45,
+    "name": "Masterworks Minute",
+    "automated": 24
+  },
+  {
+    "domain": "web.de",
+    "count": 45,
+    "name": "Tobias Weidinger",
+    "automated": 2
+  },
+  {
+    "domain": "mc.ihg.com",
+    "count": 45,
+    "name": "IHG Rewards",
+    "automated": 45
+  },
+  {
+    "domain": "accountprotection.microsoft.com",
+    "count": 44,
+    "name": "Equipo de cuentas Microsoft",
+    "automated": 0
+  },
+  {
+    "domain": "o2.de",
+    "count": 44,
+    "name": "o2 Team",
+    "automated": 0
+  },
+  {
+    "domain": "newsletter.artlist.io",
+    "count": 43,
+    "name": "Artlist",
+    "automated": 43
+  },
+  {
+    "domain": "email.playstation.com",
+    "count": 43,
+    "name": "PlayStation",
+    "automated": 41
+  },
+  {
+    "domain": "meine.aok.de",
+    "count": 43,
+    "name": "",
+    "automated": 0
+  },
+  {
+    "domain": "m.lastpass.com",
+    "count": 43,
+    "name": "LastPass",
+    "automated": 39
+  },
+  {
+    "domain": "gmx.de",
+    "count": 43,
+    "name": "Daniel GMX",
+    "automated": 5
+  },
+  {
+    "domain": "mail03.travian.com",
+    "count": 43,
+    "name": "Travian Team",
+    "automated": 43
+  },
+  {
+    "domain": "daft.ie",
+    "count": 43,
+    "name": "noreply@daft.ie",
+    "automated": 0
+  },
+  {
+    "domain": "canapuff.com",
+    "count": 42,
+    "name": "Sonia - Team Canapuff",
+    "automated": 42
+  },
+  {
+    "domain": "deepl.com",
+    "count": 42,
+    "name": "DeepL",
+    "automated": 10
+  },
+  {
+    "domain": "911memorial.org",
+    "count": 42,
+    "name": "Elizabeth L. Hillman | National September 11 Memorial & Museum",
+    "automated": 42
+  },
+  {
+    "domain": "newsletter.iversity.org",
+    "count": 42,
+    "name": "iversity",
+    "automated": 0
+  },
+  {
+    "domain": "bahn.de",
+    "count": 41,
+    "name": "noreply.bahncard-rechnung@bahn.de",
+    "automated": 0
+  },
+  {
+    "domain": "booking.com",
+    "count": 41,
+    "name": "Booking.com",
+    "automated": 0
+  },
+  {
+    "domain": "courses.maven.com",
+    "count": 41,
+    "name": "Nick St Pierre",
+    "automated": 0
+  },
+  {
+    "domain": "espaceplaisir.fr",
+    "count": 41,
+    "name": "Alicia d'espaceplaisir",
+    "automated": 37
+  },
+  {
+    "domain": "comms.activision.com",
+    "count": 41,
+    "name": "Call of Duty",
+    "automated": 5
+  },
+  {
+    "domain": "nycgo.com",
+    "count": 41,
+    "name": "nycgo.com",
+    "automated": 41
+  },
+  {
+    "domain": "telekom.de",
+    "count": 41,
+    "name": "Telekom Deutschland GmbH {NoReply}",
+    "automated": 0
+  },
+  {
+    "domain": "news.mubi.com",
+    "count": 40,
+    "name": "MUBI",
+    "automated": 40
+  },
+  {
+    "domain": "payback.rewe.de",
+    "count": 40,
+    "name": "REWE PAYBACK Vorteilsmail",
+    "automated": 40
+  },
+  {
+    "domain": "posteo.de",
+    "count": 40,
+    "name": "",
+    "automated": 39
+  },
+  {
+    "domain": "stripe.com",
+    "count": 39,
+    "name": "DoktorABC.com",
+    "automated": 0
+  },
+  {
+    "domain": "mail.perplexity.ai",
+    "count": 39,
+    "name": "Perplexity",
+    "automated": 24
+  },
+  {
+    "domain": "mail.kleinanzeigen.de",
+    "count": 39,
+    "name": "Stefan \u00fcber Kleinanzeigen",
+    "automated": 0
+  },
+  {
+    "domain": "alexa.com",
+    "count": 39,
+    "name": "Kim at Alexa",
+    "automated": 0
+  },
+  {
+    "domain": "immowelt.de",
+    "count": 38,
+    "name": "immowelt Suche",
+    "automated": 16
+  },
+  {
+    "domain": "news.ebay-kleinanzeigen.de",
+    "count": 38,
+    "name": "Frida von eBay Kleinanzeigen",
+    "automated": 38
+  },
+  {
+    "domain": "bnb.com.bo",
+    "count": 36,
+    "name": "Banco Nacional de Bolivia S.A.",
+    "automated": 30
+  },
+  {
+    "domain": "updates.ubisoft.com",
+    "count": 36,
+    "name": "Ubisoft",
+    "automated": 35
+  },
+  {
+    "domain": "connect.lieferando.de",
+    "count": 36,
+    "name": "Lieferando",
+    "automated": 0
+  },
+  {
+    "domain": "semicolon.dev",
+    "count": 36,
+    "name": "Ghost Together",
+    "automated": 0
+  },
+  {
+    "domain": "angebote.spiegel.de",
+    "count": 36,
+    "name": "DER SPIEGEL",
+    "automated": 36
+  },
+  {
+    "domain": "edreamsodigeo.com",
+    "count": 36,
+    "name": "Mamen Aguilar",
+    "automated": 0
+  },
+  {
+    "domain": "vinted.de",
+    "count": 35,
+    "name": "Vinted",
+    "automated": 21
+  },
+  {
+    "domain": "hochschulinitiative-deutschland.de",
+    "count": 35,
+    "name": "Hochschulinitiative Deutschland",
+    "automated": 35
+  },
+  {
+    "domain": "ds-lapaz.edu.bo",
+    "count": 35,
+    "name": "Birgit Robbert",
+    "automated": 0
+  },
+  {
+    "domain": "email.sonyentertainmentnetwork.com",
+    "count": 35,
+    "name": "PlayStation",
+    "automated": 2
+  },
+  {
+    "domain": "email.newegg.com",
+    "count": 35,
+    "name": "Newegg.com",
+    "automated": 35
+  },
+  {
+    "domain": "e.myunidays.com",
+    "count": 35,
+    "name": "UNiDAYS",
+    "automated": 35
+  },
+  {
+    "domain": "email1.asana.com",
+    "count": 34,
+    "name": "Asana",
+    "automated": 34
+  },
+  {
+    "domain": "copyfol.io",
+    "count": 34,
+    "name": "Copyfolio Team",
+    "automated": 0
+  },
+  {
+    "domain": "travel.mail.flixbus.com",
+    "count": 32,
+    "name": "FlixTrain",
+    "automated": 23
+  },
+  {
+    "domain": "storyangled.com",
+    "count": 32,
+    "name": "Content Kuba \ud83e\uddd1\u200d\ud83c\udfed",
+    "automated": 32
+  },
+  {
+    "domain": "email.regensburg-arcaden.de",
+    "count": 32,
+    "name": "Regensburg Arcaden",
+    "automated": 32
+  },
+  {
+    "domain": "mail.hbonow.com",
+    "count": 32,
+    "name": "HBO",
+    "automated": 18
+  },
+  {
+    "domain": "alphachanneling.com",
+    "count": 31,
+    "name": "Alphachanneling",
+    "automated": 29
+  },
+  {
+    "domain": "track.toggl.com",
+    "count": 31,
+    "name": "Toggl Track",
+    "automated": 0
+  },
+  {
+    "domain": "zapier.com",
+    "count": 31,
+    "name": "Zapier News",
+    "automated": 21
+  },
+  {
+    "domain": "lieferheld.de",
+    "count": 31,
+    "name": "Lieferheld",
+    "automated": 20
+  },
+  {
+    "domain": "itr.mail.codecademy.com",
+    "count": 30,
+    "name": "Codecademy",
+    "automated": 30
+  },
+  {
+    "domain": "email.meetup.com",
+    "count": 30,
+    "name": "jason wirth (Meetup)",
+    "automated": 20
+  },
+  {
+    "domain": "nexusmods.com",
+    "count": 30,
+    "name": "Nexus Mods",
+    "automated": 0
+  },
+  {
+    "domain": "account.netflix.com",
+    "count": 30,
+    "name": "Netflix",
+    "automated": 30
+  },
+  {
+    "domain": "todoist.com",
+    "count": 29,
+    "name": "Denise from Todoist",
+    "automated": 0
+  },
+  {
+    "domain": "nordaccount.com",
+    "count": 29,
+    "name": "Nord Account",
+    "automated": 0
+  },
+  {
+    "domain": "thepowermba.com",
+    "count": 29,
+    "name": "Admission Department - thePower",
+    "automated": 29
+  },
+  {
+    "domain": "ies-consulting.es",
+    "count": 29,
+    "name": "Cristina Granados Collazo",
+    "automated": 7
+  },
+  {
+    "domain": "marketing.neotaste.com",
+    "count": 28,
+    "name": "Team NeoTaste",
+    "automated": 28
+  },
+  {
+    "domain": "yeenet.eu",
+    "count": 28,
+    "name": "Chlo\u00e9 ten Brink",
+    "automated": 0
+  },
+  {
+    "domain": "primevideo.com",
+    "count": 28,
+    "name": "Prime Video",
+    "automated": 0
+  },
+  {
+    "domain": "cmp.dotmailer.co.uk",
+    "count": 28,
+    "name": "Student Leap Card",
+    "automated": 28
+  },
+  {
+    "domain": "hello.klarna.com",
+    "count": 27,
+    "name": "Klarna",
+    "automated": 27
+  },
+  {
+    "domain": "10web.io",
+    "count": 27,
+    "name": "Arto from 10Web",
+    "automated": 24
+  },
+  {
+    "domain": "pizza.de",
+    "count": 27,
+    "name": "pizza.de Newsletter",
+    "automated": 17
+  },
+  {
+    "domain": "regensburg.de",
+    "count": 26,
+    "name": "H\u00e4rtl, Julia",
+    "automated": 0
+  },
+  {
+    "domain": "marketplace.amazon.de",
+    "count": 26,
+    "name": "Altbew\u00e4hrt - Amazon Payments",
+    "automated": 0
+  },
+  {
+    "domain": "e.ea.com",
+    "count": 26,
+    "name": "Origin",
+    "automated": 14
+  },
+  {
+    "domain": "accounts.nintendo.com",
+    "count": 25,
+    "name": "no-reply@accounts.nintendo.com",
+    "automated": 0
+  },
+  {
+    "domain": "zsk.uni-regensburg.de",
+    "count": 25,
+    "name": "Auslagenersatz Zsk",
+    "automated": 13
+  },
+  {
+    "domain": "satzgestalt.com",
+    "count": 25,
+    "name": "Maike Burk",
+    "automated": 25
+  },
+  {
+    "domain": "ping.net.co",
+    "count": 25,
+    "name": "Angie Stumpf",
+    "automated": 0
+  },
+  {
+    "domain": "mystipendium.de",
+    "count": 24,
+    "name": "myStipendium",
+    "automated": 2
+  },
+  {
+    "domain": "airbnb.com",
+    "count": 24,
+    "name": "Airbnb",
+    "automated": 7
+  },
+  {
+    "domain": "sky.de",
+    "count": 24,
+    "name": "WOW - Mein Erlebnis",
+    "automated": 0
+  },
+  {
+    "domain": "axs-latam.com",
+    "count": 24,
+    "name": "Dina Calle",
+    "automated": 0
+  },
+  {
+    "domain": "crecerifd.bo",
+    "count": 24,
+    "name": "Raul Antonio Arce Barreda",
+    "automated": 0
+  },
+  {
+    "domain": "hello.treatwell.com",
+    "count": 23,
+    "name": "Treatwell",
+    "automated": 23
+  },
+  {
+    "domain": "neotaste.app",
+    "count": 23,
+    "name": "Jana von NeoTaste",
+    "automated": 23
+  },
+  {
+    "domain": "twitter.com",
+    "count": 23,
+    "name": "Twitter",
+    "automated": 0
+  },
+  {
+    "domain": "papershift.com",
+    "count": 23,
+    "name": "Gastst\u00e4ttenbetriebe Baumhauer GmbH & Co.KG",
+    "automated": 0
+  },
+  {
+    "domain": "today.getpocket.com",
+    "count": 23,
+    "name": "Pocket",
+    "automated": 22
+  },
+  {
+    "domain": "calendly.com",
+    "count": 23,
+    "name": "Werkstudenten Tisch (via Calendly)",
+    "automated": 0
+  },
+  {
+    "domain": "eis.de",
+    "count": 23,
+    "name": "www.eis.de - [Support]",
+    "automated": 3
+  },
+  {
+    "domain": "hotmail.de",
+    "count": 23,
+    "name": "Hilde Peters",
+    "automated": 0
+  },
+  {
+    "domain": "nyu.edu",
+    "count": 22,
+    "name": "NYU Wagner Admissions",
+    "automated": 21
+  },
+  {
+    "domain": "nordpass.com",
+    "count": 22,
+    "name": "The NordPass Team",
+    "automated": 12
+  },
+  {
+    "domain": "news.thalia.de",
+    "count": 22,
+    "name": "Thalia.de",
+    "automated": 22
+  },
+  {
+    "domain": "comms.evernote.com",
+    "count": 22,
+    "name": "Evernote",
+    "automated": 22
+  },
+  {
+    "domain": "rehe.de",
+    "count": 22,
+    "name": "Cecile Rehe",
+    "automated": 0
+  },
+  {
+    "domain": "reinhausen.com",
+    "count": 22,
+    "name": "Schmidbauer Lea - Maschinenfabrik Reinhausen",
+    "automated": 0
+  },
+  {
+    "domain": "emails.wix.com",
+    "count": 22,
+    "name": "Wix.com",
+    "automated": 22
+  },
+  {
+    "domain": "nyctourism.com",
+    "count": 21,
+    "name": "NYC Tourism",
+    "automated": 21
+  },
+  {
+    "domain": "73457534.mailchimpapp.com",
+    "count": 21,
+    "name": "La Mejor Pel\u00edcula del Mundo",
+    "automated": 21
+  },
+  {
+    "domain": "mktmail.visa.com",
+    "count": 21,
+    "name": "VISA",
+    "automated": 6
+  },
+  {
+    "domain": "axsbolivia.com",
+    "count": 21,
+    "name": "",
+    "automated": 0
+  },
+  {
+    "domain": "klarna.de",
+    "count": 21,
+    "name": "Klarna",
+    "automated": 0
+  },
+  {
+    "domain": "mail.instagram.com",
+    "count": 21,
+    "name": "Instagram",
+    "automated": 21
+  },
+  {
+    "domain": "fitbit.com",
+    "count": 21,
+    "name": "Fitbit",
+    "automated": 0
+  },
+  {
+    "domain": "koelnmesse.de",
+    "count": 21,
+    "name": "gamescom",
+    "automated": 2
+  },
+  {
+    "domain": "info.bungie.net",
+    "count": 21,
+    "name": "Bungie",
+    "automated": 21
+  },
+  {
+    "domain": "jotform.com",
+    "count": 21,
+    "name": "Jotform",
+    "automated": 17
+  },
+  {
+    "domain": "bibliothek.uni-regensburg.de",
+    "count": 21,
+    "name": "Ausleihe.UB@bibliothek.uni-regensburg.de",
+    "automated": 0
+  },
+  {
+    "domain": "reachvaldo.com",
+    "count": 20,
+    "name": "Valdo",
+    "automated": 20
+  },
+  {
+    "domain": "flixbus.com",
+    "count": 20,
+    "name": "FlixBus",
+    "automated": 8
+  },
+  {
+    "domain": "amazon.fr",
+    "count": 20,
+    "name": "Amazon.fr",
+    "automated": 0
+  },
+  {
+    "domain": "info.vdi-nachrichten.com",
+    "count": 20,
+    "name": "Redaktion VDI nachrichten",
+    "automated": 20
+  },
+  {
+    "domain": "mfi.eu",
+    "count": 20,
+    "name": "Regensburg Arcaden",
+    "automated": 18
+  },
+  {
+    "domain": "blablacar.de",
+    "count": 20,
+    "name": "BlaBlaCar",
+    "automated": 0
+  },
+  {
+    "domain": "ceastudyabroad.com",
+    "count": 20,
+    "name": "Francis Kelly",
+    "automated": 0
+  },
+  {
+    "domain": "thenightsky.io",
+    "count": 20,
+    "name": "Ciara - The Night Sky",
+    "automated": 20
+  },
+  {
+    "domain": "g2g.com",
+    "count": 19,
+    "name": "G2G Support Center",
+    "automated": 0
+  },
+  {
+    "domain": "email.youneedabudget.com",
+    "count": 19,
+    "name": "Jesse from YNAB",
+    "automated": 0
+  },
+  {
+    "domain": "languagetool.org",
+    "count": 19,
+    "name": "Marvin | LanguageTool",
+    "automated": 19
+  },
+  {
+    "domain": "sas.com",
+    "count": 19,
+    "name": "SAS Global Forum 2021 | EMEA",
+    "automated": 0
+  },
+  {
+    "domain": "bayern.meine.aok.de",
+    "count": 19,
+    "name": "AOK Bayern",
+    "automated": 0
+  },
+  {
+    "domain": "deliveroo.ie",
+    "count": 19,
+    "name": "Deliveroo Customer Service",
+    "automated": 0
+  },
+  {
+    "domain": "elementsofai.com",
+    "count": 18,
+    "name": "Elements of AI",
+    "automated": 18
+  },
+  {
+    "domain": "adobe.com",
+    "count": 18,
+    "name": "Adobe",
+    "automated": 0
+  },
+  {
+    "domain": "canva.com",
+    "count": 18,
+    "name": "Canva",
+    "automated": 0
+  },
+  {
+    "domain": "e.rituals.com",
+    "count": 18,
+    "name": "Rituals Cosmetics",
+    "automated": 18
+  },
+  {
+    "domain": "smartdnsproxy.com",
+    "count": 18,
+    "name": "Smart DNS Proxy",
+    "automated": 0
+  },
+  {
+    "domain": "varietyny.org",
+    "count": 18,
+    "name": "Variety the Children's Charity of New York",
+    "automated": 15
+  },
+  {
+    "domain": "go.surveymonkey.com",
+    "count": 18,
+    "name": "SurveyMonkey",
+    "automated": 15
+  },
+  {
+    "domain": "bestellung.dominos.de",
+    "count": 18,
+    "name": "Domino\u00b4s Bestellbest\u00e4tigung",
+    "automated": 12
+  },
+  {
+    "domain": "fastmail.fm",
+    "count": 18,
+    "name": "Comercio_II_DS",
+    "automated": 0
+  },
+  {
+    "domain": "loyalty.lindt.com",
+    "count": 17,
+    "name": "MyLindt Bonus Club",
+    "automated": 17
+  },
+  {
+    "domain": "changetheworldacademy.org",
+    "count": 17,
+    "name": "Change the World Academy",
+    "automated": 17
+  },
+  {
+    "domain": "wise.com",
+    "count": 17,
+    "name": "Wise",
+    "automated": 0
+  },
+  {
+    "domain": "paradoxplaza.com",
+    "count": 17,
+    "name": "Paradox Interactive",
+    "automated": 2
+  },
+  {
+    "domain": "trustedshops.com",
+    "count": 17,
+    "name": "Fleurop",
+    "automated": 8
+  },
+  {
+    "domain": "microsoft.com",
+    "count": 17,
+    "name": "Microsoft Support Verification",
+    "automated": 14
+  },
+  {
+    "domain": "no reply",
+    "count": 17,
+    "name": "DAWONIA",
+    "automated": 0
+  },
+  {
+    "domain": "aok-bayern.e-mailnews.de",
+    "count": 17,
+    "name": "AOK Bayern",
+    "automated": 17
+  },
+  {
+    "domain": "eiis.it",
+    "count": 17,
+    "name": "EIIS Education Department",
+    "automated": 17
+  },
+  {
+    "domain": "news.ubisoft.com",
+    "count": 17,
+    "name": "Ubisoft",
+    "automated": 0
+  },
+  {
+    "domain": "topazlabs.com",
+    "count": 16,
+    "name": "Topaz Labs",
+    "automated": 15
+  },
+  {
+    "domain": "q-dance.com",
+    "count": 16,
+    "name": "Defqon.1 Travel & Stay",
+    "automated": 1
+  },
+  {
+    "domain": "mailing.sparkasse-regensburg.de",
+    "count": 16,
+    "name": "Sparkasse Regensburg",
+    "automated": 16
+  },
+  {
+    "domain": "glassdoor.com",
+    "count": 16,
+    "name": "Glassdoor",
+    "automated": 16
+  },
+  {
+    "domain": "redditmail.com",
+    "count": 16,
+    "name": "Reddit",
+    "automated": 0
+  },
+  {
+    "domain": "techo.org",
+    "count": 16,
+    "name": "TECHO EN BOLIVIA",
+    "automated": 16
+  },
+  {
+    "domain": "usps.com",
+    "count": 16,
+    "name": "auto-reply@usps.com",
+    "automated": 0
+  },
+  {
+    "domain": "transact.doktorabc.com",
+    "count": 15,
+    "name": "DoktorABC",
+    "automated": 1
+  },
+  {
+    "domain": "paylogic.com",
+    "count": 15,
+    "name": "Paylogic",
+    "automated": 0
+  },
+  {
+    "domain": "mail.anthropic.com",
+    "count": 15,
+    "name": "Anthropic",
+    "automated": 9
+  },
+  {
+    "domain": "hello.platzi.com",
+    "count": 15,
+    "name": "Ana de Platzi",
+    "automated": 15
+  },
+  {
+    "domain": "indeedemail.com",
+    "count": 15,
+    "name": "PARIPARI GmbH",
+    "automated": 0
+  },
+  {
+    "domain": "elevateapp.com",
+    "count": 15,
+    "name": "Elevate",
+    "automated": 0
+  },
+  {
+    "domain": "janele.de",
+    "count": 15,
+    "name": "iDa Webserver",
+    "automated": 0
+  },
+  {
+    "domain": "em.lieferheld.de",
+    "count": 15,
+    "name": "Sabrina von Lieferheld",
+    "automated": 14
+  },
+  {
+    "domain": "myunidays.com",
+    "count": 15,
+    "name": "UNiDAYS",
+    "automated": 0
+  },
+  {
+    "domain": "wetransfer.com",
+    "count": 14,
+    "name": "WeTransfer",
+    "automated": 10
+  },
+  {
+    "domain": "engage.canva.com",
+    "count": 14,
+    "name": "Canva",
+    "automated": 14
+  },
+  {
+    "domain": "mail.sncf-connect.com",
+    "count": 14,
+    "name": "SNCF Connect",
+    "automated": 14
+  },
+  {
+    "domain": "info.thalia.de",
+    "count": 14,
+    "name": "Thalia.de",
+    "automated": 14
+  },
+  {
+    "domain": "eneba.com",
+    "count": 14,
+    "name": "ENEBA",
+    "automated": 0
+  },
+  {
+    "domain": "telusinternational.ai",
+    "count": 14,
+    "name": "TELUS Digital AI Sourcing Team",
+    "automated": 2
+  },
+  {
+    "domain": "em.pedidosya.com",
+    "count": 14,
+    "name": "PedidosYa",
+    "automated": 14
+  },
+  {
+    "domain": "fly.aerlingus.com",
+    "count": 14,
+    "name": "AerClub",
+    "automated": 2
+  },
+  {
+    "domain": "thalia.de",
+    "count": 14,
+    "name": "Thalia Bonn",
+    "automated": 0
+  },
+  {
+    "domain": "burger-artmeier.com",
+    "count": 14,
+    "name": "Wolfgang Burger",
+    "automated": 0
+  },
+  {
+    "domain": "papercut.hs-regensburg.de",
+    "count": 14,
+    "name": "noreply@papercut.hs-regensburg.de",
+    "automated": 0
+  },
+  {
+    "domain": "impfzentren.bayern",
+    "count": 14,
+    "name": "BayIMCO@impfzentren.bayern",
+    "automated": 12
+  },
+  {
+    "domain": "em.pizza.de",
+    "count": 14,
+    "name": "pizza.de Newsletter",
+    "automated": 14
+  },
+  {
+    "domain": "trustpilotmail.com",
+    "count": 13,
+    "name": "Doktorabc",
+    "automated": 2
+  },
+  {
+    "domain": "philippfollmer.de",
+    "count": 13,
+    "name": "Philipp Follmer",
+    "automated": 13
+  },
+  {
+    "domain": "email.jobteaser.com",
+    "count": 13,
+    "name": "Annika von JobTeaser",
+    "automated": 0
+  },
+  {
+    "domain": "amz-marketing.de",
+    "count": 13,
+    "name": "Mona Plomitzer",
+    "automated": 0
+  },
+  {
+    "domain": "mail03.traviangames.com",
+    "count": 13,
+    "name": "Travian Games Team",
+    "automated": 13
+  },
+  {
+    "domain": "notification.pay.g2a.com",
+    "count": 13,
+    "name": "G2A Pay",
+    "automated": 0
+  },
+  {
+    "domain": "mail.samedi.de",
+    "count": 13,
+    "name": "Dr. Alexandra Koch Zahn\u00e4rztin am Theater",
+    "automated": 5
+  },
+  {
+    "domain": "nebenan.de",
+    "count": 13,
+    "name": "nebenan.de",
+    "automated": 0
+  },
+  {
+    "domain": "marketing.activision.com",
+    "count": 13,
+    "name": "Call of Duty",
+    "automated": 0
+  },
+  {
+    "domain": "notifications.wix.com",
+    "count": 13,
+    "name": "Wix.com",
+    "automated": 0
+  },
+  {
+    "domain": "blizzard.com",
+    "count": 13,
+    "name": "Blizzard Entertainment",
+    "automated": 0
+  },
+  {
+    "domain": "storangebox.de",
+    "count": 13,
+    "name": "",
+    "automated": 0
+  },
+  {
+    "domain": "outlook.com",
+    "count": 13,
+    "name": "Diana Gierlinger",
+    "automated": 0
+  },
+  {
+    "domain": "blablacar.com",
+    "count": 12,
+    "name": "BlaBlaCar",
+    "automated": 0
+  },
+  {
+    "domain": "notifications.skype.com",
+    "count": 12,
+    "name": "Skype",
+    "automated": 0
+  },
+  {
+    "domain": "music.deezer.com",
+    "count": 12,
+    "name": "Deezer",
+    "automated": 12
+  },
+  {
+    "domain": "email.shopify.com",
+    "count": 12,
+    "name": "Shopify",
+    "automated": 7
+  },
+  {
+    "domain": "mail.kvb.mobilesticket.de",
+    "count": 12,
+    "name": "no-reply@mail.kvb.mobilesticket.de",
+    "automated": 0
+  },
+  {
+    "domain": "dsr.incogni.com",
+    "count": 12,
+    "name": "Zoe from Incogni",
+    "automated": 0
+  },
+  {
+    "domain": "rnms.recruit.net",
+    "count": 12,
+    "name": "Recruit.net Job Alert",
+    "automated": 12
+  },
+  {
+    "domain": "news.kleinanzeigen.de",
+    "count": 12,
+    "name": "Frida von Kleinanzeigen",
+    "automated": 12
+  },
+  {
+    "domain": "ew-ei.eu",
+    "count": 12,
+    "name": "EWEI - Eastwest European Institute",
+    "automated": 6
+  },
+  {
+    "domain": "mertinat.org",
+    "count": 12,
+    "name": "siri",
+    "automated": 12
+  },
+  {
+    "domain": "deutschepost.de",
+    "count": 12,
+    "name": "service-shop@deutschepost.de",
+    "automated": 1
+  },
+  {
+    "domain": "myworkmarket.com",
+    "count": 12,
+    "name": "WorkMarket",
+    "automated": 0
+  },
+  {
+    "domain": "eastwest.eu",
+    "count": 12,
+    "name": "Store eastwest",
+    "automated": 12
+  },
+  {
+    "domain": "crehana.com",
+    "count": 12,
+    "name": "Crehana",
+    "automated": 7
+  },
+  {
+    "domain": "egoods.g2a.com",
+    "count": 12,
+    "name": "G2A",
+    "automated": 0
+  },
+  {
+    "domain": "mail.disneyplus.com",
+    "count": 12,
+    "name": "Disney+",
+    "automated": 4
+  },
+  {
+    "domain": "mail.etsy.com",
+    "count": 12,
+    "name": "Nachrichten auf Etsy",
+    "automated": 0
+  },
+  {
+    "domain": "ageofempires.com",
+    "count": 12,
+    "name": "Age of Empires Insiders",
+    "automated": 12
+  },
+  {
+    "domain": "t-online.de",
+    "count": 12,
+    "name": "Selig G\u00fcnter",
+    "automated": 0
+  },
+  {
+    "domain": "bandcamp.com",
+    "count": 11,
+    "name": "Bandcamp",
+    "automated": 0
+  },
+  {
+    "domain": "mail.nordvpn.com",
+    "count": 11,
+    "name": "The NordVPN Team",
+    "automated": 11
+  },
+  {
+    "domain": "info.wise.com",
+    "count": 11,
+    "name": "Wise (formerly TransferWise)",
+    "automated": 7
+  },
+  {
+    "domain": "messaging.wowtv.de",
+    "count": 11,
+    "name": "WOW",
+    "automated": 0
+  },
+  {
+    "domain": "x.com",
+    "count": 11,
+    "name": "X",
+    "automated": 0
+  },
+  {
+    "domain": "mail.artlist.io",
+    "count": 11,
+    "name": "Artlist",
+    "automated": 11
+  },
+  {
+    "domain": "customers.gumroad.com",
+    "count": 11,
+    "name": "Gumroad",
+    "automated": 0
+  },
+  {
+    "domain": "vueling.com",
+    "count": 11,
+    "name": "Vueling Airlines",
+    "automated": 0
+  },
+  {
+    "domain": "updates.miro.com",
+    "count": 11,
+    "name": "Miro",
+    "automated": 0
+  },
+  {
+    "domain": "reply1.ebay.com",
+    "count": 11,
+    "name": "eBay",
+    "automated": 11
+  },
+  {
+    "domain": "email.asana.com",
+    "count": 11,
+    "name": "Asana",
+    "automated": 11
+  },
+  {
+    "domain": "esurfconsultores.com",
+    "count": 11,
+    "name": "Angie Stumpf",
+    "automated": 0
+  },
+  {
+    "domain": "un.org",
+    "count": 10,
+    "name": "Charlotte Mousnier",
+    "automated": 0
+  },
+  {
+    "domain": "service.xe.com",
+    "count": 10,
+    "name": "Xe Money Transfer",
+    "automated": 0
+  },
+  {
+    "domain": "poe.com",
+    "count": 10,
+    "name": "Poe",
+    "automated": 0
+  },
+  {
+    "domain": "dawonia.de",
+    "count": 10,
+    "name": "K\u00f6glmeier Roswitha",
+    "automated": 0
+  },
+  {
+    "domain": "secretsantaorganizer.com",
+    "count": 10,
+    "name": "Tania",
+    "automated": 10
+  },
+  {
+    "domain": "email.enterprise.com",
+    "count": 10,
+    "name": "Enterprise Rent-A-Car",
+    "automated": 9
+  },
+  {
+    "domain": "happyscribe.co",
+    "count": 10,
+    "name": "Happy Scribe",
+    "automated": 4
+  },
+  {
+    "domain": "trm.brassring.com",
+    "count": 10,
+    "name": "laura.schulz",
+    "automated": 0
+  },
+  {
+    "domain": "ubi.com",
+    "count": 10,
+    "name": "Ubisoft Account Support",
+    "automated": 0
+  },
+  {
+    "domain": "clientes.dominospizza.es",
+    "count": 10,
+    "name": "Domino's Pizza",
+    "automated": 10
+  },
+  {
+    "domain": "e.newyorktimes.com",
+    "count": 10,
+    "name": "The New York Times",
+    "automated": 10
+  },
+  {
+    "domain": "packlink.zendesk.com",
+    "count": 10,
+    "name": "Packlink",
+    "automated": 0
+  },
+  {
+    "domain": "gondwanatoursandsafaris.com",
+    "count": 9,
+    "name": "From Mark at Gondwana Tours & Safaris",
+    "automated": 9
+  },
+  {
+    "domain": "rides-marketing.bolt.eu",
+    "count": 9,
+    "name": "Laura von Bolt",
+    "automated": 9
+  },
+  {
+    "domain": "e.startselect.com",
+    "count": 9,
+    "name": "Startselect",
+    "automated": 8
+  },
+  {
+    "domain": "zoom.us",
+    "count": 9,
+    "name": "IPBES secretariat",
+    "automated": 0
+  },
+  {
+    "domain": "dhl.com",
+    "count": 9,
+    "name": "DHL EXPRESS",
+    "automated": 0
+  },
+  {
+    "domain": "opentable.de",
+    "count": 9,
+    "name": "OpenTable | Konrad's Restaurant & Bar Reservierungen",
+    "automated": 1
+  },
+  {
+    "domain": "boa.bo",
+    "count": 9,
+    "name": "noreply@boa.bo",
+    "automated": 0
+  },
+  {
+    "domain": "economist.com",
+    "count": 9,
+    "name": "The Economist",
+    "automated": 0
+  },
+  {
+    "domain": "join.com",
+    "count": 9,
+    "name": "SAWOO GmbH",
+    "automated": 0
+  },
+  {
+    "domain": "bbva.com",
+    "count": 9,
+    "name": "notificaciones-bbva@bbva.com",
+    "automated": 0
+  },
+  {
+    "domain": "schufa.de",
+    "count": 9,
+    "name": "SCHUFA Rechnungsservice",
+    "automated": 0
+  },
+  {
+    "domain": "bolivia.de",
+    "count": 9,
+    "name": "info@bolivia.de",
+    "automated": 0
+  },
+  {
+    "domain": "sheerid.com",
+    "count": 9,
+    "name": "SheerID Verification",
+    "automated": 0
+  },
+  {
+    "domain": "newsvoice.com",
+    "count": 9,
+    "name": "Newsvoice",
+    "automated": 9
+  },
+  {
+    "domain": "email.virginmedia.ie",
+    "count": 9,
+    "name": "Virgin Media",
+    "automated": 5
+  },
+  {
+    "domain": "payzone.ie",
+    "count": 9,
+    "name": "Pinergy",
+    "automated": 0
+  },
+  {
+    "domain": "netcologne.de",
+    "count": 9,
+    "name": "Volker Schl\u00f6gell",
+    "automated": 0
+  },
+  {
+    "domain": "t.deliveroo.com",
+    "count": 8,
+    "name": "Deliveroo",
+    "automated": 0
+  },
+  {
+    "domain": "orange.fr",
+    "count": 8,
+    "name": "Claudie",
+    "automated": 0
+  },
+  {
+    "domain": "wizville.fr",
+    "count": 8,
+    "name": "Devred Marseille Bourse",
+    "automated": 8
+  },
+  {
+    "domain": "achat-titres.iledefrance-mobilites.fr",
+    "count": 8,
+    "name": "Achat Navigo",
+    "automated": 0
+  },
+  {
+    "domain": "sips-services.com",
+    "count": 8,
+    "name": "nepasrepondre-navigo@sips-services.com",
+    "automated": 0
+  },
+  {
+    "domain": "property.booking.com",
+    "count": 8,
+    "name": "Apartments Ella through Booking.com",
+    "automated": 0
+  },
+  {
+    "domain": "communications.wowtv.de",
+    "count": 8,
+    "name": "WOW",
+    "automated": 6
+  },
+  {
+    "domain": "thedeepview.co",
+    "count": 8,
+    "name": "The Deep View",
+    "automated": 8
+  },
+  {
+    "domain": "info.elpais.com",
+    "count": 8,
+    "name": "EL PA\u00cdS",
+    "automated": 8
+  },
+  {
+    "domain": "bu.edu",
+    "count": 8,
+    "name": "BU - Pardee School of Global Studies Graduate Admissions",
+    "automated": 0
+  },
+  {
+    "domain": "schriftsteller-ostbayern.de",
+    "count": 8,
+    "name": "VS Ostbayern",
+    "automated": 8
+  },
+  {
+    "domain": "paddle.com",
+    "count": 8,
+    "name": "NordVPN (via Paddle.com)",
+    "automated": 0
+  },
+  {
+    "domain": "email.stepstone.de",
+    "count": 8,
+    "name": "StepStone",
+    "automated": 3
+  },
+  {
+    "domain": "info.heyjobs.co",
+    "count": 8,
+    "name": "HeyJobs",
+    "automated": 0
+  },
+  {
+    "domain": "etsy.com",
+    "count": 8,
+    "name": "Versandbenachrichtigungen von EllaEisvogel",
+    "automated": 2
+  },
+  {
+    "domain": "jobs.krones.group",
+    "count": 8,
+    "name": "Teresa Meinzinger",
+    "automated": 0
+  },
+  {
+    "domain": "yello.co",
+    "count": 8,
+    "name": "Deutsche Bank Early Careers",
+    "automated": 0
+  },
+  {
+    "domain": "mail.amazon.jobs",
+    "count": 8,
+    "name": "noreply@mail.amazon.jobs",
+    "automated": 0
+  },
+  {
+    "domain": "outlook.de",
+    "count": 8,
+    "name": "Kevin Lam",
+    "automated": 4
+  },
+  {
+    "domain": "reaktor.com",
+    "count": 8,
+    "name": "Elements of AI",
+    "automated": 8
+  },
+  {
+    "domain": "swagbucks.com",
+    "count": 8,
+    "name": "Swagbucks Exclusive Deals",
+    "automated": 6
+  },
+  {
+    "domain": "email.di.fm",
+    "count": 8,
+    "name": "DI.FM",
+    "automated": 8
+  },
+  {
+    "domain": "faz.de",
+    "count": 8,
+    "name": "F.A.Z. Registrierung",
+    "automated": 0
+  },
+  {
+    "domain": "justice.ie",
+    "count": 8,
+    "name": "BQ Reg Office",
+    "automated": 0
+  },
+  {
+    "domain": "staev.afser.de",
+    "count": 8,
+    "name": "St\u00e4V S\u00fcd",
+    "automated": 0
+  },
+  {
+    "domain": "wasteheadquarters.com",
+    "count": 7,
+    "name": "WASTE HQ",
+    "automated": 7
+  },
+  {
+    "domain": "communications.paypal.com",
+    "count": 7,
+    "name": "PayPal Communications",
+    "automated": 0
+  },
+  {
+    "domain": "euroflorist.de",
+    "count": 7,
+    "name": "Karolin von Euroflorist",
+    "automated": 5
+  },
+  {
+    "domain": "news.de.shein.com",
+    "count": 7,
+    "name": "SHEIN",
+    "automated": 7
+  },
+  {
+    "domain": "perplexity.ai",
+    "count": 7,
+    "name": "Perplexity AI, Inc",
+    "automated": 1
+  },
+  {
+    "domain": "booking.flixbus.com",
+    "count": 7,
+    "name": "Flix",
+    "automated": 0
+  },
+  {
+    "domain": "arc.net",
+    "count": 7,
+    "name": "The Browser Company",
+    "automated": 6
+  },
+  {
+    "domain": "fleurop.de",
+    "count": 7,
+    "name": "Markus von Fleurop",
+    "automated": 3
+  },
+  {
+    "domain": "bytedance.com",
+    "count": 7,
+    "name": "capcut.support",
+    "automated": 0
+  },
+  {
+    "domain": "flixbus.de",
+    "count": 7,
+    "name": "service@flixbus.de",
+    "automated": 0
+  },
+  {
+    "domain": "noreply1.ebay.com",
+    "count": 7,
+    "name": "eBay",
+    "automated": 5
+  },
+  {
+    "domain": "t.mail.coursera.org",
+    "count": 7,
+    "name": "Coursera",
+    "automated": 0
+  },
+  {
+    "domain": "emailing.ie.edu",
+    "count": 7,
+    "name": "IE University",
+    "automated": 7
+  },
+  {
+    "domain": "account.tiktok.com",
+    "count": 7,
+    "name": "TikTok",
+    "automated": 0
+  },
+  {
+    "domain": "info.email.aa.com",
+    "count": 7,
+    "name": "American Airlines",
+    "automated": 0
+  },
+  {
+    "domain": "samsung-mail.com",
+    "count": 7,
+    "name": "Samsung account",
+    "automated": 0
+  },
+  {
+    "domain": "spacedomemediagmbh.recruitee.com",
+    "count": 7,
+    "name": "Niklas  Grunow",
+    "automated": 0
+  },
+  {
+    "domain": "companyhouse.de",
+    "count": 7,
+    "name": "CompanyHouse",
+    "automated": 0
+  },
+  {
+    "domain": "youtube.com",
+    "count": 7,
+    "name": "YouTube",
+    "automated": 0
+  },
+  {
+    "domain": "kundenservice.vodafone.com",
+    "count": 7,
+    "name": "noreply.wlan-shop@kundenservice.vodafone.com",
+    "automated": 0
+  },
+  {
+    "domain": "dropbox.com",
+    "count": 7,
+    "name": "Dropbox",
+    "automated": 0
+  },
+  {
+    "domain": "successfactors.com",
+    "count": 7,
+    "name": "Recruiting",
+    "automated": 0
+  },
+  {
+    "domain": "surveymonkeyuser.com",
+    "count": 7,
+    "name": "SurveyMonkey",
+    "automated": 1
+  },
+  {
+    "domain": "t.kelloggs.com",
+    "count": 7,
+    "name": "PRINGLES",
+    "automated": 0
+  },
+  {
+    "domain": "mailing.lbb.de",
+    "count": 7,
+    "name": "AMAZON KartenService",
+    "automated": 7
+  },
+  {
+    "domain": "rockstargames.com",
+    "count": 7,
+    "name": "noreply@rockstargames.com",
+    "automated": 0
+  },
+  {
+    "domain": "digital.gameinformer.com",
+    "count": 7,
+    "name": "Game Informer Digital",
+    "automated": 7
+  },
+  {
+    "domain": "lbb.de",
+    "count": 7,
+    "name": "",
+    "automated": 0
+  },
+  {
+    "domain": "career.reinhausen.com",
+    "count": 7,
+    "name": "",
+    "automated": 0
+  },
+  {
+    "domain": "reddit.com",
+    "count": 7,
+    "name": "Reddit",
+    "automated": 0
+  },
+  {
+    "domain": "cambeywest.com",
+    "count": 7,
+    "name": "Foreign Policy",
+    "automated": 1
+  },
+  {
+    "domain": "expressvpn.com",
+    "count": 7,
+    "name": "ExpressVPN",
+    "automated": 0
+  },
+  {
+    "domain": "fh-dortmund.de",
+    "count": 7,
+    "name": "bewerbung bewerbung",
+    "automated": 0
+  },
+  {
+    "domain": "reutlingen-university.de",
+    "count": 7,
+    "name": "Amerein, Melanie",
+    "automated": 0
+  },
+  {
+    "domain": "trust.com.py",
+    "count": 7,
+    "name": "Christian Lichtenberg",
+    "automated": 0
+  },
+  {
+    "domain": "afs.org",
+    "count": 7,
+    "name": "Valerie.Lecler@afs.org",
+    "automated": 0
+  },
+  {
+    "domain": "complicated.life",
+    "count": 6,
+    "name": "It's Complicated",
+    "automated": 1
+  },
+  {
+    "domain": "chameleon.com.na",
+    "count": 6,
+    "name": "Chameleon Safaris Namibia",
+    "automated": 5
+  },
+  {
+    "domain": "mail.bahncard.bahn.de",
+    "count": 6,
+    "name": "BahnCard Service",
+    "automated": 6
+  },
+  {
+    "domain": "huggingface.co",
+    "count": 6,
+    "name": "Hugging Face Xet Support",
+    "automated": 0
+  },
+  {
+    "domain": "aisecret.us",
+    "count": 6,
+    "name": "AI Secret",
+    "automated": 6
+  },
+  {
+    "domain": "e.eurostar.com",
+    "count": 6,
+    "name": "Eurostar",
+    "automated": 0
+  },
+  {
+    "domain": "dundle.com",
+    "count": 6,
+    "name": "dundle.com",
+    "automated": 0
+  },
+  {
+    "domain": "support.omgyes.com",
+    "count": 6,
+    "name": "OMGYES",
+    "automated": 5
+  },
+  {
+    "domain": "hotmail.fr",
+    "count": 6,
+    "name": "Claudie Mousnier",
+    "automated": 0
+  },
+  {
+    "domain": "service.dpd.de",
+    "count": 6,
+    "name": "DPD",
+    "automated": 0
+  },
+  {
+    "domain": "o2.com",
+    "count": 6,
+    "name": "Kundenservice",
+    "automated": 0
+  },
+  {
+    "domain": "releases.mubi.com",
+    "count": 6,
+    "name": "MUBI",
+    "automated": 6
+  },
+  {
+    "domain": "g2a.com",
+    "count": 6,
+    "name": "G2A LOOT",
+    "automated": 0
+  },
+  {
+    "domain": "dransay.com",
+    "count": 6,
+    "name": "Can von DrAnsay.com",
+    "automated": 3
+  },
+  {
+    "domain": "by.aok.de",
+    "count": 6,
+    "name": "",
+    "automated": 0
+  },
+  {
+    "domain": "paypal.com",
+    "count": 6,
+    "name": "",
+    "automated": 0
+  },
+  {
+    "domain": "pictory.ai",
+    "count": 6,
+    "name": "Karam @ Pictory",
+    "automated": 6
+  },
+  {
+    "domain": "youngerself.ai",
+    "count": 6,
+    "name": "YoungerSelf.AI",
+    "automated": 6
+  },
+  {
+    "domain": "elearning.hs-regensburg.de",
+    "count": 6,
+    "name": "Markus Bresinsky (\u00fcber E-Learning)",
+    "automated": 4
+  },
+  {
+    "domain": "kununu.com",
+    "count": 6,
+    "name": "kununu",
+    "automated": 0
+  },
+  {
+    "domain": "megapixl.com",
+    "count": 6,
+    "name": "Megapixl",
+    "automated": 0
+  },
+  {
+    "domain": "domesticandgeneral.com",
+    "count": 6,
+    "name": "D&G",
+    "automated": 2
+  },
+  {
+    "domain": "tasso.net",
+    "count": 6,
+    "name": "TASSO Suchplakate",
+    "automated": 0
+  },
+  {
+    "domain": "nachrichten.immobilienscout24.de",
+    "count": 6,
+    "name": "Patrick Flierl",
+    "automated": 0
+  },
+  {
+    "domain": "capcom.com",
+    "count": 6,
+    "name": "CapcomAccountInfo",
+    "automated": 0
+  },
+  {
+    "domain": "successfactors.eu",
+    "count": 6,
+    "name": "AVL Recruiting",
+    "automated": 0
+  },
+  {
+    "domain": "apo-schnelltest.de",
+    "count": 6,
+    "name": "Arnulf Apotheke",
+    "automated": 0
+  },
+  {
+    "domain": "tennistown.de",
+    "count": 6,
+    "name": "tennistown.de",
+    "automated": 0
+  },
+  {
+    "domain": "paketankuendigung.myhermes.de",
+    "count": 6,
+    "name": "Hermes Zustellbenachrichtigung",
+    "automated": 0
+  },
+  {
+    "domain": "avast.com",
+    "count": 6,
+    "name": "Avast",
+    "automated": 0
+  },
+  {
+    "domain": "11880.com",
+    "count": 6,
+    "name": "11880.com Angebotsservice",
+    "automated": 0
+  },
+  {
+    "domain": "news.parler.com",
+    "count": 6,
+    "name": "Parler",
+    "automated": 6
+  },
+  {
+    "domain": "announce.deliveroo.ie",
+    "count": 6,
+    "name": "Deliveroo",
+    "automated": 6
+  },
+  {
+    "domain": "cipsoft.com",
+    "count": 6,
+    "name": "CipSoft Jobs",
+    "automated": 0
+  },
+  {
+    "domain": "e.tripadvisor.com",
+    "count": 6,
+    "name": "TripAdvisor",
+    "automated": 5
+  },
+  {
+    "domain": "virginmedia.ie",
+    "count": 6,
+    "name": "",
+    "automated": 0
+  },
+  {
+    "domain": "fourstarpizza.ie",
+    "count": 6,
+    "name": "Four Star",
+    "automated": 0
+  },
+  {
+    "domain": "snapchat.com",
+    "count": 6,
+    "name": "Team Snapchat",
+    "automated": 0
+  },
+  {
+    "domain": "uni-assist.de",
+    "count": 6,
+    "name": "uni-assist Service",
+    "automated": 0
+  },
+  {
+    "domain": "sw-tuebingen-hohenheim.de",
+    "count": 6,
+    "name": "no-reply-tue@sw-tuebingen-hohenheim.de",
+    "automated": 0
+  },
+  {
+    "domain": "international-business-school.de",
+    "count": 6,
+    "name": "Jahn Michaela",
+    "automated": 0
+  },
+  {
+    "domain": "rides-promotions.bolt.eu",
+    "count": 5,
+    "name": "Laura von Bolt",
+    "automated": 5
+  },
+  {
+    "domain": "mail.free-now.com",
+    "count": 5,
+    "name": "Freenow",
+    "automated": 0
+  },
+  {
+    "domain": "share-d.com",
+    "count": 5,
+    "name": "Carla from Shared",
+    "automated": 5
+  },
+  {
+    "domain": "8927923.brevosend.com",
+    "count": 5,
+    "name": "Schriftstellerverband Ostbayern",
+    "automated": 5
+  },
+  {
+    "domain": "ec.europa.eu",
+    "count": 5,
+    "name": "EU CORPORATE NOTIFICATION SYSTEM",
+    "automated": 0
+  },
+  {
+    "domain": "email.euroflorist.de",
+    "count": 5,
+    "name": "Karolin von Euroflorist",
+    "automated": 3
+  },
+  {
+    "domain": "info.ebay.de",
+    "count": 5,
+    "name": "eBay",
+    "automated": 0
+  },
+  {
+    "domain": "lepehne-herbst.de",
+    "count": 5,
+    "name": "Tanzschule Lepehne-Herbst | Patrick Scheurer",
+    "automated": 0
+  },
+  {
+    "domain": "mailing.giropay.de",
+    "count": 5,
+    "name": "giropay",
+    "automated": 5
+  },
+  {
+    "domain": "notice.ihub.image.canon",
+    "count": 5,
+    "name": "image.canon",
+    "automated": 0
+  },
+  {
+    "domain": "members.ebay.com",
+    "count": 5,
+    "name": "eBay - mediamarkt",
+    "automated": 0
+  },
+  {
+    "domain": "ups.com",
+    "count": 5,
+    "name": "Customer Notification",
+    "automated": 0
+  },
+  {
+    "domain": "monese.com",
+    "count": 5,
+    "name": "Monese",
+    "automated": 0
+  },
+  {
+    "domain": "infoservice.sky.de",
+    "count": 5,
+    "name": "Sky Deutschland (No Reply)",
+    "automated": 3
+  },
+  {
+    "domain": "eservice-drv.de",
+    "count": 5,
+    "name": "noreply@eservice-drv.de",
+    "automated": 0
+  },
+  {
+    "domain": "pinergy.ie",
+    "count": 5,
+    "name": "customerservices@pinergy.ie",
+    "automated": 0
+  },
+  {
+    "domain": "mail.hbomax.com",
+    "count": 5,
+    "name": "HBO Max",
+    "automated": 0
+  },
+  {
+    "domain": "citavi.com",
+    "count": 5,
+    "name": "Citavi Account",
+    "automated": 1
+  },
+  {
+    "domain": "primastrom.de",
+    "count": 5,
+    "name": "",
+    "automated": 0
+  },
+  {
+    "domain": "nvgaming.nvidia.com",
+    "count": 5,
+    "name": "NVIDIA",
+    "automated": 5
+  },
+  {
+    "domain": "ledvance.com",
+    "count": 5,
+    "name": "[LEDVANCE Smart+ WiFi]",
+    "automated": 0
+  },
+  {
+    "domain": "news.nianticlabs.com",
+    "count": 5,
+    "name": "Niantic",
+    "automated": 0
+  },
+  {
+    "domain": "connecta-regensburg.de",
+    "count": 5,
+    "name": "info@connecta-regensburg.de",
+    "automated": 0
+  },
+  {
+    "domain": "hansimglueck-burgergrill.de",
+    "count": 5,
+    "name": "Regensburg Innenstadt | Hans im Gl\u00fcck Burgergrill",
+    "automated": 0
+  },
+  {
+    "domain": "e0.wordpress.com",
+    "count": 5,
+    "name": "WordPress.com",
+    "automated": 5
+  },
+  {
+    "domain": "ie.edu",
+    "count": 5,
+    "name": "Student Services",
+    "automated": 1
+  },
+  {
+    "domain": "email.yourcareergroup.com",
+    "count": 5,
+    "name": "Franziska von HOTELCAREER",
+    "automated": 0
+  },
+  {
+    "domain": "omniga.de",
+    "count": 5,
+    "name": "Patrick Fink",
+    "automated": 0
+  },
+  {
+    "domain": "deinbutler.de",
+    "count": 5,
+    "name": "DeinButler.de",
+    "automated": 0
+  },
+  {
+    "domain": "laurarothphotography.com",
+    "count": 5,
+    "name": "Laura Roth",
+    "automated": 0
+  },
+  {
+    "domain": "swagbucksemail.com",
+    "count": 5,
+    "name": "Swagbucks",
+    "automated": 5
+  },
+  {
+    "domain": "fansale.de",
+    "count": 5,
+    "name": "fanSALE",
+    "automated": 0
+  },
+  {
+    "domain": "acrobat.com",
+    "count": 5,
+    "name": "noreply@acrobat.com",
+    "automated": 0
+  },
+  {
+    "domain": "gmx.net",
+    "count": 5,
+    "name": "Christian Sanchez",
+    "automated": 0
+  },
+  {
+    "domain": "nerdfitness.com",
+    "count": 5,
+    "name": "Steve at Nerd Fitness",
+    "automated": 5
+  },
+  {
+    "domain": "mail.mytaxi.com",
+    "count": 5,
+    "name": "mytaxi",
+    "automated": 0
+  },
+  {
+    "domain": "formulastudent-regensburg.de",
+    "count": 5,
+    "name": "info@formulastudent-regensburg.de",
+    "automated": 0
+  },
+  {
+    "domain": "dubl.auswaertiges-amt.de",
+    "count": 5,
+    "name": ".DUBL *VISA",
+    "automated": 0
+  },
+  {
+    "domain": "helsinki.fi",
+    "count": 5,
+    "name": "studentexchange@helsinki.fi",
+    "automated": 0
+  },
+  {
+    "domain": "comprehensiveanalysis.com",
+    "count": 5,
+    "name": "dot.exercises@comprehensiveanalysis.com",
+    "automated": 0
+  },
+  {
+    "domain": "ticketmaster.pl",
+    "count": 4,
+    "name": "Ticketmaster",
+    "automated": 0
+  },
+  {
+    "domain": "mail.nintendo-europe.com",
+    "count": 4,
+    "name": "Nintendo",
+    "automated": 0
+  },
+  {
+    "domain": "doctolib.fr",
+    "count": 4,
+    "name": "Doctolib",
+    "automated": 4
+  },
+  {
+    "domain": "feedback.deliveroo.com",
+    "count": 4,
+    "name": "Deliveroo",
+    "automated": 4
+  },
+  {
+    "domain": "update.eis.de",
+    "count": 4,
+    "name": "EIS: Pssst \u2026 Mystery Box \u2013 gro\u00dfe \u00dcberraschungsbox kostenlos",
+    "automated": 4
+  },
+  {
+    "domain": "contact.elevenlabs.io",
+    "count": 4,
+    "name": "ElevenLabs Team",
+    "automated": 4
+  },
+  {
+    "domain": "amazon.co.uk",
+    "count": 4,
+    "name": "Amazon.co.uk",
+    "automated": 0
+  },
+  {
+    "domain": "yreceipts.co.uk",
+    "count": 4,
+    "name": "DEVRED MARSEILLE BOURSE",
+    "automated": 0
+  },
+  {
+    "domain": "mail.rankedvote.co",
+    "count": 4,
+    "name": "RankedVote",
+    "automated": 4
+  },
+  {
+    "domain": "147098606.mailchimpapp.com",
+    "count": 4,
+    "name": "From Steffi at Gondwana Tours & Safaris",
+    "automated": 4
+  },
+  {
+    "domain": "mailing.bahn.de",
+    "count": 4,
+    "name": "bahn.de",
+    "automated": 4
+  },
+  {
+    "domain": "feverup.com",
+    "count": 4,
+    "name": "Fever",
+    "automated": 0
+  },
+  {
+    "domain": "mail.by.aok.de",
+    "count": 4,
+    "name": "AOK Bayern",
+    "automated": 4
+  },
+  {
+    "domain": "incogni.com",
+    "count": 4,
+    "name": "Incogni",
+    "automated": 4
+  },
+  {
+    "domain": "updates.magnific.ai",
+    "count": 4,
+    "name": "Magnific",
+    "automated": 4
+  },
+  {
+    "domain": "ebay.com",
+    "count": 4,
+    "name": "eBay",
+    "automated": 0
+  },
+  {
+    "domain": "xe.com",
+    "count": 4,
+    "name": "no-reply@xe.com",
+    "automated": 0
+  },
+  {
+    "domain": "xoom.com",
+    "count": 4,
+    "name": "Xoom, a PayPal Service",
+    "automated": 0
+  },
+  {
+    "domain": "email.nianticlabs.com",
+    "count": 4,
+    "name": "Niantic",
+    "automated": 4
+  },
+  {
+    "domain": "kvb.koeln",
+    "count": 4,
+    "name": "KVB-Kundenservice",
+    "automated": 0
+  },
+  {
+    "domain": "account.fielmann.de",
+    "count": 4,
+    "name": "Fielmann",
+    "automated": 0
+  },
+  {
+    "domain": "mail.adobe.com",
+    "count": 4,
+    "name": "Adobe Creative Cloud",
+    "automated": 2
+  },
+  {
+    "domain": "mail.xing.com",
+    "count": 4,
+    "name": "XING",
+    "automated": 0
+  },
+  {
+    "domain": "hansemerkur.de",
+    "count": 4,
+    "name": "",
+    "automated": 0
+  },
+  {
+    "domain": "doodle.com",
+    "count": 4,
+    "name": "Doodle",
+    "automated": 0
+  },
+  {
+    "domain": "brazen.com",
+    "count": 4,
+    "name": "Foreign Affairs",
+    "automated": 4
+  },
+  {
+    "domain": "lohi.de",
+    "count": 4,
+    "name": "regensburg@lohi.de",
+    "automated": 0
+  },
+  {
+    "domain": "grammarly.zendesk.com",
+    "count": 4,
+    "name": "Mary (Grammarly Support)",
+    "automated": 0
+  },
+  {
+    "domain": "emailinfo.bestbuy.com",
+    "count": 4,
+    "name": "My Best Buy",
+    "automated": 0
+  },
+  {
+    "domain": "rehau.com",
+    "count": 4,
+    "name": "Rehau Recruiting",
+    "automated": 0
+  },
+  {
+    "domain": "avl.com",
+    "count": 4,
+    "name": "sfr.hr",
+    "automated": 0
+  },
+  {
+    "domain": "email.kenjo.io",
+    "count": 4,
+    "name": "Christina Hohenstatter",
+    "automated": 0
+  },
+  {
+    "domain": "b4payment.de",
+    "count": 4,
+    "name": "Christina Hohenstatter | SEPAexpress",
+    "automated": 0
+  },
+  {
+    "domain": "thefork.de",
+    "count": 4,
+    "name": "TheFork",
+    "automated": 4
+  },
+  {
+    "domain": "news.regiojet.cz",
+    "count": 4,
+    "name": "RegioJet",
+    "automated": 4
+  },
+  {
+    "domain": "emil-energie.de",
+    "count": 4,
+    "name": "Emil Energie GmbH",
+    "automated": 0
+  },
+  {
+    "domain": "uni-muenster.de",
+    "count": 4,
+    "name": "Prof. Reinhard Meyers",
+    "automated": 0
+  },
+  {
+    "domain": "workmarket.com",
+    "count": 4,
+    "name": "WorkMarket Team",
+    "automated": 2
+  },
+  {
+    "domain": "vhb.org",
+    "count": 4,
+    "name": "Virtuelle Hochschule Bayern",
+    "automated": 0
+  },
+  {
+    "domain": "mailing.jobteaser.com",
+    "count": 4,
+    "name": "JobTeaser",
+    "automated": 4
+  },
+  {
+    "domain": "email.amazon.com",
+    "count": 4,
+    "name": "",
+    "automated": 0
+  },
+  {
+    "domain": "pinergysmart.ie",
+    "count": 4,
+    "name": "PINERGY Customer Care",
+    "automated": 4
+  },
+  {
+    "domain": "notifications.piktochart.com",
+    "count": 4,
+    "name": "no-reply@notifications.piktochart.com",
+    "automated": 0
+  },
+  {
+    "domain": "googlegroups.com",
+    "count": 4,
+    "name": "'Munja Stockinger' via AFS Regensburg",
+    "automated": 3
+  },
+  {
+    "domain": "mountainwarehouse.com",
+    "count": 4,
+    "name": "info@mountainwarehouse.com",
+    "automated": 0
+  },
+  {
+    "domain": "finnair.com",
+    "count": 4,
+    "name": "Finnair Customer Study",
+    "automated": 3
+  },
+  {
+    "domain": "games-workshop.com",
+    "count": 4,
+    "name": "Games Workshop",
+    "automated": 0
+  },
+  {
+    "domain": "thejewellershop.com",
+    "count": 4,
+    "name": "",
+    "automated": 0
+  },
+  {
+    "domain": "email.nvidia.com",
+    "count": 4,
+    "name": "NVIDIA",
+    "automated": 0
+  },
+  {
+    "domain": "tunnelbear.com",
+    "count": 4,
+    "name": "TunnelBear",
+    "automated": 4
+  },
+  {
+    "domain": "exterieur.groupe-igs.fr",
+    "count": 4,
+    "name": "PREVOST-HEALY Laurence",
+    "automated": 0
+  },
+  {
+    "domain": "reamcgee.ie",
+    "count": 4,
+    "name": "Justin Prendiville",
+    "automated": 0
+  },
+  {
+    "domain": "twoomail.com",
+    "count": 4,
+    "name": "Twoo",
+    "automated": 4
+  },
+  {
+    "domain": "irisnet.brussels",
+    "count": 4,
+    "name": "",
+    "automated": 0
+  },
+  {
+    "domain": "deutsche-sportlotterie.de",
+    "count": 4,
+    "name": "service@deutsche-sportlotterie.de",
+    "automated": 0
+  },
+  {
+    "domain": "account.microsoft.com",
+    "count": 4,
+    "name": "Equipo de cuentas Microsoft",
+    "automated": 0
+  },
+  {
+    "domain": "nw.aok.de",
+    "count": 4,
+    "name": "K\u00f6nig, Kathrin",
+    "automated": 0
+  },
+  {
+    "domain": "yahoo.de",
+    "count": 4,
+    "name": "",
+    "automated": 0
+  },
+  {
+    "domain": "htw-berlin.de",
+    "count": 4,
+    "name": "bewerben@htw-berlin.de",
+    "automated": 0
+  },
+  {
+    "domain": "entelnet.bo",
+    "count": 4,
+    "name": "Fernando Crespo Valdivia",
+    "automated": 0
+  },
+  {
+    "domain": "shared1.ccsend.com",
+    "count": 3,
+    "name": "Johns Hopkins Center for Health Security",
+    "automated": 3
+  },
+  {
+    "domain": "reseaumistral.com",
+    "count": 3,
+    "name": "R\u00e9seau Mistral",
+    "automated": 0
+  },
+  {
+    "domain": "info.ticketmaster.pl",
+    "count": 3,
+    "name": "Ticketmaster",
+    "automated": 0
+  },
+  {
+    "domain": "business-email.bolt.eu",
+    "count": 3,
+    "name": "Bolt",
+    "automated": 3
+  },
+  {
+    "domain": "bolt.eu",
+    "count": 3,
+    "name": "Bolt Quittungen",
+    "automated": 0
+  },
+  {
+    "domain": "zufriedenheit.o2online.de",
+    "count": 3,
+    "name": "o2 Team",
+    "automated": 3
+  },
+  {
+    "domain": "email-de.euroflorist.com",
+    "count": 3,
+    "name": "Karolin von Euroflorist",
+    "automated": 3
+  },
+  {
+    "domain": "mail.app.supabase.io",
+    "count": 3,
+    "name": "Supabase Auth",
+    "automated": 0
+  },
+  {
+    "domain": "notifications.deezer.com",
+    "count": 3,
+    "name": "Deezer Team",
+    "automated": 0
+  },
+  {
+    "domain": "mockofun.com",
+    "count": 3,
+    "name": "MockoFun Admin",
+    "automated": 0
+  },
+  {
+    "domain": "email.anthropic.com",
+    "count": 3,
+    "name": "Anthropic Team",
+    "automated": 2
+  },
+  {
+    "domain": "news.magnific.ai",
+    "count": 3,
+    "name": "Magnific",
+    "automated": 3
+  },
+  {
+    "domain": "msg.familysearch.org",
+    "count": 3,
+    "name": "FamilySearch",
+    "automated": 0
+  },
+  {
+    "domain": "email02.account.sony.com",
+    "count": 3,
+    "name": "Sony",
+    "automated": 0
+  },
+  {
+    "domain": "telefonica.es",
+    "count": 3,
+    "name": "confirmacion_recarga_Movistar@telefonica.es",
+    "automated": 0
+  },
+  {
+    "domain": "message.sevenrooms.com",
+    "count": 3,
+    "name": "Jungle Palace by Ephemera",
+    "automated": 0
+  },
+  {
+    "domain": "updates.d-id.com",
+    "count": 3,
+    "name": "Team D-ID",
+    "automated": 0
+  },
+  {
+    "domain": "me.flixbus.com",
+    "count": 3,
+    "name": "FlixBus",
+    "automated": 0
+  },
+  {
+    "domain": "saltosystems.com",
+    "count": 3,
+    "name": "Salto Keys as a Service",
+    "automated": 0
+  },
+  {
+    "domain": "mail.espaceplaisir.fr",
+    "count": 3,
+    "name": "espaceplaisir",
+    "automated": 3
+  },
+  {
+    "domain": "treatwell.de",
+    "count": 3,
+    "name": "Treatwell",
+    "automated": 0
+  },
+  {
+    "domain": "notification.skype.com",
+    "count": 3,
+    "name": "Skype",
+    "automated": 0
+  },
+  {
+    "domain": "eurostar.com",
+    "count": 3,
+    "name": "noreply@eurostar.com",
+    "automated": 0
+  },
+  {
+    "domain": "cannovia.de",
+    "count": 3,
+    "name": "Erlich Apotheke, Alexander Hengst",
+    "automated": 0
+  },
+  {
+    "domain": "startselect.com",
+    "count": 3,
+    "name": "Startselect",
+    "automated": 0
+  },
+  {
+    "domain": "iq-global-test.com",
+    "count": 3,
+    "name": "\ud83d\udc4b\ud83c\udffd\ufe0f Prueba de CI",
+    "automated": 3
+  },
+  {
+    "domain": "schedule.eurowings.com",
+    "count": 3,
+    "name": "Eurowings",
+    "automated": 0
+  },
+  {
+    "domain": "mondialrelay.fr",
+    "count": 3,
+    "name": "Mondial Relay",
+    "automated": 0
+  },
+  {
+    "domain": "email.etsy.com",
+    "count": 3,
+    "name": "Etsy",
+    "automated": 0
+  },
+  {
+    "domain": "battle.net",
+    "count": 3,
+    "name": "Battle.net",
+    "automated": 0
+  },
+  {
+    "domain": "service-cannabisclub.de",
+    "count": 3,
+    "name": "Cannabis Club Warteliste",
+    "automated": 3
+  },
+  {
+    "domain": "amadeus.com",
+    "count": 3,
+    "name": "\\\"Pnr Booking Ticket Issuance Display \\",
+    "automated": 0
+  },
+  {
+    "domain": "kiusys.com",
+    "count": 3,
+    "name": "NO-REPLY@ECOJET.BO",
+    "automated": 0
+  },
+  {
+    "domain": "contentkuba.com",
+    "count": 3,
+    "name": "Content Kuba \ud83e\uddd1\u200d\ud83c\udfed",
+    "automated": 3
+  },
+  {
+    "domain": "txlogistik.eu",
+    "count": 3,
+    "name": "jobs@txlogistik.eu",
+    "automated": 0
+  },
+  {
+    "domain": "allianz.com",
+    "count": 3,
+    "name": "Allianz Travel",
+    "automated": 0
+  },
+  {
+    "domain": "novafind.eu",
+    "count": 3,
+    "name": "noreply@novafind.eu",
+    "automated": 0
+  },
+  {
+    "domain": "goflink.com",
+    "count": 3,
+    "name": "Flink",
+    "automated": 0
+  },
+  {
+    "domain": "taz.de",
+    "count": 3,
+    "name": "abo-lmd@taz.de",
+    "automated": 0
+  },
+  {
+    "domain": "dbschenker.com",
+    "count": 3,
+    "name": "Gordillo Rivera, Andrea",
+    "automated": 0
+  },
+  {
+    "domain": "email.slackhq.com",
+    "count": 3,
+    "name": "Slack",
+    "automated": 0
+  },
+  {
+    "domain": "getkeepsafe.com",
+    "count": 3,
+    "name": "Keepsafe",
+    "automated": 3
+  },
+  {
+    "domain": "rvv.de",
+    "count": 3,
+    "name": "RVV Ticketshop",
+    "automated": 0
+  },
+  {
+    "domain": "t.kajabimail.com",
+    "count": 3,
+    "name": "Nucly",
+    "automated": 0
+  },
+  {
+    "domain": "confirm.studentagency.cz",
+    "count": 3,
+    "name": "RegioJet",
+    "automated": 3
+  },
+  {
+    "domain": "accelerate-agency.com",
+    "count": 3,
+    "name": "Vera Amaro",
+    "automated": 3
+  },
+  {
+    "domain": "txn-email.playstation.com",
+    "count": 3,
+    "name": "PlayStation",
+    "automated": 0
+  },
+  {
+    "domain": "intcom-ev.org",
+    "count": 3,
+    "name": "Lina Quotschalla",
+    "automated": 0
+  },
+  {
+    "domain": "email.joyclub.de",
+    "count": 3,
+    "name": "JOYclub",
+    "automated": 3
+  },
+  {
+    "domain": "idm.myid.canon",
+    "count": 3,
+    "name": "Canon ID",
+    "automated": 0
+  },
+  {
+    "domain": "info.burgerkingencasa.es",
+    "count": 3,
+    "name": "My Burger King",
+    "automated": 0
+  },
+  {
+    "domain": "mail.mittelbayerische.de",
+    "count": 3,
+    "name": "Meine MZ Mittelbayerische.de",
+    "automated": 3
+  },
+  {
+    "domain": "cc.o2online.de",
+    "count": 3,
+    "name": "o2 Kundenbetreuung",
+    "automated": 0
+  },
+  {
+    "domain": "mueller-huebner-immobilien.de",
+    "count": 3,
+    "name": "Nadine M\u00fcller-H\u00fcbner",
+    "automated": 0
+  },
+  {
+    "domain": "service.by.aok.de",
+    "count": 3,
+    "name": "Kristina Weigert AOK Bayern",
+    "automated": 0
+  },
+  {
+    "domain": "bvg.de",
+    "count": 3,
+    "name": "BVG Ticket-App",
+    "automated": 0
+  },
+  {
+    "domain": "lieferando.at",
+    "count": 3,
+    "name": "Lieferando.at",
+    "automated": 0
+  },
+  {
+    "domain": "terviseamet.ee",
+    "count": 3,
+    "name": "",
+    "automated": 0
+  },
+  {
+    "domain": "news.condenast.com",
+    "count": 3,
+    "name": "WIRED",
+    "automated": 3
+  },
+  {
+    "domain": "guacamole-deutschland.de",
+    "count": 3,
+    "name": "Guacamole Team",
+    "automated": 0
+  },
+  {
+    "domain": "acer-euro.com",
+    "count": 3,
+    "name": "",
+    "automated": 0
+  },
+  {
+    "domain": "sofort-impfen.de",
+    "count": 3,
+    "name": "no-reply@sofort-impfen.de",
+    "automated": 0
+  },
+  {
+    "domain": "acuityscheduling.com",
+    "count": 3,
+    "name": "Eastwest European Institute",
+    "automated": 3
+  },
+  {
+    "domain": "wayfair.com",
+    "count": 3,
+    "name": "no-reply@wayfair.com",
+    "automated": 0
+  },
+  {
+    "domain": "app.softgarden.io",
+    "count": 3,
+    "name": "TAP.DE Solutions GmbH (via softgarden)",
+    "automated": 0
+  },
+  {
+    "domain": "losteria.de",
+    "count": 3,
+    "name": "Mari Nara von L\u00b4Osteria",
+    "automated": 2
+  },
+  {
+    "domain": "tradegecko.com",
+    "count": 3,
+    "name": "Team QuickBooks Commerce",
+    "automated": 3
+  },
+  {
+    "domain": "bit-market.io",
+    "count": 3,
+    "name": "James Walker",
+    "automated": 0
+  },
+  {
+    "domain": "hofmann.info",
+    "count": 3,
+    "name": "Nicholas Imenkamp",
+    "automated": 0
+  },
+  {
+    "domain": "account.evernote.com",
+    "count": 3,
+    "name": "Evernote",
+    "automated": 0
+  },
+  {
+    "domain": "suk.sas.com",
+    "count": 3,
+    "name": "SAS Forum UK & Ireland",
+    "automated": 0
+  },
+  {
+    "domain": "online.de",
+    "count": 3,
+    "name": "Bauho-2",
+    "automated": 1
+  },
+  {
+    "domain": "withgoogle.com",
+    "count": 3,
+    "name": "Google Digital Workshop",
+    "automated": 2
+  },
+  {
+    "domain": "vip.whirlpool.com",
+    "count": 3,
+    "name": "Family and Friends by Whirlpool",
+    "automated": 3
+  },
+  {
+    "domain": "glaserei-weber.de",
+    "count": 3,
+    "name": "",
+    "automated": 0
+  },
+  {
+    "domain": "researchgatemail.net",
+    "count": 3,
+    "name": "ResearchGate",
+    "automated": 3
+  },
+  {
+    "domain": "partyrent.com",
+    "count": 3,
+    "name": "Barbara Nichil / Party Rent Group",
+    "automated": 0
+  },
+  {
+    "domain": "lingua-world.de",
+    "count": 3,
+    "name": "Brigitte H\u00f6cherl",
+    "automated": 0
+  },
+  {
+    "domain": "curse.com",
+    "count": 3,
+    "name": "The Curse Team",
+    "automated": 3
+  },
+  {
+    "domain": "acjoventut.cat",
+    "count": 3,
+    "name": "Carnet Jove",
+    "automated": 0
+  },
+  {
+    "domain": "pokemongolive.com",
+    "count": 3,
+    "name": "El equipo de Pok\u00e9mon GO",
+    "automated": 3
+  },
+  {
+    "domain": "erasmusplusols.eu",
+    "count": 3,
+    "name": "Erasmus+ Notification System",
+    "automated": 3
+  },
+  {
+    "domain": "moneyhouse.de",
+    "count": 3,
+    "name": "Moneyhouse DE",
+    "automated": 0
+  },
+  {
+    "domain": "afs-deutschland.de",
+    "count": 3,
+    "name": "Gastfamilie AFS-Deutschland",
+    "automated": 0
+  },
+  {
+    "domain": "easytaxi.com.br",
+    "count": 3,
+    "name": "Bolivia EasyTaxi",
+    "automated": 1
+  },
+  {
+    "domain": "vodafone.es",
+    "count": 3,
+    "name": "Tienda Online Vodafone",
+    "automated": 0
+  },
+  {
+    "domain": "alignet.com",
+    "count": 3,
+    "name": "no-reply@alignet.com",
+    "automated": 0
+  },
+  {
+    "domain": "pub.zinio.com",
+    "count": 3,
+    "name": "Foreign Policy via Zinio Digital Magazines",
+    "automated": 3
+  },
+  {
+    "domain": "maec.es",
+    "count": 3,
+    "name": "L\u00f3pez S\u00e1nchez, Lorenzo",
+    "automated": 0
+  },
+  {
+    "domain": "e1.victoriassecret.com",
+    "count": 3,
+    "name": "Victoria's Secret",
+    "automated": 3
+  },
+  {
+    "domain": "seat.es",
+    "count": 3,
+    "name": "Schwaer, Stefanie (SEA/VP-2)",
+    "automated": 0
+  },
+  {
+    "domain": "gamestop.com",
+    "count": 3,
+    "name": "bewerbung@gamestop.com",
+    "automated": 0
+  },
+  {
+    "domain": "db.com",
+    "count": 3,
+    "name": "DB Secondlevel",
+    "automated": 0
+  },
+  {
+    "domain": "thi.de",
+    "count": 3,
+    "name": "K\u00fcrzinger Veronika",
+    "automated": 0
+  },
+  {
+    "domain": "chocotransfersheets.com",
+    "count": 3,
+    "name": "",
+    "automated": 0
+  },
+  {
+    "domain": "alerts.skype.com",
+    "count": 3,
+    "name": "Skype",
+    "automated": 0
+  },
+  {
+    "domain": "magriturismo.com",
+    "count": 3,
+    "name": "Regina Ergueta",
+    "automated": 0
+  },
+  {
+    "domain": "emasa.com.bo",
+    "count": 3,
+    "name": "Beatriz Alejandra Lichtenberg Schneider",
+    "automated": 0
+  },
+  {
+    "domain": "khainata.com",
+    "count": 3,
+    "name": "Khainata - Web Designers",
+    "automated": 0
+  },
+  {
+    "domain": "hotmail.es",
+    "count": 3,
+    "name": "Luis Illanes Velasquez",
+    "automated": 0
+  },
+  {
+    "domain": "ekipos.com",
+    "count": 3,
+    "name": "",
+    "automated": 0
+  },
+  {
+    "domain": "cuantocabron.com",
+    "count": 3,
+    "name": "[CC]",
+    "automated": 0
+  },
+  {
+    "domain": "aquarelle.com",
+    "count": 2,
+    "name": "Aquarelle Fleurs",
+    "automated": 2
+  },
+  {
+    "domain": "airwebpass.com",
+    "count": 2,
+    "name": "Ticket Virtuel",
+    "automated": 0
+  },
+  {
+    "domain": "email.openai.com",
+    "count": 2,
+    "name": "OpenAI",
+    "automated": 1
+  },
+  {
+    "domain": "email03.account.sony.com",
+    "count": 2,
+    "name": "Sony",
+    "automated": 0
+  },
+  {
+    "domain": "vdi.de",
+    "count": 2,
+    "name": "mitgliedsabteilung@vdi.de",
+    "automated": 0
+  },
+  {
+    "domain": "account.pinterest.com",
+    "count": 2,
+    "name": "Pinterest",
+    "automated": 2
+  },
+  {
+    "domain": "link.com",
+    "count": 2,
+    "name": "Link",
+    "automated": 0
+  },
+  {
+    "domain": "free.fr",
+    "count": 2,
+    "name": "Alain MOUSNIER",
+    "automated": 0
+  },
+  {
+    "domain": "acct.epicgames.com",
+    "count": 2,
+    "name": "Epic Games",
+    "automated": 2
+  },
+  {
+    "domain": "ausleihe.dm.de",
+    "count": 2,
+    "name": "dm-Service Deutschland",
+    "automated": 0
+  },
+  {
+    "domain": "cdprojektred.com",
+    "count": 2,
+    "name": "CD PROJEKT RED",
+    "automated": 0
+  },
+  {
+    "domain": "x.ai",
+    "count": 2,
+    "name": "xAI",
+    "automated": 0
+  },
+  {
+    "domain": "es.onepatriotplace.com",
+    "count": 2,
+    "name": "New England Patriots",
+    "automated": 2
+  },
+  {
+    "domain": "trans.voiapp.io",
+    "count": 2,
+    "name": "Voi Technology",
+    "automated": 0
+  },
+  {
+    "domain": "legal.spotify.com",
+    "count": 2,
+    "name": "Spotify",
+    "automated": 0
+  },
+  {
+    "domain": "sc.mail.deepseek.com",
+    "count": 2,
+    "name": "DeepSeek",
+    "automated": 2
+  },
+  {
+    "domain": "leadscaleview.com",
+    "count": 2,
+    "name": "Brooke Moore",
+    "automated": 0
+  },
+  {
+    "domain": "email.capcut.com",
+    "count": 2,
+    "name": "CapCut Team",
+    "automated": 0
+  },
+  {
+    "domain": "email-support.uber.com",
+    "count": 2,
+    "name": "Uber Support",
+    "automated": 0
+  },
+  {
+    "domain": "bbanevo.co",
+    "count": 2,
+    "name": "Matt Lucero",
+    "automated": 0
+  },
+  {
+    "domain": "my.free-now.com",
+    "count": 2,
+    "name": "FREENOW",
+    "automated": 0
+  },
+  {
+    "domain": "midjourney.com",
+    "count": 2,
+    "name": "Midjourney",
+    "automated": 1
+  },
+  {
+    "domain": "sony.com",
+    "count": 2,
+    "name": "PlayStation Support",
+    "automated": 0
+  },
+  {
+    "domain": "service.feverup.com",
+    "count": 2,
+    "name": "Fever",
+    "automated": 0
+  },
+  {
+    "domain": "cs.flixbus.com",
+    "count": 2,
+    "name": "CS No Reply",
+    "automated": 0
+  },
+  {
+    "domain": "euthwonders.org",
+    "count": 2,
+    "name": "Projects EUW",
+    "automated": 0
+  },
+  {
+    "domain": "wolt.com",
+    "count": 2,
+    "name": "Wolt",
+    "automated": 0
+  },
+  {
+    "domain": "monbillet.sncf",
+    "count": 2,
+    "name": "no-reply@monbillet.sncf",
+    "automated": 0
+  },
+  {
+    "domain": "nordlocker.com",
+    "count": 2,
+    "name": "The NordLocker team",
+    "automated": 0
+  },
+  {
+    "domain": "newsletter.2k.com",
+    "count": 2,
+    "name": "2K Account",
+    "automated": 2
+  },
+  {
+    "domain": "mail.maven.com",
+    "count": 2,
+    "name": "Nick St Pierre",
+    "automated": 0
+  },
+  {
+    "domain": "fastspring.com",
+    "count": 2,
+    "name": "Vanaia",
+    "automated": 0
+  },
+  {
+    "domain": "icloud.com",
+    "count": 2,
+    "name": "Claudie MOUSNIER",
+    "automated": 0
+  },
+  {
+    "domain": "timebreak-bonn.de",
+    "count": 2,
+    "name": "TIMEBREAK Bonn",
+    "automated": 1
+  },
+  {
+    "domain": "comms.canon-europe.com",
+    "count": 2,
+    "name": "Canon",
+    "automated": 1
+  },
+  {
+    "domain": "ordersmart.de",
+    "count": 2,
+    "name": "Big Boy Pizza Bonn",
+    "automated": 0
+  },
+  {
+    "domain": "lastpass.com",
+    "count": 2,
+    "name": "LastPass",
+    "automated": 0
+  },
+  {
+    "domain": "ticketfritz.de",
+    "count": 2,
+    "name": "shop@ticketfritz.de",
+    "automated": 0
+  },
+  {
+    "domain": "lufthansa.com",
+    "count": 2,
+    "name": "Lufthansa Flight Service",
+    "automated": 0
+  },
+  {
+    "domain": "ene.ba",
+    "count": 2,
+    "name": "Eneba",
+    "automated": 1
+  },
+  {
+    "domain": "impala.tours",
+    "count": 2,
+    "name": "marion@impala.tours",
+    "automated": 0
+  },
+  {
+    "domain": "info.fielmann.de",
+    "count": 2,
+    "name": "Fielmann",
+    "automated": 2
+  },
+  {
+    "domain": "chronopost.fr",
+    "count": 2,
+    "name": "Chronopost",
+    "automated": 0
+  },
+  {
+    "domain": "service.newyorktimes.com",
+    "count": 2,
+    "name": "The New York Times",
+    "automated": 0
+  },
+  {
+    "domain": "hello.lieferando.at",
+    "count": 2,
+    "name": "Lieferando",
+    "automated": 2
+  },
+  {
+    "domain": "boliviaplaza.com",
+    "count": 2,
+    "name": "Bolivia Plaza",
+    "automated": 0
+  },
+  {
+    "domain": "taxiapps.taxi",
+    "count": 2,
+    "name": "noreply@taxiapps.taxi",
+    "automated": 0
+  },
+  {
+    "domain": "monde-diplomatique.de",
+    "count": 2,
+    "name": "Le Monde diplomatique",
+    "automated": 2
+  },
+  {
+    "domain": "hibob.com",
+    "count": 2,
+    "name": "Your voice by bob (via bob)",
+    "automated": 0
+  },
+  {
+    "domain": "news.thefork.de",
+    "count": 2,
+    "name": "TheFork",
+    "automated": 0
+  },
+  {
+    "domain": "xsolla.com",
+    "count": 2,
+    "name": "Xsolla",
+    "automated": 0
+  },
+  {
+    "domain": "2k.com",
+    "count": 2,
+    "name": "2K Account",
+    "automated": 0
+  },
+  {
+    "domain": "send.mailchimpapp.com",
+    "count": 2,
+    "name": "La Mejor Pel\u00edcula del Mundo",
+    "automated": 2
+  },
+  {
+    "domain": "purplewifi.net",
+    "count": 2,
+    "name": "no-reply-AENAWIFI",
+    "automated": 0
+  },
+  {
+    "domain": "mail.get-headway.com",
+    "count": 2,
+    "name": "Headway",
+    "automated": 2
+  },
+  {
+    "domain": "kfc.de",
+    "count": 2,
+    "name": "KFC Online",
+    "automated": 0
+  },
+  {
+    "domain": "coeo-inkasso.de",
+    "count": 2,
+    "name": "coeo Inkasso",
+    "automated": 0
+  },
+  {
+    "domain": "stadtverwaltungbonn.de",
+    "count": 2,
+    "name": "onlineformulare@stadtverwaltungbonn.de",
+    "automated": 0
+  },
+  {
+    "domain": "clients-sncf.fr",
+    "count": 2,
+    "name": "ICE / TGV INOUI",
+    "automated": 2
+  },
+  {
+    "domain": "lichess.org",
+    "count": 2,
+    "name": "lichess.org",
+    "automated": 0
+  },
+  {
+    "domain": "archive.org",
+    "count": 2,
+    "name": "Internet Archive",
+    "automated": 0
+  },
+  {
+    "domain": "rezi.io",
+    "count": 2,
+    "name": "Jacob From Rezi",
+    "automated": 2
+  },
+  {
+    "domain": "traveler-assistance.com",
+    "count": 2,
+    "name": "Reembolso",
+    "automated": 0
+  },
+  {
+    "domain": "mbe.de",
+    "count": 2,
+    "name": "",
+    "automated": 0
+  },
+  {
+    "domain": "mail.ihub.image.canon",
+    "count": 2,
+    "name": "image.canon",
+    "automated": 0
+  },
+  {
+    "domain": "16personalities.com",
+    "count": 2,
+    "name": "16Personalities",
+    "automated": 0
+  },
+  {
+    "domain": "mobilesticket.de",
+    "count": 2,
+    "name": "noreply@mobilesticket.de",
+    "automated": 0
+  },
+  {
+    "domain": "makenotion.com",
+    "count": 2,
+    "name": "Notion",
+    "automated": 2
+  },
+  {
+    "domain": "karriere.ufa.de",
+    "count": 2,
+    "name": "UFA SHOW & FACTUAL Jobs - Jakob",
+    "automated": 0
+  },
+  {
+    "domain": "zd.aok.de",
+    "count": 2,
+    "name": "AOK Bayern",
+    "automated": 0
+  },
+  {
+    "domain": "leeds.ac.uk",
+    "count": 2,
+    "name": "Abdullah Sakif",
+    "automated": 1
+  },
+  {
+    "domain": "t.rituals.com",
+    "count": 2,
+    "name": "Rituals Cosmetics",
+    "automated": 2
+  },
+  {
+    "domain": "primal-state.de",
+    "count": 2,
+    "name": "Ulrike Koschwitz",
+    "automated": 0
+  },
+  {
+    "domain": "essaygenius.ai",
+    "count": 2,
+    "name": "Essay Genius",
+    "automated": 0
+  },
+  {
+    "domain": "daemon-tools.cc",
+    "count": 2,
+    "name": "DAEMON Tools info",
+    "automated": 0
+  },
+  {
+    "domain": "payproglobal.com",
+    "count": 2,
+    "name": "PayPro Global",
+    "automated": 0
+  },
+  {
+    "domain": "txn-email03.playstation.com",
+    "count": 2,
+    "name": "PlayStation",
+    "automated": 0
+  },
+  {
+    "domain": "bmi.bund.de",
+    "count": 2,
+    "name": "noreply@bmi.bund.de",
+    "automated": 0
+  },
+  {
+    "domain": "join.netflix.com",
+    "count": 2,
+    "name": "Netflix",
+    "automated": 2
+  },
+  {
+    "domain": "mission-mittelstand.de",
+    "count": 2,
+    "name": "Stephanie Dombrow",
+    "automated": 0
+  },
+  {
+    "domain": "danubius.de",
+    "count": 2,
+    "name": "Heiko Hinkofer",
+    "automated": 0
+  },
+  {
+    "domain": "mail.paypal.com",
+    "count": 2,
+    "name": "PayPal",
+    "automated": 2
+  },
+  {
+    "domain": "youneedabudget.com",
+    "count": 2,
+    "name": "YNAB",
+    "automated": 0
+  },
+  {
+    "domain": "news.joyclub.de",
+    "count": 2,
+    "name": "JOYclub",
+    "automated": 2
+  },
+  {
+    "domain": "s-kreditpartner.de",
+    "count": 2,
+    "name": "",
+    "automated": 0
+  },
+  {
+    "domain": "mail.quandoo.com",
+    "count": 2,
+    "name": "Quandoo",
+    "automated": 0
+  },
+  {
+    "domain": "youthpass.eu",
+    "count": 2,
+    "name": "Youthpass Mailservice",
+    "automated": 0
+  },
+  {
+    "domain": "email.toggl.com",
+    "count": 2,
+    "name": "Toggl Track",
+    "automated": 2
+  },
+  {
+    "domain": "eiu.com",
+    "count": 2,
+    "name": "EIU",
+    "automated": 0
+  },
+  {
+    "domain": "absence.io",
+    "count": 2,
+    "name": "hello@absence.io",
+    "automated": 2
+  },
+  {
+    "domain": "comunica.bbva.com",
+    "count": 2,
+    "name": "BBVA",
+    "automated": 2
+  },
+  {
+    "domain": "spiegel.de",
+    "count": 2,
+    "name": "DER SPIEGEL",
+    "automated": 2
+  },
+  {
+    "domain": "einreiseanmeldung.de",
+    "count": 2,
+    "name": "noreply@einreiseanmeldung.de",
+    "automated": 0
+  },
+  {
+    "domain": "hiral.de",
+    "count": 2,
+    "name": "Kathleen M\u00fcller",
+    "automated": 0
+  },
+  {
+    "domain": "dominos.de",
+    "count": 2,
+    "name": "Domino's",
+    "automated": 0
+  },
+  {
+    "domain": "glasergallery.de",
+    "count": 2,
+    "name": "info@glasergallery.de",
+    "automated": 0
+  },
+  {
+    "domain": "sparkasse.de",
+    "count": 2,
+    "name": "noreply@sparkasse.de",
+    "automated": 0
+  },
+  {
+    "domain": "em.grammarly.com",
+    "count": 2,
+    "name": "Grammarly",
+    "automated": 0
+  },
+  {
+    "domain": "klett-sprachen.de",
+    "count": 2,
+    "name": "kundenservice@klett-sprachen.de",
+    "automated": 0
+  },
+  {
+    "domain": "parlermailer1.com",
+    "count": 2,
+    "name": "Parler",
+    "automated": 2
+  },
+  {
+    "domain": "losteria.news",
+    "count": 2,
+    "name": "L'Osteria",
+    "automated": 2
+  },
+  {
+    "domain": "sci-d.de",
+    "count": 2,
+    "name": "Britta Lang-Azizi - SCI Deutscher Zweig e.V.",
+    "automated": 0
+  },
+  {
+    "domain": "twitch.tv",
+    "count": 2,
+    "name": "Twitch",
+    "automated": 0
+  },
+  {
+    "domain": "cloudworkers.company",
+    "count": 2,
+    "name": "Cloudworkers Agents DE",
+    "automated": 0
+  },
+  {
+    "domain": "harver.com",
+    "count": 2,
+    "name": "Sitel HR",
+    "automated": 0
+  },
+  {
+    "domain": "bayernwerk.de",
+    "count": 2,
+    "name": "Lisa Wurmer",
+    "automated": 0
+  },
+  {
+    "domain": "network.softgarden.io",
+    "count": 2,
+    "name": "noreply@network.softgarden.io",
+    "automated": 0
+  },
+  {
+    "domain": "wh.snapsurveys.net",
+    "count": 2,
+    "name": "Domestic & General",
+    "automated": 0
+  },
+  {
+    "domain": "traderepublic.com",
+    "count": 2,
+    "name": "Trade Republic",
+    "automated": 1
+  },
+  {
+    "domain": "de.bauknecht.eu",
+    "count": 2,
+    "name": "Bauknecht NO REPLY",
+    "automated": 0
+  },
+  {
+    "domain": "miro.com",
+    "count": 2,
+    "name": "Miro",
+    "automated": 0
+  },
+  {
+    "domain": "kundenservice.spiegel.de",
+    "count": 2,
+    "name": "SPIEGEL-Verlag Rudolf Augstein GmbH & Co. KG",
+    "automated": 0
+  },
+  {
+    "domain": "qualtrics-survey.com",
+    "count": 2,
+    "name": "Amazon Surveys",
+    "automated": 2
+  },
+  {
+    "domain": "amazon.lu",
+    "count": 2,
+    "name": "Nguyen, Thao",
+    "automated": 0
+  },
+  {
+    "domain": "bolivianosunidos.net",
+    "count": 2,
+    "name": "Bolivianos",
+    "automated": 1
+  },
+  {
+    "domain": "stackoverflow.email",
+    "count": 2,
+    "name": "Stack Overflow",
+    "automated": 0
+  },
+  {
+    "domain": "fes.de",
+    "count": 2,
+    "name": "\\\"Detlef Staude\\",
+    "automated": 0
+  },
+  {
+    "domain": "prorepair24.de",
+    "count": 2,
+    "name": "PRO REPAIR GmbH",
+    "automated": 0
+  },
+  {
+    "domain": "visa.com",
+    "count": 2,
+    "name": "NoReply@visa.com",
+    "automated": 0
+  },
+  {
+    "domain": "aiesec.org",
+    "count": 2,
+    "name": "AIESEC in Deutschland",
+    "automated": 0
+  },
+  {
+    "domain": "regensburgjobs.de",
+    "count": 2,
+    "name": "regensburgJOBS.de",
+    "automated": 2
+  },
+  {
+    "domain": "ratisbona.com",
+    "count": 2,
+    "name": "Personal",
+    "automated": 0
+  },
+  {
+    "domain": "carter-benson.com",
+    "count": 2,
+    "name": "Myriam M\u00fcller",
+    "automated": 0
+  },
+  {
+    "domain": "rangerweb.net",
+    "count": 2,
+    "name": "szymikm@rangerweb.net",
+    "automated": 0
+  },
+  {
+    "domain": "dekra.com",
+    "count": 2,
+    "name": "straubing.arbeit@dekra.com",
+    "automated": 0
+  },
+  {
+    "domain": "foresee.com",
+    "count": 2,
+    "name": "ForeSee Results Email Notifier",
+    "automated": 0
+  },
+  {
+    "domain": "reply.sky-empfehlung.de",
+    "count": 2,
+    "name": "Sky",
+    "automated": 2
+  },
+  {
+    "domain": "social-wave.com",
+    "count": 2,
+    "name": "Olympic Gym",
+    "automated": 2
+  },
+  {
+    "domain": "reply5.ebay.com",
+    "count": 2,
+    "name": "eBay",
+    "automated": 2
+  },
+  {
+    "domain": "no-reply",
+    "count": 2,
+    "name": "Telekom",
+    "automated": 0
+  },
+  {
+    "domain": "team.cvandme.com",
+    "count": 2,
+    "name": "CVandMe team",
+    "automated": 0
+  },
+  {
+    "domain": "e.etsy.com",
+    "count": 2,
+    "name": "Etsy",
+    "automated": 1
+  },
+  {
+    "domain": "em.blizzard.com",
+    "count": 2,
+    "name": "Blizzard Entertainment, Inc",
+    "automated": 1
+  },
+  {
+    "domain": "surveys.illuminas.com",
+    "count": 2,
+    "name": "Coursera",
+    "automated": 2
+  },
+  {
+    "domain": "lieferung.mediamarkt.de",
+    "count": 2,
+    "name": "MediaMarkt",
+    "automated": 0
+  },
+  {
+    "domain": "mediamarkt.de",
+    "count": 2,
+    "name": "MediaMarkt Onlineshop",
+    "automated": 0
+  },
+  {
+    "domain": "studenten-wg.de",
+    "count": 2,
+    "name": "Studenten-WG.de",
+    "automated": 0
+  },
+  {
+    "domain": "pferdetransport-bayern.de",
+    "count": 2,
+    "name": "",
+    "automated": 0
+  },
+  {
+    "domain": "cathedral.ru",
+    "count": 2,
+    "name": "Isaacs Cathedral - Online Tickets",
+    "automated": 0
+  },
+  {
+    "domain": "thenightsky.com",
+    "count": 2,
+    "name": "Ciara Dowling",
+    "automated": 2
+  },
+  {
+    "domain": "stud.uni-regensburg.de",
+    "count": 2,
+    "name": "Adrian Bauch",
+    "automated": 0
+  },
+  {
+    "domain": "sueddeutsche.de",
+    "count": 2,
+    "name": "sueddeutsche.de ",
+    "automated": 0
+  },
+  {
+    "domain": "invalidemail.com",
+    "count": 2,
+    "name": "Personalwesen",
+    "automated": 0
+  },
+  {
+    "domain": "schumann-lasertec.de",
+    "count": 2,
+    "name": "Info@schumann-lasertec.de",
+    "automated": 0
+  },
+  {
+    "domain": "notifications.hbonow.com",
+    "count": 2,
+    "name": "HBO NOW",
+    "automated": 0
+  },
+  {
+    "domain": "me.com",
+    "count": 2,
+    "name": "Adrian Bauch",
+    "automated": 0
+  },
+  {
+    "domain": "nightline.ie",
+    "count": 2,
+    "name": "",
+    "automated": 0
+  },
+  {
+    "domain": "immonet.de",
+    "count": 2,
+    "name": "Immonet.de",
+    "automated": 0
+  },
+  {
+    "domain": "ctrgroup.de",
+    "count": 2,
+    "name": "Ivo Lodesani",
+    "automated": 0
+  },
+  {
+    "domain": "vonrheinbaben.com",
+    "count": 2,
+    "name": "Richard von Rheinbaben",
+    "automated": 0
+  },
+  {
+    "domain": "dpd.ie",
+    "count": 2,
+    "name": "DPD International Team",
+    "automated": 0
+  },
+  {
+    "domain": "info.dhl.de",
+    "count": 2,
+    "name": "DHL Paket",
+    "automated": 2
+  },
+  {
+    "domain": "radissonblu.com",
+    "count": 2,
+    "name": "Dublin, Reception",
+    "automated": 0
+  },
+  {
+    "domain": "di.fm",
+    "count": 2,
+    "name": "DI.FM",
+    "automated": 2
+  },
+  {
+    "domain": "uso-ev.de",
+    "count": 2,
+    "name": "Viktor Weingardt",
+    "automated": 0
+  },
+  {
+    "domain": "grindinggear.com",
+    "count": 2,
+    "name": "Path of Exile",
+    "automated": 0
+  },
+  {
+    "domain": "ziko-alumni.de",
+    "count": 2,
+    "name": "Intcom",
+    "automated": 0
+  },
+  {
+    "domain": "notification-plus.g2a.com",
+    "count": 2,
+    "name": "G2A Plus",
+    "automated": 0
+  },
+  {
+    "domain": "deliveroo.es",
+    "count": 2,
+    "name": "Deliveroo",
+    "automated": 0
+  },
+  {
+    "domain": "sharingos.com",
+    "count": 2,
+    "name": "BleeperBike",
+    "automated": 0
+  },
+  {
+    "domain": "leapcard.ie",
+    "count": 2,
+    "name": "Leap Card",
+    "automated": 0
+  },
+  {
+    "domain": "news.enmasse.com",
+    "count": 2,
+    "name": "TERA Online",
+    "automated": 2
+  },
+  {
+    "domain": "dfa.ie",
+    "count": 2,
+    "name": "",
+    "automated": 0
+  },
+  {
+    "domain": "walmart.com",
+    "count": 2,
+    "name": "Walmart.com",
+    "automated": 0
+  },
+  {
+    "domain": "wallo.com",
+    "count": 2,
+    "name": "Wallo",
+    "automated": 2
+  },
+  {
+    "domain": "news.es.couponandgo.com",
+    "count": 2,
+    "name": "Coupon&Go",
+    "automated": 2
+  },
+  {
+    "domain": "afs-muenchen.de",
+    "count": 2,
+    "name": "AFS Komitee MUC",
+    "automated": 0
+  },
+  {
+    "domain": "postmaster.skimble.com",
+    "count": 2,
+    "name": "Skimble",
+    "automated": 2
+  },
+  {
+    "domain": "audible.de",
+    "count": 2,
+    "name": "Audible.de",
+    "automated": 0
+  },
+  {
+    "domain": "reservations.ihg.com",
+    "count": 2,
+    "name": "Hotel Indigo Reservations",
+    "automated": 0
+  },
+  {
+    "domain": "autoemail.hm.com",
+    "count": 2,
+    "name": "H&M Club",
+    "automated": 0
+  },
+  {
+    "domain": "e.lieferheld.de",
+    "count": 2,
+    "name": "Sabrina von Lieferheld",
+    "automated": 2
+  },
+  {
+    "domain": "politik.uni-regensburg.de",
+    "count": 2,
+    "name": "Susanne Prechtl",
+    "automated": 0
+  },
+  {
+    "domain": "id.g2a.com",
+    "count": 2,
+    "name": "G2A ID",
+    "automated": 0
+  },
+  {
+    "domain": "seznam.cz",
+    "count": 2,
+    "name": "",
+    "automated": 0
+  },
+  {
+    "domain": "webid-solutions.de",
+    "count": 2,
+    "name": "service | WebID Solutions",
+    "automated": 0
+  },
+  {
+    "domain": "news.oferting.es",
+    "count": 2,
+    "name": "Media Markt by Oferting",
+    "automated": 2
+  },
+  {
+    "domain": "htasoftware.eu",
+    "count": 2,
+    "name": "no-reply@dominos.de",
+    "automated": 0
+  },
+  {
+    "domain": "aerlingus.com",
+    "count": 2,
+    "name": "bookingsen@aerlingus.com",
+    "automated": 0
+  },
+  {
+    "domain": "esg-regensburg.de",
+    "count": 2,
+    "name": "Hohenberger",
+    "automated": 0
+  },
+  {
+    "domain": "afser.de",
+    "count": 2,
+    "name": "AFSer.de",
+    "automated": 0
+  },
+  {
+    "domain": "freenet.de",
+    "count": 2,
+    "name": "hannah.wiendl@freenet.de",
+    "automated": 0
+  },
+  {
+    "domain": "stwdo.de",
+    "count": 2,
+    "name": "Schluetermann  Andre",
+    "automated": 0
+  },
+  {
+    "domain": "verwaltung.th-koeln.de",
+    "count": 2,
+    "name": "noreply-bewerbung@verwaltung.th-koeln.de",
+    "automated": 0
+  },
+  {
+    "domain": "waste.uk.com",
+    "count": 2,
+    "name": "A Moon Shaped Pool US",
+    "automated": 0
+  },
+  {
+    "domain": "tu-dresden.de",
+    "count": 2,
+    "name": "ServiceCenterStudium",
+    "automated": 0
+  },
+  {
+    "domain": "unslp.edu.bo",
+    "count": 2,
+    "name": "German La Fuente",
+    "automated": 0
+  },
+  {
+    "domain": "marketplace.amazon.co.uk",
+    "count": 2,
+    "name": "Superyoung - Amazon Marketplace",
+    "automated": 0
+  },
+  {
+    "domain": "dlgi.de",
+    "count": 2,
+    "name": "Moodle-Admin",
+    "automated": 0
+  },
+  {
+    "domain": "citex.bo",
+    "count": 2,
+    "name": "CITEX - Talentos para la Excelencia",
+    "automated": 0
+  },
+  {
+    "domain": "ucb.edu.bo (mail delivery system)",
+    "count": 2,
+    "name": "MAILER-DAEMON@ucb.edu.bo (Mail Delivery System)",
+    "automated": 0
+  },
+  {
+    "domain": "worldbridgeservice.com",
+    "count": 2,
+    "name": "administrator@worldbridgeservice.com",
+    "automated": 0
+  },
+  {
+    "domain": "untechoparamipais.org",
+    "count": 2,
+    "name": "Un Techo para mi Pa\u00eds - Bolivia",
+    "automated": 1
+  },
+  {
+    "domain": "desmotivaciones.es",
+    "count": 2,
+    "name": "anonymous@desmotivaciones.es",
+    "automated": 0
+  },
+  {
+    "domain": "funecap.com",
+    "count": 1,
+    "name": "Laurence ASENCI",
+    "automated": 0
+  },
+  {
+    "domain": "niederlassung.fielmann.de",
+    "count": 1,
+    "name": "Deine Fielmann-Niederlassung",
+    "automated": 1
+  },
+  {
+    "domain": "channel4.com",
+    "count": 1,
+    "name": "Channel 4",
+    "automated": 0
+  },
+  {
+    "domain": "payzen.eu",
+    "count": 1,
+    "name": "do_not_reply@payzen.eu",
+    "automated": 0
+  },
+  {
+    "domain": "info.ticketmaster.de",
+    "count": 1,
+    "name": "Ticketmaster",
+    "automated": 0
+  },
+  {
+    "domain": "orange-quarter.com",
+    "count": 1,
+    "name": "Tom Long",
+    "automated": 0
+  },
+  {
+    "domain": "email3.gog.com",
+    "count": 1,
+    "name": "GOG.COM",
+    "automated": 1
+  },
+  {
+    "domain": "mail.nordaccount.com",
+    "count": 1,
+    "name": "Nord Account",
+    "automated": 0
+  },
+  {
+    "domain": "mail.miro.com",
+    "count": 1,
+    "name": "The Miro Team",
+    "automated": 1
+  },
+  {
+    "domain": "mail.universum-inkasso.de",
+    "count": 1,
+    "name": "UNIVERSUM Inkasso GmbH",
+    "automated": 0
+  },
+  {
+    "domain": "news.eathappy.de",
+    "count": 1,
+    "name": "EAT HAPPY",
+    "automated": 1
+  },
+  {
+    "domain": "vercel.com",
+    "count": 1,
+    "name": "Vercel",
+    "automated": 0
+  },
+  {
+    "domain": "mmclearning.co.uk",
+    "count": 1,
+    "name": "James Partington",
+    "automated": 1
+  },
+  {
+    "domain": "flights.aerlingus.com",
+    "count": 1,
+    "name": "AerClub",
+    "automated": 1
+  },
+  {
+    "domain": "e.linkedin.com",
+    "count": 1,
+    "name": "LinkedIn",
+    "automated": 1
+  },
+  {
+    "domain": "berlin.ihk.de",
+    "count": 1,
+    "name": "no-reply@berlin.ihk.de",
+    "automated": 0
+  },
+  {
+    "domain": "p.wetransfer.com",
+    "count": 1,
+    "name": "WeTransfer",
+    "automated": 0
+  },
+  {
+    "domain": "omgyes.com",
+    "count": 1,
+    "name": "OMGYES Customer Care",
+    "automated": 0
+  },
+  {
+    "domain": "telefonica.com",
+    "count": 1,
+    "name": "o2 Mahnabteilung",
+    "automated": 0
+  },
+  {
+    "domain": "nationalexpress.de",
+    "count": 1,
+    "name": "Schuldnerkontakt www.nationalexpress.de",
+    "automated": 0
+  },
+  {
+    "domain": "feedback-ekomi.com",
+    "count": 1,
+    "name": "myticket",
+    "automated": 1
+  },
+  {
+    "domain": "elevenlabs.io",
+    "count": 1,
+    "name": "ElevenLabs",
+    "automated": 1
+  },
+  {
+    "domain": "myticket.de",
+    "count": 1,
+    "name": "mytic myticket AG",
+    "automated": 1
+  },
+  {
+    "domain": "direwolfdigital.com",
+    "count": 1,
+    "name": "Dire Wolf Digital",
+    "automated": 0
+  },
+  {
+    "domain": "email.shein.com",
+    "count": 1,
+    "name": "SHEIN",
+    "automated": 1
+  },
+  {
+    "domain": "news.shein.com",
+    "count": 1,
+    "name": "SHEIN",
+    "automated": 1
+  },
+  {
+    "domain": "news.omio.com",
+    "count": 1,
+    "name": "Omio News",
+    "automated": 1
+  },
+  {
+    "domain": "avarap-provence.org",
+    "count": 1,
+    "name": "",
+    "automated": 0
+  },
+  {
+    "domain": "connect.sncf",
+    "count": 1,
+    "name": "SNCF Connect",
+    "automated": 0
+  },
+  {
+    "domain": "creatorpascal.com",
+    "count": 1,
+    "name": "Pascio (aka. Pascal)",
+    "automated": 1
+  },
+  {
+    "domain": "news.d-id.com",
+    "count": 1,
+    "name": "Team D-ID",
+    "automated": 1
+  },
+  {
+    "domain": "service.paypal.com",
+    "count": 1,
+    "name": "PayPal",
+    "automated": 0
+  },
+  {
+    "domain": "d-id.com",
+    "count": 1,
+    "name": "Team D-ID",
+    "automated": 0
+  },
+  {
+    "domain": "ikono-lightpainting.related-content.com",
+    "count": 1,
+    "name": "Ikono Lightpainting",
+    "automated": 0
+  },
+  {
+    "domain": "firecrawl.dev",
+    "count": 1,
+    "name": "Alex Nucci",
+    "automated": 1
+  },
+  {
+    "domain": "email.stability.ai",
+    "count": 1,
+    "name": "Stability AI",
+    "automated": 0
+  },
+  {
+    "domain": "qwantiq.com",
+    "count": 1,
+    "name": "Entradas Grupo Smedia",
+    "automated": 0
+  },
+  {
+    "domain": "wifi.aena.es",
+    "count": 1,
+    "name": "Aena",
+    "automated": 0
+  },
+  {
+    "domain": "nexi.it",
+    "count": 1,
+    "name": "ecommerce@nexi.it",
+    "automated": 0
+  },
+  {
+    "domain": "bf01.eu1.hubspotservicehub.com",
+    "count": 1,
+    "name": "DoktorABC",
+    "automated": 1
+  },
+  {
+    "domain": "mail.nordlocker.com",
+    "count": 1,
+    "name": "The NordLocker team",
+    "automated": 0
+  },
+  {
+    "domain": "bonntanzt.de",
+    "count": 1,
+    "name": "bonn tanzt",
+    "automated": 0
+  },
+  {
+    "domain": "rankedvote.co",
+    "count": 1,
+    "name": "RankedVote",
+    "automated": 0
+  },
+  {
+    "domain": "support.instagram.com",
+    "count": 1,
+    "name": "Instagram",
+    "automated": 0
+  },
+  {
+    "domain": "sundayapp.io",
+    "count": 1,
+    "name": "sunday",
+    "automated": 1
+  },
+  {
+    "domain": "hotspot.hub-one.net",
+    "count": 1,
+    "name": "RATP WIFI",
+    "automated": 1
+  },
+  {
+    "domain": "ampro-tec.de",
+    "count": 1,
+    "name": "Matteo Cascapera",
+    "automated": 0
+  },
+  {
+    "domain": "creativefabrica.com",
+    "count": 1,
+    "name": "Creative Fabrica Studio",
+    "automated": 0
+  },
+  {
+    "domain": "tryfirecrawl.com",
+    "count": 1,
+    "name": "Eric Ciarla",
+    "automated": 0
+  },
+  {
+    "domain": "bonjour-ratp.fr",
+    "count": 1,
+    "name": "Bonjour RATP",
+    "automated": 1
+  },
+  {
+    "domain": "trips.mail.flixbus.com",
+    "count": 1,
+    "name": "FlixBus",
+    "automated": 1
+  },
+  {
+    "domain": "eurowings.com",
+    "count": 1,
+    "name": "DoNotReply",
+    "automated": 0
+  },
+  {
+    "domain": "notice.eurowings.com",
+    "count": 1,
+    "name": "Eurowings",
+    "automated": 0
+  },
+  {
+    "domain": "zapiermail.com",
+    "count": 1,
+    "name": "FEM Management Support",
+    "automated": 0
+  },
+  {
+    "domain": "firstvoucher.com",
+    "count": 1,
+    "name": "Kameha Grand Bonn Gutscheine",
+    "automated": 0
+  },
+  {
+    "domain": "xcover.com",
+    "count": 1,
+    "name": "XCover.com",
+    "automated": 0
+  },
+  {
+    "domain": "discover.pinterest.com",
+    "count": 1,
+    "name": "Pinterest",
+    "automated": 0
+  },
+  {
+    "domain": "booking.eurowings.com",
+    "count": 1,
+    "name": "Eurowings",
+    "automated": 0
+  },
+  {
+    "domain": "yahoo.fr",
+    "count": 1,
+    "name": "ARCHONDO",
+    "automated": 0
+  },
+  {
+    "domain": "adp.com",
+    "count": 1,
+    "name": "workmarket@adp.com",
+    "automated": 0
+  },
+  {
+    "domain": "itzbund.de",
+    "count": 1,
+    "name": "noreply-bundID@itzbund.de",
+    "automated": 0
+  },
+  {
+    "domain": "tryzapmail.com",
+    "count": 1,
+    "name": "Alan DSouza",
+    "automated": 0
+  },
+  {
+    "domain": "taste.io",
+    "count": 1,
+    "name": "Matched",
+    "automated": 0
+  },
+  {
+    "domain": "kuluko.com",
+    "count": 1,
+    "name": "Keijo Kunnari",
+    "automated": 0
+  },
+  {
+    "domain": "bahnanreise.de",
+    "count": 1,
+    "name": "bahnanreise.de",
+    "automated": 0
+  },
+  {
+    "domain": "e-mail.mondialrelay.fr",
+    "count": 1,
+    "name": "Mondial Relay",
+    "automated": 1
+  },
+  {
+    "domain": "mhaiss.gov.na",
+    "count": 1,
+    "name": "MHAISS E-Services Portal",
+    "automated": 0
+  },
+  {
+    "domain": "notify.thinkific.com",
+    "count": 1,
+    "name": "Activeloop",
+    "automated": 0
+  },
+  {
+    "domain": "verify.orcid.org",
+    "count": 1,
+    "name": "ORCID - Do not reply",
+    "automated": 0
+  },
+  {
+    "domain": "ipbes.net",
+    "count": 1,
+    "name": "IPBES secretariat",
+    "automated": 0
+  },
+  {
+    "domain": "notify.orcid.org",
+    "count": 1,
+    "name": "ORCID - Do not reply",
+    "automated": 0
+  },
+  {
+    "domain": "gondwanatoursandsafaris.co.uk",
+    "count": 1,
+    "name": "Gondwana Tours and Safaris",
+    "automated": 0
+  },
+  {
+    "domain": "gastronovi.de",
+    "count": 1,
+    "name": "Guacamole - Regensburg",
+    "automated": 0
+  },
+  {
+    "domain": "info.email.ikea.com",
+    "count": 1,
+    "name": "IKEA",
+    "automated": 0
+  },
+  {
+    "domain": "elixirate.com",
+    "count": 1,
+    "name": "info@elixirate.com",
+    "automated": 0
+  },
+  {
+    "domain": "network1.pickup.fr",
+    "count": 1,
+    "name": "Chronopost Pickup",
+    "automated": 1
+  },
+  {
+    "domain": "policyemail.bestbuy.com",
+    "count": 1,
+    "name": "Best Buy",
+    "automated": 1
+  },
+  {
+    "domain": "barcelonaweedclub.com",
+    "count": 1,
+    "name": "Barcelona Weed Club",
+    "automated": 0
+  },
+  {
+    "domain": "fourvenues.com",
+    "count": 1,
+    "name": "Pacha Ibiza",
+    "automated": 0
+  },
+  {
+    "domain": "mmclearning.com",
+    "count": 1,
+    "name": "James Partington",
+    "automated": 1
+  },
+  {
+    "domain": "info.grammarly.com",
+    "count": 1,
+    "name": "Grammarly",
+    "automated": 0
+  },
+  {
+    "domain": "e.miro.com",
+    "count": 1,
+    "name": "The Miro Team",
+    "automated": 0
+  },
+  {
+    "domain": "messages.xoom.com",
+    "count": 1,
+    "name": "Xoom, a PayPal Service",
+    "automated": 0
+  },
+  {
+    "domain": "resmio.com",
+    "count": 1,
+    "name": "BABIKYU",
+    "automated": 0
+  },
+  {
+    "domain": "lamiacasa.net",
+    "count": 1,
+    "name": "Herzlichen Gl\u00fcckwunsch!",
+    "automated": 1
+  },
+  {
+    "domain": "devred1902.com",
+    "count": 1,
+    "name": "DEVRED 1902",
+    "automated": 1
+  },
+  {
+    "domain": "email.any.do",
+    "count": 1,
+    "name": "Any.do",
+    "automated": 1
+  },
+  {
+    "domain": "jobilla.com",
+    "count": 1,
+    "name": "Guillermo A. Stumpf",
+    "automated": 0
+  },
+  {
+    "domain": "support.whatsapp.com",
+    "count": 1,
+    "name": "WhatsApp",
+    "automated": 0
+  },
+  {
+    "domain": "cozi.com",
+    "count": 1,
+    "name": "Cozi",
+    "automated": 0
+  },
+  {
+    "domain": "badewelt-euskirchen.de",
+    "count": 1,
+    "name": "Therme Euskirchen | Shop",
+    "automated": 0
+  },
+  {
+    "domain": "delighted.com",
+    "count": 1,
+    "name": "Xe Money Transfer",
+    "automated": 1
+  },
+  {
+    "domain": "emizor.com",
+    "count": 1,
+    "name": "servicio@emizor.com",
+    "automated": 0
+  },
+  {
+    "domain": "pedidosya.com",
+    "count": 1,
+    "name": "PedidosYa",
+    "automated": 0
+  },
+  {
+    "domain": "studddy.com",
+    "count": 1,
+    "name": "Studddy - wegweiser duales studium",
+    "automated": 1
+  },
+  {
+    "domain": "evernote.com",
+    "count": 1,
+    "name": "Evernote",
+    "automated": 1
+  },
+  {
+    "domain": "clientescrm.dominospizza.es",
+    "count": 1,
+    "name": "Domino's Pizza",
+    "automated": 1
+  },
+  {
+    "domain": "web.nh-hotels.com",
+    "count": 1,
+    "name": "NH Berlin Alexanderplatz",
+    "automated": 0
+  },
+  {
+    "domain": "shop-apotheke.com",
+    "count": 1,
+    "name": "SHOP APOTHEKE",
+    "automated": 1
+  },
+  {
+    "domain": "info.sncf.com",
+    "count": 1,
+    "name": "SNCF",
+    "automated": 0
+  },
+  {
+    "domain": "targethunting.com",
+    "count": 1,
+    "name": "TARGETHUNTING",
+    "automated": 0
+  },
+  {
+    "domain": "chatpdf.com",
+    "count": 1,
+    "name": "Mathis from ChatPDF",
+    "automated": 1
+  },
+  {
+    "domain": "dkb.de",
+    "count": 1,
+    "name": "noreply@dkb.de",
+    "automated": 0
+  },
+  {
+    "domain": "email.microsoft.com",
+    "count": 1,
+    "name": "Microsoft Azure Team",
+    "automated": 0
+  },
+  {
+    "domain": "mymagic.page",
+    "count": 1,
+    "name": "Content Kuba",
+    "automated": 0
+  },
+  {
+    "domain": "newschool.edu",
+    "count": 1,
+    "name": "International Affairs Director",
+    "automated": 0
+  },
+  {
+    "domain": "verbraucherrecht24.de",
+    "count": 1,
+    "name": "VERBRAUCHERRECHT24",
+    "automated": 0
+  },
+  {
+    "domain": "kanzlei-meyenburg.de",
+    "count": 1,
+    "name": "Kanzlei Meyenburg",
+    "automated": 0
+  },
+  {
+    "domain": "mail.capcut.com",
+    "count": 1,
+    "name": "CapCut",
+    "automated": 0
+  },
+  {
+    "domain": "jumingo.com",
+    "count": 1,
+    "name": "JUMiNGO",
+    "automated": 0
+  },
+  {
+    "domain": "termine.fielmann.de",
+    "count": 1,
+    "name": "Fielmann",
+    "automated": 1
+  },
+  {
+    "domain": "survey.na.aa.com",
+    "count": 1,
+    "name": "American Airlines",
+    "automated": 1
+  },
+  {
+    "domain": "transfercancun-airport.com",
+    "count": 1,
+    "name": "Reservations Transfers Cancun Airport",
+    "automated": 0
+  },
+  {
+    "domain": "info.ms.aa.com",
+    "count": 1,
+    "name": "American Airlines",
+    "automated": 1
+  },
+  {
+    "domain": "hs-regensburg.de",
+    "count": 1,
+    "name": "",
+    "automated": 0
+  },
+  {
+    "domain": "router-retoure.o2online.de",
+    "count": 1,
+    "name": "",
+    "automated": 0
+  },
+  {
+    "domain": "katholisch.de",
+    "count": 1,
+    "name": "Lumma, Meike",
+    "automated": 0
+  },
+  {
+    "domain": "usechatgpt.ai",
+    "count": 1,
+    "name": "UseChatGPT.AI Team",
+    "automated": 0
+  },
+  {
+    "domain": "vuukle.com",
+    "count": 1,
+    "name": "Vuukle Support",
+    "automated": 0
+  },
+  {
+    "domain": "einmalzahlung200.de",
+    "count": 1,
+    "name": "Bayerisches Staatsministerium f\u00fcr Wissenschaft und Kunst",
+    "automated": 0
+  },
+  {
+    "domain": "logpay.de",
+    "count": 1,
+    "name": "mobility@logpay.de",
+    "automated": 0
+  },
+  {
+    "domain": "dcfverlag.de",
+    "count": 1,
+    "name": "Ruben Sch\u00e4fer",
+    "automated": 0
+  },
+  {
+    "domain": "check24.de",
+    "count": 1,
+    "name": "CHECK24 Kundenkonto",
+    "automated": 0
+  },
+  {
+    "domain": "sausalitos.de",
+    "count": 1,
+    "name": "Flerus, Janette",
+    "automated": 0
+  },
+  {
+    "domain": "jotformeu.com",
+    "count": 1,
+    "name": "Jotform",
+    "automated": 1
+  },
+  {
+    "domain": "dcfverlag.recruitee.com",
+    "count": 1,
+    "name": "DCF Verlag GmbH/Texter in Vollzeit (m/w/d)",
+    "automated": 0
+  },
+  {
+    "domain": "peaceful-pigeon.10web.site",
+    "count": 1,
+    "name": "WordPress",
+    "automated": 1
+  },
+  {
+    "domain": "truthgpt.one",
+    "count": 1,
+    "name": "TruthGPT",
+    "automated": 0
+  },
+  {
+    "domain": "unique-pro.de",
+    "count": 1,
+    "name": "Unique",
+    "automated": 0
+  },
+  {
+    "domain": "link.co",
+    "count": 1,
+    "name": "Link",
+    "automated": 0
+  },
+  {
+    "domain": "deutsche-rentenversicherung.de",
+    "count": 1,
+    "name": "no-reply@deutsche-rentenversicherung.de",
+    "automated": 0
+  },
+  {
+    "domain": "em.walmart.com",
+    "count": 1,
+    "name": "Walmart",
+    "automated": 0
+  },
+  {
+    "domain": "landschaftspflege-reif.de",
+    "count": 1,
+    "name": "Reif Landschaftspflege",
+    "automated": 0
+  },
+  {
+    "domain": "eu.greenhouse.io",
+    "count": 1,
+    "name": "no-reply@eu.greenhouse.io",
+    "automated": 1
+  },
+  {
+    "domain": "afs-schueleraustausch.de.de",
+    "count": 1,
+    "name": "AFS Interkulturelle Begegnungen e.V.",
+    "automated": 0
+  },
+  {
+    "domain": "feedbackeu-inmoment.com",
+    "count": 1,
+    "name": "Vueling",
+    "automated": 1
+  },
+  {
+    "domain": "transactional.vueling.com",
+    "count": 1,
+    "name": "Vueling Airlines",
+    "automated": 0
+  },
+  {
+    "domain": "verlag.klett-sprachen.de",
+    "count": 1,
+    "name": "Klett Sprachen News",
+    "automated": 1
+  },
+  {
+    "domain": "drawety.shop",
+    "count": 1,
+    "name": "Auftragsbest\u00e4tigung",
+    "automated": 1
+  },
+  {
+    "domain": "alsa.es",
+    "count": 1,
+    "name": "ALSA Web",
+    "automated": 0
+  },
+  {
+    "domain": "informationsstelle-gesundheit.de",
+    "count": 1,
+    "name": "Janina Wetzel",
+    "automated": 0
+  },
+  {
+    "domain": "accounts.aerlingus.com",
+    "count": 1,
+    "name": "reset-password@accounts.aerlingus.com",
+    "automated": 0
+  },
+  {
+    "domain": "adcologne.de",
+    "count": 1,
+    "name": "Katharina Schoenell",
+    "automated": 0
+  },
+  {
+    "domain": "nuwelcome.ebay.com",
+    "count": 1,
+    "name": "eBay",
+    "automated": 0
+  },
+  {
+    "domain": "sheinemail.com",
+    "count": 1,
+    "name": "SHEIN",
+    "automated": 0
+  },
+  {
+    "domain": "send.grammarly.com",
+    "count": 1,
+    "name": "Grammarly Insights",
+    "automated": 1
+  },
+  {
+    "domain": "hauke-social-media.de",
+    "count": 1,
+    "name": "Dominik Hauke",
+    "automated": 0
+  },
+  {
+    "domain": "chemie.uni-regensburg.de",
+    "count": 1,
+    "name": "Judith Krauss",
+    "automated": 0
+  },
+  {
+    "domain": "e.shutterstock.com",
+    "count": 1,
+    "name": "Shutterstock",
+    "automated": 0
+  },
+  {
+    "domain": "zopim.com",
+    "count": 1,
+    "name": "Chat Transcript",
+    "automated": 0
+  },
+  {
+    "domain": "realtime.comms.skyticket.de",
+    "count": 1,
+    "name": "SKY TICKET",
+    "automated": 0
+  },
+  {
+    "domain": "enterprise.com",
+    "count": 1,
+    "name": "No-Reply@enterprise.com",
+    "automated": 0
+  },
+  {
+    "domain": "enterprise.de",
+    "count": 1,
+    "name": "Enterprise Rent-A-Car",
+    "automated": 0
+  },
+  {
+    "domain": "service-mail.zalando.de",
+    "count": 1,
+    "name": "Zalando Team",
+    "automated": 0
+  },
+  {
+    "domain": "gewecke-immo.de",
+    "count": 1,
+    "name": "Stephanie K\u00e4ser",
+    "automated": 0
+  },
+  {
+    "domain": "meine.schufa.de",
+    "count": 1,
+    "name": "SCHUFA Verbraucherservice",
+    "automated": 1
+  },
+  {
+    "domain": "send.calendly.com",
+    "count": 1,
+    "name": "Calendly Webinars",
+    "automated": 0
+  },
+  {
+    "domain": "bau-schick.de",
+    "count": 1,
+    "name": "Riana Heydemann | Schick MuV",
+    "automated": 0
+  },
+  {
+    "domain": "remax.de",
+    "count": 1,
+    "name": "RE/MAX Regensburg",
+    "automated": 0
+  },
+  {
+    "domain": "ur.de",
+    "count": 1,
+    "name": "studentenkanzlei@ur.de",
+    "automated": 0
+  },
+  {
+    "domain": "accor.com",
+    "count": 1,
+    "name": "NOVOTEL Regensburg Zentrum FO",
+    "automated": 0
+  },
+  {
+    "domain": "dms-reply.telekom.de",
+    "count": 1,
+    "name": "Telekom",
+    "automated": 0
+  },
+  {
+    "domain": "datev.de",
+    "count": 1,
+    "name": "DATEV eG",
+    "automated": 0
+  },
+  {
+    "domain": "t.lastpass.com",
+    "count": 1,
+    "name": "LastPass",
+    "automated": 1
+  },
+  {
+    "domain": "deviantart.com",
+    "count": 1,
+    "name": "DeviantArt",
+    "automated": 0
+  },
+  {
+    "domain": "seller.etsy.com",
+    "count": 1,
+    "name": "Etsy",
+    "automated": 0
+  },
+  {
+    "domain": "elron.ee",
+    "count": 1,
+    "name": "Elron",
+    "automated": 0
+  },
+  {
+    "domain": "iem.gov.lv",
+    "count": 1,
+    "name": "covidpass@iem.gov.lv",
+    "automated": 0
+  },
+  {
+    "domain": "communication.hrworks.de",
+    "count": 1,
+    "name": "Felix Gansmeier",
+    "automated": 0
+  },
+  {
+    "domain": "webex.com",
+    "count": 1,
+    "name": "Haertenberger, Nina AVL/DE",
+    "automated": 0
+  },
+  {
+    "domain": "corona-teststelle.de",
+    "count": 1,
+    "name": "corona-teststelle.de",
+    "automated": 1
+  },
+  {
+    "domain": "heyjobs.de",
+    "count": 1,
+    "name": "Bewerben mit HeyJobs",
+    "automated": 0
+  },
+  {
+    "domain": "hrworks.de",
+    "count": 1,
+    "name": "retarus GmbH",
+    "automated": 0
+  },
+  {
+    "domain": "m.personio.de",
+    "count": 1,
+    "name": "Nexern GmbH",
+    "automated": 1
+  },
+  {
+    "domain": "landratsamt-regensburg.de",
+    "count": 1,
+    "name": "Berg Simone",
+    "automated": 0
+  },
+  {
+    "domain": "bungie.net",
+    "count": 1,
+    "name": "Bungie",
+    "automated": 0
+  },
+  {
+    "domain": "mail.route.com",
+    "count": 1,
+    "name": "ALPHACHANNELING via Route",
+    "automated": 0
+  },
+  {
+    "domain": "joyclub.de",
+    "count": 1,
+    "name": "JOYclub",
+    "automated": 0
+  },
+  {
+    "domain": "info.asana.com",
+    "count": 1,
+    "name": "Asana",
+    "automated": 0
+  },
+  {
+    "domain": "mcmaster.ca",
+    "count": 1,
+    "name": "GONZALO AVILA OTAZO",
+    "automated": 0
+  },
+  {
+    "domain": "f-i.de",
+    "count": 1,
+    "name": "Elektronisches Postfach Ihrer Sparkasse",
+    "automated": 0
+  },
+  {
+    "domain": "2checkout.com",
+    "count": 1,
+    "name": "2Checkout Support",
+    "automated": 0
+  },
+  {
+    "domain": "radquartier.de",
+    "count": 1,
+    "name": "Daniel RQ",
+    "automated": 0
+  },
+  {
+    "domain": "svk-service.de",
+    "count": 1,
+    "name": "belegversand-klett-sprachen@svk-service.de",
+    "automated": 0
+  },
+  {
+    "domain": "sso.mailing.zeit.de",
+    "count": 1,
+    "name": "ZEIT ONLINE",
+    "automated": 1
+  },
+  {
+    "domain": "insomnia-berlin.de",
+    "count": 1,
+    "name": "",
+    "automated": 0
+  },
+  {
+    "domain": "feinkost-kaefer.de",
+    "count": 1,
+    "name": "a.polte@feinkost-kaefer.de",
+    "automated": 0
+  },
+  {
+    "domain": "dema-makler.de",
+    "count": 1,
+    "name": "DEMA Service",
+    "automated": 0
+  },
+  {
+    "domain": "ereg.ksrzis.cz",
+    "count": 1,
+    "name": "plf@ereg.ksrzis.cz",
+    "automated": 0
+  },
+  {
+    "domain": "ccea.ec",
+    "count": 1,
+    "name": "Jos\u00e9 Luis Scotto - Presidente CCEA",
+    "automated": 0
+  },
+  {
+    "domain": "notifications.miro.com",
+    "count": 1,
+    "name": "Miro Trust Team",
+    "automated": 0
+  },
+  {
+    "domain": "extern.mlp.de",
+    "count": 1,
+    "name": "H\u00fcbner, Nancy",
+    "automated": 0
+  },
+  {
+    "domain": "mailing.paydirekt.de",
+    "count": 1,
+    "name": "paydirekt GmbH",
+    "automated": 1
+  },
+  {
+    "domain": "greenhouse.io",
+    "count": 1,
+    "name": "no-reply@greenhouse.io",
+    "automated": 1
+  },
+  {
+    "domain": "mail.notifications.atlassian.com",
+    "count": 1,
+    "name": "Atlassian",
+    "automated": 0
+  },
+  {
+    "domain": "creately.com",
+    "count": 1,
+    "name": "Creately",
+    "automated": 0
+  },
+  {
+    "domain": "hubspot.com",
+    "count": 1,
+    "name": "Das HubSpot-Team",
+    "automated": 0
+  },
+  {
+    "domain": "notification.jobteaser.com",
+    "count": 1,
+    "name": "Jobteaser Connect",
+    "automated": 0
+  },
+  {
+    "domain": "sinapsisbolivia.org",
+    "count": 1,
+    "name": "jlscotto",
+    "automated": 0
+  },
+  {
+    "domain": "email.stepstone.com",
+    "count": 1,
+    "name": "Hotelcareer",
+    "automated": 0
+  },
+  {
+    "domain": "regiojetnews.cz",
+    "count": 1,
+    "name": "Regiojet",
+    "automated": 1
+  },
+  {
+    "domain": "news.warhammer.com",
+    "count": 1,
+    "name": "Games Workshop",
+    "automated": 1
+  },
+  {
+    "domain": "jstor.org",
+    "count": 1,
+    "name": "support@jstor.org",
+    "automated": 0
+  },
+  {
+    "domain": "privacypolicies.com",
+    "count": 1,
+    "name": "PrivacyPolicies",
+    "automated": 0
+  },
+  {
+    "domain": "e-mail.joyn.de",
+    "count": 1,
+    "name": "Joyn",
+    "automated": 0
+  },
+  {
+    "domain": "newsletter.kaufland.de",
+    "count": 1,
+    "name": "Kaufland Newsletter",
+    "automated": 1
+  },
+  {
+    "domain": "gruppenkonto.spiegel.de",
+    "count": 1,
+    "name": "DER SPIEGEL",
+    "automated": 1
+  },
+  {
+    "domain": "praktikum.info",
+    "count": 1,
+    "name": "Praktikum.info Jobb\u00f6rse",
+    "automated": 0
+  },
+  {
+    "domain": "talent.icims.com",
+    "count": 1,
+    "name": "sp-emea noreply",
+    "automated": 1
+  },
+  {
+    "domain": "ml-advisor.intercom-mail.com",
+    "count": 1,
+    "name": "Cinjon from ML Advisor",
+    "automated": 0
+  },
+  {
+    "domain": "wischwasch-bayern.de",
+    "count": 1,
+    "name": "",
+    "automated": 0
+  },
+  {
+    "domain": "s-w-r.eu",
+    "count": 1,
+    "name": "Daoud Ammar",
+    "automated": 0
+  },
+  {
+    "domain": "ledvance-eu.yonomi.cloud",
+    "count": 1,
+    "name": "no-reply@ledvance-eu.yonomi.cloud",
+    "automated": 0
+  },
+  {
+    "domain": "parler.com",
+    "count": 1,
+    "name": "noreply@parler.com",
+    "automated": 0
+  },
+  {
+    "domain": "am.atlassian.com",
+    "count": 1,
+    "name": "Atlassian",
+    "automated": 0
+  },
+  {
+    "domain": "paydirekt.de",
+    "count": 1,
+    "name": "paydirekt",
+    "automated": 0
+  },
+  {
+    "domain": "newsletter.elpais.com",
+    "count": 1,
+    "name": "EL PA\u00cdS",
+    "automated": 1
+  },
+  {
+    "domain": "rossmann.de",
+    "count": 1,
+    "name": "Dirk Rossmann GmbH",
+    "automated": 0
+  },
+  {
+    "domain": "forrestandlove.com",
+    "count": 1,
+    "name": "Shamika Dhuri - Forrest and Love",
+    "automated": 0
+  },
+  {
+    "domain": "kullmans.de",
+    "count": 1,
+    "name": "Petra J\u00fcrgeleit",
+    "automated": 0
+  },
+  {
+    "domain": "bcnnct.com",
+    "count": 1,
+    "name": "Tobias Luxenhofer | CONNECT",
+    "automated": 0
+  },
+  {
+    "domain": "walterfachkraft.de",
+    "count": 1,
+    "name": "Landshut@walterfachkraft.de",
+    "automated": 0
+  },
+  {
+    "domain": "sgservice.de",
+    "count": 1,
+    "name": "",
+    "automated": 0
+  },
+  {
+    "domain": "careerjet.com",
+    "count": 1,
+    "name": "Careerjet",
+    "automated": 0
+  },
+  {
+    "domain": "sorat-hotels.com",
+    "count": 1,
+    "name": "Schweiger E.",
+    "automated": 0
+  },
+  {
+    "domain": "omniga.recruitee.com",
+    "count": 1,
+    "name": "Omniga GmbH & Co.KG/Customer Service Agent im Bereich Retention (m/w/d)",
+    "automated": 0
+  },
+  {
+    "domain": "te.activision.com",
+    "count": 1,
+    "name": "Call of Duty",
+    "automated": 0
+  },
+  {
+    "domain": "capcom-unity.com",
+    "count": 1,
+    "name": "Capcom-Unity",
+    "automated": 1
+  },
+  {
+    "domain": "mail.trustedshops.com",
+    "count": 1,
+    "name": "Trusted Shops",
+    "automated": 1
+  },
+  {
+    "domain": "microsoftstudios.com",
+    "count": 1,
+    "name": "noreply@microsoftstudios.com",
+    "automated": 1
+  },
+  {
+    "domain": "mooc.fi",
+    "count": 1,
+    "name": "mooc.fi",
+    "automated": 0
+  },
+  {
+    "domain": "registro.elpais.com",
+    "count": 1,
+    "name": "EL PA\u00cdS",
+    "automated": 0
+  },
+  {
+    "domain": "interesse.telekom.de",
+    "count": 1,
+    "name": "Telekom",
+    "automated": 0
+  },
+  {
+    "domain": "socialwavehotspot.com",
+    "count": 1,
+    "name": "Olympic Gym",
+    "automated": 0
+  },
+  {
+    "domain": "redcresearch.com",
+    "count": 1,
+    "name": "AerClub",
+    "automated": 0
+  },
+  {
+    "domain": "zeit.de",
+    "count": 1,
+    "name": "ZEIT Digital",
+    "automated": 1
+  },
+  {
+    "domain": "umziehen.de",
+    "count": 1,
+    "name": "umziehen.de",
+    "automated": 0
+  },
+  {
+    "domain": "moebeltaxi.de",
+    "count": 1,
+    "name": "M\u00f6beltaxi Das Original",
+    "automated": 0
+  },
+  {
+    "domain": "typeform.com",
+    "count": 1,
+    "name": "notifications@typeform.com",
+    "automated": 1
+  },
+  {
+    "domain": "umail.accounts.riotgames.com",
+    "count": 1,
+    "name": "Riot Games",
+    "automated": 0
+  },
+  {
+    "domain": "mobile.mcdonalds.de",
+    "count": 1,
+    "name": "McDonald's",
+    "automated": 0
+  },
+  {
+    "domain": "expm.tripadvisor.com",
+    "count": 1,
+    "name": "TripAdvisor",
+    "automated": 1
+  },
+  {
+    "domain": "alitalia.com",
+    "count": 1,
+    "name": "",
+    "automated": 0
+  },
+  {
+    "domain": "dickinson.edu",
+    "count": 1,
+    "name": "Anria, Santiago",
+    "automated": 0
+  },
+  {
+    "domain": "kik.com",
+    "count": 1,
+    "name": "Kik",
+    "automated": 0
+  },
+  {
+    "domain": "larazon01.onmicrosoft.com",
+    "count": 1,
+    "name": "",
+    "automated": 0
+  },
+  {
+    "domain": "mail.paypal.at",
+    "count": 1,
+    "name": "PayPal",
+    "automated": 1
+  },
+  {
+    "domain": "transaccional.vueling.com",
+    "count": 1,
+    "name": "Vueling Airlines",
+    "automated": 0
+  },
+  {
+    "domain": "stamps.com",
+    "count": 1,
+    "name": "www.FlareInsight.com",
+    "automated": 0
+  },
+  {
+    "domain": "omio.com",
+    "count": 1,
+    "name": "Omio Booking Team",
+    "automated": 0
+  },
+  {
+    "domain": "thomas-p.de",
+    "count": 1,
+    "name": "Thomas Pfeiffer - Fotografie",
+    "automated": 0
+  },
+  {
+    "domain": "heinerweiss.de",
+    "count": 1,
+    "name": "Heiner Weiss",
+    "automated": 0
+  },
+  {
+    "domain": "rating.email.ikea.com",
+    "count": 1,
+    "name": "IKEA",
+    "automated": 0
+  },
+  {
+    "domain": "mail.elderscrollsonline.com",
+    "count": 1,
+    "name": "The Elder Scrolls Online",
+    "automated": 0
+  },
+  {
+    "domain": "foesmm.org",
+    "count": 1,
+    "name": "",
+    "automated": 0
+  },
+  {
+    "domain": "news.pokemongolive.com",
+    "count": 1,
+    "name": "The Official Pok\u00e9mon GO Team",
+    "automated": 0
+  },
+  {
+    "domain": "dropboxmail.com",
+    "count": 1,
+    "name": "Dropbox",
+    "automated": 0
+  },
+  {
+    "domain": "taxcom.ru",
+    "count": 1,
+    "name": "\u041e\u0424\u0414 \u0422\u0430\u043a\u0441\u043a\u043e\u043c",
+    "automated": 0
+  },
+  {
+    "domain": "neva.travel",
+    "count": 1,
+    "name": "no-reply@neva.travel",
+    "automated": 0
+  },
+  {
+    "domain": "chek.pofd.ru",
+    "count": 1,
+    "name": "\u041f\u043b\u0430\u0442\u0444\u043e\u0440\u043c\u0430 \u041e\u0424\u0414",
+    "automated": 0
+  },
+  {
+    "domain": "familysearch.org",
+    "count": 1,
+    "name": "noreply@familysearch.org",
+    "automated": 0
+  },
+  {
+    "domain": "dominos.nl",
+    "count": 1,
+    "name": "no-reply@dominos.de",
+    "automated": 0
+  },
+  {
+    "domain": "booked.net",
+    "count": 1,
+    "name": "Booked.net",
+    "automated": 0
+  },
+  {
+    "domain": "ivisa.ru",
+    "count": 1,
+    "name": "order@ivisa.ru",
+    "automated": 0
+  },
+  {
+    "domain": "srac.ro",
+    "count": 1,
+    "name": "Tudor Maruntelu",
+    "automated": 0
+  },
+  {
+    "domain": "epizzashop.de",
+    "count": 1,
+    "name": "Royal Kebab und Pizza",
+    "automated": 0
+  },
+  {
+    "domain": "oeticket.com",
+    "count": 1,
+    "name": "newsletter@oeticket.com",
+    "automated": 0
+  },
+  {
+    "domain": "blockchain.info",
+    "count": 1,
+    "name": "Blockchain",
+    "automated": 0
+  },
+  {
+    "domain": "emails.avg.com",
+    "count": 1,
+    "name": "AVG News",
+    "automated": 1
+  },
+  {
+    "domain": "tedxothregensburg.com",
+    "count": 1,
+    "name": "Linda Baum",
+    "automated": 0
+  },
+  {
+    "domain": "larsonjewelers.com",
+    "count": 1,
+    "name": "Larson Customer Happiness",
+    "automated": 0
+  },
+  {
+    "domain": "mail.paypal-survey.com",
+    "count": 1,
+    "name": "PayPal",
+    "automated": 1
+  },
+  {
+    "domain": "nj-web03-cl01.onecount.net",
+    "count": 1,
+    "name": "Forgot.Password.Reset.Confirmation.Header@nj-web03-cl01.onecount.net",
+    "automated": 0
+  },
+  {
+    "domain": "dynu.com",
+    "count": 1,
+    "name": "Dynu Systems",
+    "automated": 0
+  },
+  {
+    "domain": "email.economist.com",
+    "count": 1,
+    "name": "The Economist",
+    "automated": 1
+  },
+  {
+    "domain": "ioi.dk",
+    "count": 1,
+    "name": "IO Interactive Account",
+    "automated": 1
+  },
+  {
+    "domain": "empfohlen.de",
+    "count": 1,
+    "name": "empfohlen.de",
+    "automated": 0
+  },
+  {
+    "domain": "sfmarketing.twitch.tv",
+    "count": 1,
+    "name": "Twitch",
+    "automated": 1
+  },
+  {
+    "domain": "riebeling.eu",
+    "count": 1,
+    "name": "Immobilienverwaltung Riebeling GmbH",
+    "automated": 0
+  },
+  {
+    "domain": "my.studentenrabatt.com",
+    "count": 1,
+    "name": "Studentenrabatt",
+    "automated": 0
+  },
+  {
+    "domain": "grasruck.de",
+    "count": 1,
+    "name": "info",
+    "automated": 0
+  },
+  {
+    "domain": "shipping.dpd.ie",
+    "count": 1,
+    "name": "",
+    "automated": 1
+  },
+  {
+    "domain": "mzp-architekten.de",
+    "count": 1,
+    "name": "Ralf Maul",
+    "automated": 0
+  },
+  {
+    "domain": "vonovia.de",
+    "count": 1,
+    "name": "",
+    "automated": 0
+  },
+  {
+    "domain": "qemailserver.com",
+    "count": 1,
+    "name": "Lieferheld",
+    "automated": 1
+  },
+  {
+    "domain": "mail.immobilienscout24.de",
+    "count": 1,
+    "name": "ImmobilienScout24",
+    "automated": 0
+  },
+  {
+    "domain": "cfr.org",
+    "count": 1,
+    "name": "Foreign Affairs",
+    "automated": 1
+  },
+  {
+    "domain": "email.just-eat.ie",
+    "count": 1,
+    "name": "Just Eat Ireland",
+    "automated": 0
+  },
+  {
+    "domain": "t.outbound.surveymonkey.com",
+    "count": 1,
+    "name": "SurveyMonkey",
+    "automated": 0
+  },
+  {
+    "domain": "goanimate.com",
+    "count": 1,
+    "name": "Vyond Team",
+    "automated": 0
+  },
+  {
+    "domain": "vyond.com",
+    "count": 1,
+    "name": "Vyond",
+    "automated": 0
+  },
+  {
+    "domain": "inbound.bokun.io",
+    "count": 1,
+    "name": "Jeanie Johnston",
+    "automated": 0
+  },
+  {
+    "domain": "mail.paypal.be",
+    "count": 1,
+    "name": "PayPal",
+    "automated": 1
+  },
+  {
+    "domain": "ask4.com",
+    "count": 1,
+    "name": "ASK4 Service Notifications",
+    "automated": 0
+  },
+  {
+    "domain": "campus-regensburg.org",
+    "count": 1,
+    "name": "Campus Regensburg e.V.",
+    "automated": 0
+  },
+  {
+    "domain": "tesco.ie",
+    "count": 1,
+    "name": "",
+    "automated": 0
+  },
+  {
+    "domain": "email.skype.com",
+    "count": 1,
+    "name": "Skype",
+    "automated": 0
+  },
+  {
+    "domain": "playgwent.com",
+    "count": 1,
+    "name": "GWENT Team",
+    "automated": 1
+  },
+  {
+    "domain": "gnibot.com",
+    "count": 1,
+    "name": "Gnibot",
+    "automated": 0
+  },
+  {
+    "domain": "express.medallia.eu",
+    "count": 1,
+    "name": "Virgin Media",
+    "automated": 0
+  },
+  {
+    "domain": "nomail.ec.europa.eu",
+    "count": 1,
+    "name": "",
+    "automated": 0
+  },
+  {
+    "domain": "odon.com",
+    "count": 1,
+    "name": "Aoife Daniel",
+    "automated": 0
+  },
+  {
+    "domain": "lettingsagent.ie",
+    "count": 1,
+    "name": "Reception LettingsAgent.ie",
+    "automated": 0
+  },
+  {
+    "domain": "packlink.es",
+    "count": 1,
+    "name": "Paypal ES",
+    "automated": 0
+  },
+  {
+    "domain": "mvv-ticketshop.de",
+    "count": 1,
+    "name": "MVV Ticketshop",
+    "automated": 0
+  },
+  {
+    "domain": "viewbug.com",
+    "count": 1,
+    "name": "Editors at ViewBug",
+    "automated": 0
+  },
+  {
+    "domain": "resto-in.es",
+    "count": 1,
+    "name": "Resto-in",
+    "automated": 1
+  },
+  {
+    "domain": "gog.com",
+    "count": 1,
+    "name": "GOG.COM Team",
+    "automated": 1
+  },
+  {
+    "domain": "goeuro.com",
+    "count": 1,
+    "name": "GoEuro Booking Team",
+    "automated": 0
+  },
+  {
+    "domain": "newsletter.springernature.com",
+    "count": 1,
+    "name": "Andrea Testa at Springer Nature",
+    "automated": 0
+  },
+  {
+    "domain": "perryboyce.com",
+    "count": 1,
+    "name": "Perry Boyce",
+    "automated": 1
+  },
+  {
+    "domain": "bcn.cat",
+    "count": 1,
+    "name": "suportbarcelonawifi@bcn.cat",
+    "automated": 0
+  },
+  {
+    "domain": "namprd03.prod.outlook.com",
+    "count": 1,
+    "name": "/O=FIRST ORGANIZATION/OU=EXCHANGE ADMINISTRATIVE GROUP(FYDIBOHF23SPDLT)/CN=RECIPIENTS/CN=0003BFFD0C4E86B9",
+    "automated": 0
+  },
+  {
+    "domain": "empirestaterealtytrust.com",
+    "count": 1,
+    "name": "Empire State Building",
+    "automated": 1
+  },
+  {
+    "domain": "email-gamestop.com",
+    "count": 1,
+    "name": "PowerUp Rewards",
+    "automated": 0
+  },
+  {
+    "domain": "nintendo.net",
+    "count": 1,
+    "name": "Nintendo",
+    "automated": 0
+  },
+  {
+    "domain": "zuerich.de",
+    "count": 1,
+    "name": "Josef Gabler",
+    "automated": 0
+  },
+  {
+    "domain": "outlook.fr",
+    "count": 1,
+    "name": "Floriane k",
+    "automated": 0
+  },
+  {
+    "domain": "correo.ugr.es",
+    "count": 1,
+    "name": "Paloma Naranjo",
+    "automated": 0
+  },
+  {
+    "domain": "airhelp.eu",
+    "count": 1,
+    "name": "AirHelp",
+    "automated": 1
+  },
+  {
+    "domain": "bluewin.ch",
+    "count": 1,
+    "name": "Javier Montero",
+    "automated": 0
+  },
+  {
+    "domain": "intl.paypal.com",
+    "count": 1,
+    "name": "service@intl.paypal.com",
+    "automated": 0
+  },
+  {
+    "domain": "karliner.de",
+    "count": 1,
+    "name": "Jan Karliner",
+    "automated": 0
+  },
+  {
+    "domain": "sp.afser.de",
+    "count": 1,
+    "name": "Nationale Vertretung Sch\u00fclerprogramme",
+    "automated": 0
+  },
+  {
+    "domain": "bischofshof.de",
+    "count": 1,
+    "name": "Schmidt Laila",
+    "automated": 0
+  },
+  {
+    "domain": "buscandoalbebehuggies.com",
+    "count": 1,
+    "name": "contacto@buscandoalbebehuggies.com",
+    "automated": 0
+  },
+  {
+    "domain": "edreams.com",
+    "count": 1,
+    "name": "eDreams",
+    "automated": 0
+  },
+  {
+    "domain": "aol.com",
+    "count": 1,
+    "name": "Kain",
+    "automated": 0
+  },
+  {
+    "domain": "faw-demenz-wg.de",
+    "count": 1,
+    "name": "Toni Reimann",
+    "automated": 0
+  },
+  {
+    "domain": "pathofexile.com",
+    "count": 1,
+    "name": "Path of Exile",
+    "automated": 0
+  },
+  {
+    "domain": "edlhausen.de",
+    "count": 1,
+    "name": "Matthias B\u00f6hm",
+    "automated": 0
+  },
+  {
+    "domain": "intercom.com.bo",
+    "count": 1,
+    "name": "Katja Heymert",
+    "automated": 0
+  },
+  {
+    "domain": "afslapaz.org",
+    "count": 1,
+    "name": "Lilian Pe\u00f1afiel",
+    "automated": 0
+  },
+  {
+    "domain": "iga.bo",
+    "count": 1,
+    "name": "IGA La Paz",
+    "automated": 0
+  },
+  {
+    "domain": "th-koeln.de",
+    "count": 1,
+    "name": "noreply-bewerbung@th-koeln.de",
+    "automated": 0
+  },
+  {
+    "domain": "primuss.de",
+    "count": 1,
+    "name": "PRIMUSS SUPPORT",
+    "automated": 0
+  },
+  {
+    "domain": "nonsensenyc.com",
+    "count": 1,
+    "name": "Jeff Stark",
+    "automated": 1
+  },
+  {
+    "domain": "htw-dresden.de",
+    "count": 1,
+    "name": "noreply@htw-dresden.de",
+    "automated": 0
+  },
+  {
+    "domain": "nycbyfoot.com",
+    "count": 1,
+    "name": "Free Tours by Foot",
+    "automated": 0
+  },
+  {
+    "domain": "optonline.net",
+    "count": 1,
+    "name": "Renee Rewiski",
+    "automated": 0
+  },
+  {
+    "domain": "eso-community.net",
+    "count": 1,
+    "name": "",
+    "automated": 0
+  },
+  {
+    "domain": "w3l.de",
+    "count": 1,
+    "name": "info@w3l.de",
+    "automated": 0
+  },
+  {
+    "domain": "mob-like.com",
+    "count": 1,
+    "name": "Mob-Like.com",
+    "automated": 0
+  },
+  {
+    "domain": "minerva.com.bo",
+    "count": 1,
+    "name": "Quinten Van Duin",
+    "automated": 0
+  },
+  {
+    "domain": "bigsomer.com",
+    "count": 1,
+    "name": "Angie Stumpf",
+    "automated": 0
+  },
+  {
+    "domain": "cert-admin.de",
+    "count": 1,
+    "name": "info@cert-admin.de",
+    "automated": 0
+  },
+  {
+    "domain": "kaishacorp.com",
+    "count": 1,
+    "name": "Juan Carlos Vacaflor",
+    "automated": 0
+  },
+  {
+    "domain": "testas.de",
+    "count": 1,
+    "name": "Halina Hyzy",
+    "automated": 0
+  },
+  {
+    "domain": "kmk.org",
+    "count": 1,
+    "name": "ZAB SMTP_ZAB",
+    "automated": 0
+  },
+  {
+    "domain": "alexianer-krefeld.de",
+    "count": 1,
+    "name": "robert.bering@alexianer-krefeld.de",
+    "automated": 0
+  },
+  {
+    "domain": "intercambiosculturalesbolivia.com",
+    "count": 1,
+    "name": "Intercambios Culturales Bolivia",
+    "automated": 0
+  },
+  {
+    "domain": "uai.cl",
+    "count": 1,
+    "name": "Rodrigo Ignacio Hernandez Benvenuto",
+    "automated": 0
+  },
+  {
+    "domain": "uni-koeln.de",
+    "count": 1,
+    "name": "anb18@uni-koeln.de",
+    "automated": 0
+  },
+  {
+    "domain": "sita.aero",
+    "count": 1,
+    "name": "wtradmin@sita.aero",
+    "automated": 0
+  },
+  {
+    "domain": "onlinehome.de",
+    "count": 1,
+    "name": "Brigitte Hensel",
+    "automated": 0
+  },
+  {
+    "domain": "communication.istockphoto.com",
+    "count": 1,
+    "name": "iStockphoto",
+    "automated": 1
+  },
+  {
+    "domain": "istockphoto.com",
+    "count": 1,
+    "name": "Niels Wittmann",
+    "automated": 0
+  },
+  {
+    "domain": "fco.gov.uk",
+    "count": 1,
+    "name": "",
+    "automated": 0
+  },
+  {
+    "domain": "nuevatel.com",
+    "count": 1,
+    "name": "MaryFrance Antonio",
+    "automated": 0
+  },
+  {
+    "domain": "dw-world.de",
+    "count": 1,
+    "name": "sprachkurs@dw-world.de",
+    "automated": 0
+  }
+]

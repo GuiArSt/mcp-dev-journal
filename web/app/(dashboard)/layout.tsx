@@ -7,21 +7,27 @@ import { ChatInterface } from "@/components/chat/ChatInterface";
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const isChatRoute = pathname === "/chat";
+  const isLegacyChatRoute = pathname === "/legacy-chat";
+  const isHourglassRoute = pathname === "/chat";
+
+  // Hourglass route renders its own full-screen shell (rail, topbar, panels).
+  if (isHourglassRoute) {
+    return <TooltipProvider>{children}</TooltipProvider>;
+  }
 
   return (
     <TooltipProvider>
       <div className="flex h-screen flex-col overflow-hidden bg-[var(--tartarus-deep)] md:flex-row">
         <Sidebar />
         <main className="relative flex-1 overflow-auto bg-[var(--tartarus-void)]">
-          {/* ChatInterface stays mounted, hidden when not on /chat */}
+          {/* ChatInterface stays mounted, hidden when not on /legacy-chat */}
           <div
-            className={`kronus-chamber absolute inset-0 flex flex-col ${isChatRoute ? "" : "hidden"}`}
+            className={`kronus-chamber absolute inset-0 flex flex-col ${isLegacyChatRoute ? "" : "hidden"}`}
           >
             <ChatInterface />
           </div>
           {/* Other page content */}
-          {!isChatRoute && children}
+          {!isLegacyChatRoute && children}
         </main>
       </div>
     </TooltipProvider>

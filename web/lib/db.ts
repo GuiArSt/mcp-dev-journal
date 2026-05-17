@@ -57,6 +57,12 @@ export function getDatabase(): Database.Database {
   db.pragma("busy_timeout = 5000");
 
   try {
+    migrateProjectSummariesToRepositoryOverviews(db);
+  } catch (error) {
+    console.warn("repository_overviews rename migration skipped:", error);
+  }
+
+  try {
     migrateMonorepoRepositoryNames(db);
   } catch (error) {
     console.warn("Repository name migration skipped:", error);
@@ -96,6 +102,29 @@ export function initDatabase(): Database.Database {
 
 
 /**
+ * Rename legacy `project_summaries` table to `repository_overviews` (Entry 0 / Repository Overview).
+ * Idempotent: no-op if already renamed. Updates registry source_table strings.
+ */
+export function migrateProjectSummariesToRepositoryOverviews(database: Database.Database): void {
+  const old = database
+    .prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'project_summaries' LIMIT 1")
+    .get() as { name: string } | undefined;
+  const neu = database
+    .prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'repository_overviews' LIMIT 1")
+    .get() as { name: string } | undefined;
+  if (old && !neu) {
+    database.exec(`ALTER TABLE project_summaries RENAME TO repository_overviews;`);
+  }
+  try {
+    database.exec(
+      `UPDATE tartarus_objects SET source_table = 'repository_overviews' WHERE source_table = 'project_summaries';`,
+    );
+  } catch {
+    // tartarus_objects may not exist yet
+  }
+}
+
+/**
  * Rename legacy monorepo repository labels to tartarus-workspace (matches normalizeRepository).
  */
 export function migrateMonorepoRepositoryNames(database: Database.Database): void {
@@ -105,7 +134,7 @@ export function migrateMonorepoRepositoryNames(database: Database.Database): voi
   ];
   const tables = [
     "journal_entries",
-    "project_summaries",
+    "repository_overviews",
     "athena_learning_items",
     "athena_sessions",
   ] as const;
@@ -259,7 +288,7 @@ export function exportToSQL(outputPath: string): void {
     .prepare("SELECT * FROM journal_entries ORDER BY created_at ASC")
     .all() as any[];
   const summaries = database
-    .prepare("SELECT * FROM project_summaries ORDER BY repository ASC")
+    .prepare("SELECT * FROM repository_overviews ORDER BY repository ASC")
     .all() as any[];
   const attachmentMetadata = database
     .prepare(
@@ -300,7 +329,7 @@ export function exportToSQL(outputPath: string): void {
       return String(v);
     });
 
-    sql += `INSERT INTO project_summaries (repository, git_url, summary, purpose, architecture, key_decisions, technologies, status, linear_project_id, linear_issue_id, updated_at) VALUES (${values.join(", ")});\n`;
+    sql += `INSERT INTO repository_overviews (repository, git_url, summary, purpose, architecture, key_decisions, technologies, status, linear_project_id, linear_issue_id, updated_at) VALUES (${values.join(", ")});\n`;
   }
 
   sql += "\n-- Journal Entries\n";

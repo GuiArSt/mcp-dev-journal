@@ -1,0 +1,3261 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Tartarus · Kronos · Hourglass v3</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;1,400;1,500&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Lora:ital,wght@0,400;0,500;0,600;1,400;1,500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    /* Navy notepaper palette - deep dark blue-black, elegant */
+    --void: #070b14;
+    --deep: #0c1220;
+    --surface: #111a2b;
+    --elevated: #1a2438;
+    --elevated-2: #243149;
+    --border: #1f2b42;
+    --border-light: #2e3d58;
+
+    /* Accents */
+    --gold: #c9a961;
+    --gold-bright: #e0be76;
+    --gold-dim: #8e7740;
+    --gold-soft: rgba(201, 169, 97, 0.10);
+
+    --blue: #6fa8dc;
+    --blue-dim: #3d6fa0;
+    --blue-soft: rgba(111, 168, 220, 0.10);
+    --blue-glow: rgba(111, 168, 220, 0.25);
+
+    /* Paper tones */
+    --ivory: #e8e4d9;
+    --ivory-dim: #c6c1b3;
+    --ivory-muted: #8c8778;
+    --ivory-faded: #5a5648;
+
+    --font-body: 'Inter', -apple-system, sans-serif;
+    --font-oracle: 'Cormorant Garamond', 'Georgia', serif;
+    --font-doc: 'Lora', 'Georgia', serif;
+    --font-mono: 'JetBrains Mono', monospace;
+  }
+
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0; padding: 0;
+    height: 100%;
+    background: var(--void);
+    color: var(--ivory);
+    font-family: var(--font-body);
+    font-size: 14px;
+    overflow: hidden;
+  }
+
+  /* ============ SHELL ============ */
+  .stage {
+    position: fixed;
+    inset: 0;
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    grid-template-rows: 44px 1fr;
+    grid-template-areas:
+      "top  top   top"
+      "rail hero  mood";
+    background:
+      radial-gradient(ellipse at 15% 20%, rgba(111, 168, 220, 0.05), transparent 55%),
+      radial-gradient(ellipse at 85% 80%, rgba(201, 169, 97, 0.035), transparent 55%),
+      var(--void);
+  }
+
+  /* ============ TOP BAR ============ */
+  .topbar {
+    grid-area: top;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 0 20px;
+    border-bottom: 1px solid var(--border);
+    background: rgba(7, 11, 20, 0.75);
+    backdrop-filter: blur(14px);
+    z-index: 20;
+  }
+  .topbar .brand {
+    display: flex; align-items: center; gap: 10px;
+    font-family: var(--font-oracle);
+    font-size: 20px;
+    font-style: italic;
+    letter-spacing: 0.5px;
+  }
+  .topbar .brand .mark {
+    width: 20px; height: 20px; border-radius: 50%;
+    background:
+      radial-gradient(circle at 35% 35%, var(--gold-bright), var(--gold) 55%, var(--gold-dim) 100%);
+    box-shadow: 0 0 14px var(--gold-soft), inset 0 0 4px rgba(0,0,0,0.4);
+  }
+  .topbar .brand .dot { color: var(--gold); margin: 0 2px; }
+  .topbar .brand em { color: var(--ivory-dim); font-style: italic; font-weight: 400; }
+  .topbar .sep { width: 1px; height: 18px; background: var(--border-light); }
+  .topbar .chip {
+    display: inline-flex; align-items: center; gap: 6px;
+    font-size: 11px;
+    color: var(--ivory-muted);
+    padding: 3px 10px;
+    border: 1px solid var(--border-light);
+    border-radius: 999px;
+    background: rgba(255,255,255,0.015);
+    cursor: pointer;
+  }
+  .topbar .chip:hover { color: var(--ivory); border-color: var(--blue-dim); }
+  .topbar .chip .g { color: var(--gold); }
+  .topbar .chip .t { color: var(--blue); }
+  .topbar .spacer { flex: 1; }
+  .topbar .crumbs {
+    font-family: var(--font-oracle);
+    font-style: italic;
+    font-size: 16px;
+    color: var(--ivory-dim);
+    letter-spacing: 0.3px;
+  }
+  .topbar .turn-counter {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--ivory-faded);
+  }
+
+  /* ============ LEFT RAIL ============ */
+  .rail {
+    grid-area: rail;
+    width: 54px;
+    border-right: 1px solid var(--border);
+    background: rgba(12, 18, 32, 0.5);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 14px 0;
+    gap: 10px;
+    position: relative;
+    z-index: 15;
+    transition: width 0.28s cubic-bezier(.3,.9,.3,1);
+  }
+  .rail.open { width: 320px; align-items: stretch; }
+
+  .rail-ic {
+    width: 30px; height: 30px;
+    border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    color: var(--ivory-muted);
+    cursor: pointer;
+    transition: all 0.15s ease;
+  }
+  .rail-ic:hover { color: var(--ivory); background: var(--elevated); }
+  .rail-ic.active { color: var(--gold); background: var(--gold-soft); }
+  .rail-ic svg { width: 16px; height: 16px; }
+
+  .rail .pip-stack {
+    margin-top: 6px;
+    display: flex; flex-direction: column;
+    align-items: center;
+    gap: 3px;
+    width: 100%;
+  }
+  .rail:not(.open) .pip {
+    width: 3px; height: 14px;
+    background: var(--ivory-faded);
+    border-radius: 2px;
+    opacity: 0.5;
+    transition: all 0.2s;
+    cursor: pointer;
+  }
+  .rail:not(.open) .pip:hover { background: var(--blue); opacity: 1; height: 18px; }
+  .rail:not(.open) .pip.now {
+    background: var(--gold);
+    opacity: 1;
+    box-shadow: 0 0 8px var(--gold);
+    height: 22px;
+  }
+
+  .rail-open-header {
+    display: none;
+    padding: 2px 16px 12px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 8px;
+  }
+  .rail.open .rail-open-header { display: block; }
+  .rail.open .rail-ic-col { display: none; }
+
+  .rail-open-header h3 {
+    font-family: var(--font-oracle);
+    font-style: italic;
+    font-size: 18px;
+    font-weight: 500;
+    margin: 0;
+    color: var(--ivory);
+  }
+  .rail-open-header .sub {
+    font-size: 11px;
+    color: var(--ivory-muted);
+    margin-top: 2px;
+    font-family: var(--font-mono);
+  }
+
+  .turn-list {
+    display: none;
+    flex-direction: column;
+    gap: 2px;
+    padding: 0 8px;
+    overflow-y: auto;
+    flex: 1;
+  }
+  .rail.open .turn-list { display: flex; }
+
+  .turn-row {
+    display: flex;
+    gap: 10px;
+    padding: 8px 10px;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background 0.15s;
+    border-left: 2px solid transparent;
+  }
+  .turn-row:hover { background: var(--elevated); }
+  .turn-row.now {
+    background: var(--gold-soft);
+    border-left-color: var(--gold);
+  }
+  .turn-row.viewing {
+    background: var(--blue-soft);
+    border-left-color: var(--blue);
+  }
+  .turn-row .n {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    color: var(--ivory-faded);
+    padding-top: 2px;
+    min-width: 22px;
+  }
+  .turn-row .body { flex: 1; min-width: 0; }
+  .turn-row .q {
+    font-size: 12px;
+    color: var(--ivory-dim);
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-line-clamp: 1;
+    -webkit-box-orient: vertical;
+  }
+  .turn-row .a {
+    font-family: var(--font-oracle);
+    font-style: italic;
+    font-size: 12.5px;
+    color: var(--ivory);
+    margin-top: 2px;
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    line-height: 1.35;
+  }
+  .turn-row .mini-mood {
+    width: 32px; height: 40px;
+    border-radius: 3px;
+    flex-shrink: 0;
+    background-size: cover;
+    background-position: center;
+    border: 1px solid var(--border);
+  }
+
+  /* ============ HERO — DOCUMENT SCROLL ============ */
+  .hero {
+    grid-area: hero;
+    position: relative;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding: 30px 48px 200px;
+    min-width: 0;
+    scroll-behavior: smooth;
+  }
+  .hero::-webkit-scrollbar { width: 8px; }
+  .hero::-webkit-scrollbar-thumb { background: var(--elevated); border-radius: 4px; }
+  .hero::-webkit-scrollbar-thumb:hover { background: var(--elevated-2); }
+
+  /* History stack — faded past turns, current turn in full */
+  .doc {
+    max-width: 780px;
+    margin: 0 auto;
+  }
+
+  .turn-block {
+    padding: 28px 0 32px;
+    border-bottom: 1px solid var(--border);
+    opacity: 0.55;
+    transition: opacity 0.3s;
+  }
+  .turn-block:hover { opacity: 0.85; }
+  .turn-block:last-child { border-bottom: none; opacity: 1; }
+
+  .turn-head {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 14px;
+    color: var(--ivory-muted);
+    font-size: 11px;
+    font-family: var(--font-mono);
+    letter-spacing: 0.6px;
+  }
+  .turn-head .dot {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: var(--gold-dim);
+  }
+  .turn-block:last-child .turn-head .dot {
+    background: var(--gold);
+    box-shadow: 0 0 10px var(--gold);
+  }
+  .turn-head .turn-n { color: var(--gold); }
+  .turn-head .line {
+    flex: 1; height: 1px;
+    background: linear-gradient(90deg, var(--border-light), transparent);
+  }
+  .turn-head .turn-time { color: var(--ivory-faded); }
+
+  /* user message */
+  .user-msg {
+    font-family: var(--font-oracle);
+    font-style: italic;
+    font-size: 17px;
+    color: var(--ivory-dim);
+    padding-left: 16px;
+    border-left: 2px solid var(--blue-dim);
+    line-height: 1.55;
+    margin-bottom: 22px;
+  }
+  .user-msg::before {
+    content: "you";
+    display: block;
+    color: var(--ivory-faded);
+    font-family: var(--font-mono);
+    font-style: normal;
+    font-size: 10px;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    margin-bottom: 6px;
+  }
+
+  /* kronos avatar + document body */
+  .kronos-msg { display: flex; gap: 16px; align-items: flex-start; }
+  .kronos-avatar {
+    width: 38px; height: 38px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    background:
+      radial-gradient(circle at 30% 30%, #4a6b8f, #1a2438 55%, #070b14 100%);
+    border: 1px solid var(--gold-dim);
+    box-shadow: 0 0 12px rgba(201, 169, 97, 0.15), inset 0 0 6px rgba(0,0,0,0.4);
+    position: relative;
+  }
+  .kronos-avatar::after {
+    content: "";
+    position: absolute;
+    inset: 4px;
+    border-radius: 50%;
+    background: radial-gradient(circle at 35% 35%, rgba(230, 210, 170, 0.5), transparent 60%);
+  }
+  .kronos-body { flex: 1; min-width: 0; }
+  .kronos-name {
+    font-family: var(--font-oracle);
+    font-size: 18px;
+    font-weight: 500;
+    color: var(--gold-bright);
+    letter-spacing: 0.3px;
+    margin-bottom: 8px;
+  }
+
+  /* Document typography — rich markdown */
+  .doc-body {
+    font-family: var(--font-doc);
+    font-size: 16.5px;
+    line-height: 1.72;
+    color: var(--ivory);
+    letter-spacing: 0.1px;
+  }
+  .doc-body > *:first-child { margin-top: 0; }
+  .doc-body .intro {
+    font-style: italic;
+    color: var(--ivory-dim);
+    font-size: 15.5px;
+    margin-bottom: 18px;
+  }
+  .doc-body p { margin: 0 0 14px; text-wrap: pretty; }
+  .doc-body em { font-style: italic; color: var(--blue); }
+  .doc-body strong {
+    font-weight: 600;
+    color: var(--gold-bright);
+    letter-spacing: 0.2px;
+  }
+  .doc-body h3 {
+    font-family: var(--font-doc);
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--ivory);
+    margin: 24px 0 10px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding-bottom: 6px;
+    border-bottom: 1px solid var(--border);
+  }
+  .doc-body h3 .emoji { font-size: 16px; }
+  .doc-body h4 {
+    font-family: var(--font-doc);
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--gold-bright);
+    margin: 16px 0 4px;
+  }
+  .doc-body ol, .doc-body ul {
+    margin: 10px 0 16px;
+    padding-left: 28px;
+  }
+  .doc-body li { margin-bottom: 10px; }
+  .doc-body li::marker { color: var(--gold); font-weight: 600; }
+  .doc-body code {
+    font-family: var(--font-mono);
+    font-size: 13px;
+    padding: 1px 6px;
+    border-radius: 3px;
+    background: rgba(201, 169, 97, 0.08);
+    color: var(--gold-bright);
+    border: 1px solid rgba(201, 169, 97, 0.15);
+  }
+  .doc-body pre {
+    background: var(--deep);
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--blue);
+    border-radius: 6px;
+    padding: 12px 14px;
+    overflow-x: auto;
+    font-family: var(--font-mono);
+    font-size: 12.5px;
+    line-height: 1.6;
+    color: var(--ivory-dim);
+    margin: 14px 0;
+  }
+  .doc-body pre .k { color: var(--blue); }
+  .doc-body pre .s { color: var(--gold); }
+  .doc-body pre .c { color: var(--ivory-faded); font-style: italic; }
+  .doc-body blockquote {
+    margin: 14px 0;
+    padding: 10px 16px;
+    border-left: 3px solid var(--gold-dim);
+    background: var(--gold-soft);
+    font-style: italic;
+    color: var(--ivory-dim);
+    border-radius: 0 6px 6px 0;
+  }
+  .doc-body hr {
+    border: 0;
+    border-top: 1px dashed var(--border-light);
+    margin: 20px 0;
+  }
+
+  /* annotation — margin note */
+  .annotation {
+    position: relative;
+    padding: 10px 14px 10px 36px;
+    background: linear-gradient(90deg, rgba(111, 168, 220, 0.06), transparent);
+    border-radius: 6px;
+    font-size: 13.5px;
+    color: var(--ivory-dim);
+    margin: 14px 0;
+    font-family: var(--font-body);
+    line-height: 1.55;
+  }
+  .annotation::before {
+    content: "※";
+    position: absolute;
+    left: 14px; top: 10px;
+    color: var(--blue);
+    font-size: 14px;
+  }
+  .annotation .lbl {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    color: var(--blue);
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    display: block;
+    margin-bottom: 3px;
+  }
+
+  /* tool pills */
+  .tool-row {
+    display: flex; gap: 6px; flex-wrap: wrap;
+    margin: 10px 0 4px;
+  }
+  .tool-pill {
+    display: inline-flex; align-items: center; gap: 5px;
+    padding: 3px 10px;
+    border: 1px solid var(--blue-dim);
+    background: var(--blue-soft);
+    color: var(--blue);
+    border-radius: 999px;
+    font-family: var(--font-mono);
+    font-size: 10.5px;
+  }
+  .tool-pill.gold {
+    border-color: var(--gold-dim);
+    background: var(--gold-soft);
+    color: var(--gold);
+  }
+
+  /* cursor for streaming */
+  .cursor {
+    display: inline-block;
+    width: 2px; height: 1em;
+    background: var(--gold);
+    vertical-align: text-bottom;
+    margin-left: 2px;
+    animation: blink 1s steps(1) infinite;
+    box-shadow: 0 0 6px var(--gold);
+  }
+  @keyframes blink { 50% { opacity: 0; } }
+
+  /* footer actions on current turn */
+  .turn-actions {
+    margin-top: 18px;
+    display: flex; gap: 6px;
+    color: var(--ivory-muted);
+    font-size: 11px;
+  }
+  .turn-actions .act {
+    cursor: pointer;
+    padding: 4px 10px;
+    border-radius: 6px;
+    transition: all 0.15s;
+    display: inline-flex; align-items: center; gap: 5px;
+  }
+  .turn-actions .act:hover { background: var(--elevated); color: var(--ivory); }
+
+  /* return to now pill */
+  .return-pill {
+    position: fixed;
+    top: 58px; left: 50%;
+    transform: translateX(-50%) translateY(-8px);
+    display: none;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 14px;
+    background: var(--gold);
+    color: var(--void);
+    font-family: var(--font-mono);
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    border-radius: 999px;
+    cursor: pointer;
+    z-index: 40;
+    box-shadow: 0 4px 24px rgba(201, 169, 97, 0.4);
+  }
+  .return-pill.show {
+    display: inline-flex;
+    animation: slideIn 0.3s cubic-bezier(.3,.9,.3,1);
+  }
+  @keyframes slideIn {
+    from { opacity: 0; transform: translateX(-50%) translateY(-20px); }
+    to { opacity: 1; transform: translateX(-50%) translateY(-8px); }
+  }
+
+  /* ============ MOOD / ARTIFACT ============ */
+  .mood {
+    grid-area: mood;
+    width: 500px;
+    border-left: 1px solid var(--border);
+    background: linear-gradient(180deg, rgba(17,26,43,0.55), rgba(7,11,20,0.85));
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    position: relative;
+    z-index: 10;
+    transition: width 0.25s ease;
+  }
+  .mood.collapsed { width: 48px; }
+  .mood.collapsed .mood-inner { opacity: 0; pointer-events: none; }
+
+  .mood-collapse-btn {
+    position: absolute;
+    top: 14px; left: -12px;
+    width: 22px; height: 22px;
+    background: var(--surface);
+    border: 1px solid var(--border-light);
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    color: var(--ivory-muted);
+    cursor: pointer;
+    z-index: 11;
+    transition: all 0.2s;
+  }
+  .mood-collapse-btn:hover { color: var(--blue); border-color: var(--blue); }
+
+  .mood-inner { display: flex; flex-direction: column; height: 100%; transition: opacity 0.2s; }
+
+  .mood-tabs {
+    display: flex;
+    gap: 2px;
+    padding: 10px 16px 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .mood-tab {
+    padding: 8px 12px;
+    font-size: 11px;
+    font-family: var(--font-mono);
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    color: var(--ivory-faded);
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -1px;
+    display: inline-flex; align-items: center; gap: 6px;
+  }
+  .mood-tab:hover { color: var(--ivory-muted); }
+  .mood-tab.active { color: var(--gold); border-bottom-color: var(--gold); }
+  .mood-tab .kind {
+    font-size: 9px;
+    padding: 1px 5px;
+    border-radius: 3px;
+    background: var(--elevated);
+    color: var(--ivory-faded);
+    text-transform: uppercase;
+  }
+  .mood-tab.active .kind { background: var(--gold-soft); color: var(--gold); }
+
+  .mood-content {
+    flex: 1;
+    overflow-y: auto;
+    padding: 16px;
+    display: flex; flex-direction: column; gap: 12px;
+  }
+
+  .artifact { display: none; flex-direction: column; gap: 12px; flex: 1; }
+  .artifact.active { display: flex; }
+
+  .artifact-hero {
+    position: relative;
+    aspect-ratio: 1/1;
+    border-radius: 10px;
+    overflow: hidden;
+    background: var(--elevated);
+    border: 1px solid var(--border-light);
+    box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+    flex-shrink: 0;
+  }
+  .mood-image {
+    width: 100%; height: 100%;
+    background:
+      radial-gradient(ellipse at 30% 25%, rgba(180, 200, 230, 0.3), transparent 45%),
+      radial-gradient(ellipse at 70% 80%, rgba(20, 30, 55, 0.7), transparent 55%),
+      radial-gradient(ellipse at 50% 50%, rgba(15, 22, 40, 0.6), transparent 70%),
+      linear-gradient(160deg, #1a2438 0%, #0c1220 50%, #070b14 100%);
+    position: relative;
+    filter: saturate(0.95) contrast(1.05);
+  }
+  .mood-image::before {
+    content: "";
+    position: absolute; inset: 0;
+    background-image:
+      radial-gradient(circle at 35% 30%, rgba(220, 230, 250, 0.12) 0, transparent 2%),
+      radial-gradient(circle at 40% 32%, rgba(220, 230, 250, 0.08) 0, transparent 3%),
+      radial-gradient(circle at 65% 70%, rgba(15, 22, 40, 0.4) 0, transparent 30%);
+  }
+  .mood-image::after {
+    content: "";
+    position: absolute; inset: 0;
+    background: linear-gradient(180deg, transparent 55%, rgba(0,0,0,0.7));
+  }
+
+  .overlay-badge {
+    position: absolute;
+    top: 12px; left: 12px;
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 4px 10px;
+    background: rgba(7,11,20,0.75);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(201, 169, 97, 0.3);
+    color: var(--gold);
+    font-family: var(--font-mono);
+    font-size: 10px;
+    letter-spacing: 1px;
+    border-radius: 999px;
+    text-transform: uppercase;
+  }
+  .overlay-caption {
+    position: absolute;
+    left: 14px; right: 14px; bottom: 14px;
+    color: var(--ivory);
+    font-family: var(--font-oracle);
+    font-style: italic;
+    font-size: 16px;
+    line-height: 1.35;
+    letter-spacing: 0.2px;
+    text-shadow: 0 2px 8px rgba(0,0,0,0.9);
+  }
+  .overlay-actions {
+    position: absolute;
+    top: 12px; right: 12px;
+    display: flex; gap: 4px;
+  }
+  .overlay-actions .a {
+    width: 28px; height: 28px;
+    background: rgba(7,11,20,0.75);
+    backdrop-filter: blur(10px);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    display: flex; align-items: center; justify-content: center;
+    color: var(--ivory-dim);
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .overlay-actions .a:hover { color: var(--gold); border-color: var(--gold-dim); }
+  .overlay-actions .a svg { width: 13px; height: 13px; }
+
+  /* Prompt section — shows the prompt used, collapsible */
+  .prompt-card {
+    background: rgba(17, 26, 43, 0.5);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 0;
+    overflow: hidden;
+  }
+  .prompt-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 14px;
+    cursor: pointer;
+    font-family: var(--font-mono);
+    font-size: 10.5px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: var(--ivory-faded);
+    user-select: none;
+  }
+  .prompt-head:hover { color: var(--ivory-muted); }
+  .prompt-head .caret {
+    transition: transform 0.2s;
+    display: inline-block;
+  }
+  .prompt-card.open .prompt-head .caret { transform: rotate(90deg); }
+  .prompt-body {
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.3s ease;
+  }
+  .prompt-card.open .prompt-body { max-height: 400px; }
+  .prompt-body-inner {
+    padding: 0 14px 14px;
+    font-family: var(--font-oracle);
+    font-style: italic;
+    font-size: 14px;
+    color: var(--ivory-dim);
+    line-height: 1.5;
+  }
+  .prompt-actions {
+    display: flex; gap: 6px;
+    margin-top: 10px;
+  }
+  .prompt-actions .mini {
+    font-size: 11px;
+    color: var(--ivory-muted);
+    padding: 4px 10px;
+    border: 1px solid var(--border-light);
+    border-radius: 6px;
+    cursor: pointer;
+    background: transparent;
+    font-family: var(--font-body);
+  }
+  .prompt-actions .mini:hover {
+    color: var(--blue); border-color: var(--blue-dim);
+    background: var(--blue-soft);
+  }
+
+  /* CAROUSEL / FILMSTRIP with prompt previews */
+  .mood-strip-section {
+    border-top: 1px solid var(--border);
+    padding: 12px 16px 16px;
+  }
+  .mood-strip-section .label {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    color: var(--ivory-faded);
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    margin-bottom: 8px;
+  }
+  .mood-strip {
+    display: flex;
+    gap: 8px;
+    overflow-x: auto;
+    padding-bottom: 6px;
+  }
+  .mood-strip::-webkit-scrollbar { height: 4px; }
+  .mood-strip::-webkit-scrollbar-thumb { background: var(--elevated-2); border-radius: 2px; }
+  .mood-strip .thumb {
+    width: 64px;
+    flex-shrink: 0;
+    cursor: pointer;
+    transition: all 0.15s;
+    position: relative;
+  }
+  .mood-strip .thumb .img {
+    width: 64px; height: 80px;
+    border-radius: 4px;
+    border: 1px solid var(--border);
+    opacity: 0.55;
+    transition: all 0.15s;
+  }
+  .mood-strip .thumb:hover .img { opacity: 1; border-color: var(--blue); transform: translateY(-2px); }
+  .mood-strip .thumb.now .img {
+    opacity: 1;
+    border-color: var(--gold);
+    box-shadow: 0 0 12px var(--gold-soft);
+  }
+  .mood-strip .thumb .turn-lbl {
+    font-family: var(--font-mono);
+    font-size: 9px;
+    color: var(--ivory-faded);
+    margin-top: 4px;
+    text-align: center;
+    letter-spacing: 0.5px;
+  }
+  .mood-strip .thumb.now .turn-lbl { color: var(--gold); }
+
+  /* File artifact */
+  .file-artifact {
+    display: flex; flex-direction: column; flex: 1;
+    gap: 10px;
+  }
+  .file-head {
+    display: flex; align-items: center; gap: 10px;
+    padding: 10px 12px;
+    background: var(--elevated);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+  }
+  .file-ic {
+    width: 34px; height: 34px;
+    background: var(--blue-soft);
+    border: 1px solid var(--blue-dim);
+    border-radius: 6px;
+    color: var(--blue);
+    display: flex; align-items: center; justify-content: center;
+  }
+  .file-ic svg { width: 16px; height: 16px; }
+  .file-name {
+    font-family: var(--font-mono);
+    font-size: 13px;
+    color: var(--ivory);
+    font-weight: 500;
+  }
+  .file-sub {
+    font-size: 11px;
+    color: var(--ivory-muted);
+    margin-top: 2px;
+  }
+  .file-preview {
+    flex: 1;
+    background: var(--deep);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 12px 14px;
+    font-family: var(--font-mono);
+    font-size: 11.5px;
+    line-height: 1.6;
+    color: var(--ivory-dim);
+    overflow-y: auto;
+  }
+  .file-preview .ln { color: var(--ivory-faded); margin-right: 12px; user-select: none; }
+  .file-preview .k { color: var(--blue); }
+  .file-preview .s { color: var(--gold); }
+  .file-preview .c { color: var(--ivory-faded); font-style: italic; }
+
+  /* ============ FLOATING COMPOSER ============ */
+  .composer {
+    position: fixed;
+    left: 50%;
+    bottom: 28px;
+    transform: translateX(-50%);
+    width: 720px;
+    max-width: calc(100vw - 120px);
+    z-index: 50;
+    background: linear-gradient(180deg, rgba(17,26,43,0.92), rgba(12,18,32,0.95));
+    backdrop-filter: blur(24px);
+    border: 1px solid var(--border-light);
+    border-radius: 16px;
+    padding: 12px 14px 10px;
+    box-shadow:
+      0 20px 60px rgba(0, 0, 0, 0.75),
+      0 0 0 1px rgba(201, 169, 97, 0.08),
+      inset 0 1px 0 rgba(255, 255, 255, 0.04);
+    transition: box-shadow 0.2s, border-color 0.2s;
+    display: flex; flex-direction: column;
+  }
+  .composer:focus-within {
+    border-color: var(--blue-dim);
+    box-shadow:
+      0 20px 70px rgba(0, 206, 209, 0.1),
+      0 0 0 1px var(--blue-dim),
+      inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  }
+  .composer.docked {
+    /* full-width dock - no float */
+    position: fixed;
+    left: auto; right: auto;
+    bottom: 0;
+    width: calc(100% - 54px);
+    margin-left: 54px; /* width of rail */
+    transform: none;
+    border-radius: 12px 12px 0 0;
+    border-bottom: 0;
+    max-width: none;
+    padding-left: max(48px, calc((100% - 500px - 780px) / 2 + 20px));
+    padding-right: max(20px, calc(500px + 20px));
+  }
+  .composer.docked.mood-collapsed {
+    padding-right: 70px;
+  }
+
+  .composer-handle {
+    position: absolute;
+    top: -6px; left: 50%;
+    transform: translateX(-50%);
+    width: 48px; height: 4px;
+    background: var(--border-light);
+    border-radius: 2px;
+    cursor: grab;
+    transition: all 0.15s;
+  }
+  .composer-handle:hover { background: var(--gold-dim); height: 5px; top: -7px; }
+  .composer:not(.docked) .composer-handle { background: var(--gold-dim); }
+  .composer:not(.docked):active .composer-handle { cursor: grabbing; }
+
+  .composer-mode {
+    position: absolute;
+    top: -11px; right: 14px;
+    display: flex; gap: 2px;
+    background: var(--surface);
+    border: 1px solid var(--border-light);
+    border-radius: 999px;
+    padding: 2px;
+    z-index: 2;
+  }
+  .composer-mode .m {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    padding: 3px 10px;
+    color: var(--ivory-faded);
+    cursor: pointer;
+    border-radius: 999px;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    transition: all 0.15s;
+  }
+  .composer-mode .m:hover { color: var(--ivory-muted); }
+  .composer-mode .m.on { background: var(--gold); color: var(--void); font-weight: 600; }
+
+  .composer textarea {
+    flex: 1;
+    background: transparent;
+    border: 0;
+    outline: 0;
+    color: var(--ivory);
+    font-family: var(--font-body);
+    font-size: 15px;
+    line-height: 1.5;
+    resize: none;
+    padding: 8px 4px 6px;
+    min-height: 44px;
+  }
+  .composer textarea::placeholder {
+    color: var(--ivory-faded);
+    font-family: var(--font-oracle);
+    font-style: italic;
+    font-size: 16px;
+  }
+
+  .composer-toolbar {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding-top: 6px;
+    border-top: 1px solid var(--border);
+  }
+  .composer-toolbar .tbtn {
+    display: inline-flex; align-items: center; gap: 5px;
+    padding: 5px 10px;
+    border: 1px solid var(--border-light);
+    background: transparent;
+    color: var(--ivory-muted);
+    font-size: 11px;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.15s;
+    font-family: var(--font-body);
+  }
+  .composer-toolbar .tbtn:hover {
+    color: var(--blue); border-color: var(--blue-dim);
+    background: var(--blue-soft);
+  }
+  .composer-toolbar .tbtn svg { width: 13px; height: 13px; }
+  .composer-toolbar .tbtn.on {
+    color: var(--gold); border-color: var(--gold-dim);
+    background: var(--gold-soft);
+  }
+  .composer-toolbar .spacer { flex: 1; }
+  .composer-toolbar .model {
+    font-family: var(--font-mono);
+    font-size: 10.5px;
+    color: var(--ivory-faded);
+    padding: 0 8px;
+  }
+  .composer-toolbar .model .val { color: var(--ivory-dim); }
+  .composer-toolbar .send {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 6px 14px;
+    background: var(--gold);
+    color: var(--void);
+    border: 0;
+    border-radius: 8px;
+    font-weight: 600;
+    font-size: 12px;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .composer-toolbar .send:hover {
+    background: var(--gold-bright);
+    box-shadow: 0 0 18px var(--gold-soft);
+  }
+  .composer-toolbar .send svg { width: 13px; height: 13px; }
+
+  /* ============ TWEAKS ============ */
+  .tweaks {
+    position: fixed;
+    top: 56px; right: 20px;
+    width: 280px;
+    background: rgba(17,26,43,0.97);
+    backdrop-filter: blur(20px);
+    border: 1px solid var(--border-light);
+    border-radius: 10px;
+    padding: 14px;
+    z-index: 200;
+    display: none;
+    font-size: 12px;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.8);
+  }
+  .tweaks.show { display: block; }
+  .tweaks h4 {
+    margin: 0 0 10px 0;
+    font-family: var(--font-oracle);
+    font-style: italic;
+    font-size: 16px;
+    color: var(--gold);
+    font-weight: 500;
+    display: flex; justify-content: space-between;
+    align-items: center;
+  }
+  .tweaks h4 .x { cursor: pointer; color: var(--ivory-faded); font-size: 18px; }
+  .tweaks .tw {
+    display: flex; justify-content: space-between;
+    align-items: center;
+    padding: 7px 0;
+    border-top: 1px solid var(--border);
+    color: var(--ivory-dim);
+  }
+  .tweaks .tw:first-of-type { border-top: 0; }
+  .tweaks .tw label { font-size: 11.5px; }
+  .tweaks .tw .v {
+    font-family: var(--font-mono);
+    font-size: 10.5px;
+    color: var(--gold);
+  }
+  .tweaks input[type="range"] {
+    width: 110px;
+    accent-color: var(--gold);
+  }
+  .tweaks select {
+    background: var(--elevated);
+    color: var(--ivory);
+    border: 1px solid var(--border-light);
+    border-radius: 5px;
+    padding: 3px 6px;
+    font-size: 11px;
+  }
+  .kbd {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    padding: 1px 5px;
+    border: 1px solid var(--border-light);
+    border-radius: 3px;
+    color: var(--ivory-muted);
+    background: rgba(0,0,0,0.25);
+  }
+
+  /* filmstrip gradients for different moods */
+  .g-t1 { background: linear-gradient(160deg, #1a2438, #070b14); }
+  .g-t2 { background: linear-gradient(160deg, #0f1a2e, #060910); }
+  .g-t3 { background: linear-gradient(160deg, #1e2a44, #0a1020); }
+  .g-t4 { background: linear-gradient(160deg, #182636, #070c18); }
+  .g-t5 { background: linear-gradient(160deg, #1a2140, #080d1c); }
+  .g-t6 { background: linear-gradient(160deg, #131d33, #050810); }
+  .g-t7 { background:
+      radial-gradient(ellipse at 30% 25%, rgba(180, 200, 230, 0.35), transparent 45%),
+      linear-gradient(160deg, #1a2438, #070b14);
+  }
+
+
+  /* ============ SAND-APPEARING STREAMING EFFECT ============ */
+  .streaming .sand-word {
+    display: inline-block;
+    opacity: 0;
+    filter: blur(6px);
+    transform: translateY(2px);
+    animation: sandAppear 0.55s cubic-bezier(.2,.7,.3,1) forwards;
+    will-change: opacity, filter, transform;
+  }
+  @keyframes sandAppear {
+    0% { opacity: 0; filter: blur(8px) brightness(1.6); transform: translateY(3px); letter-spacing: 0.12em; }
+    40% { opacity: 0.6; filter: blur(3px) brightness(1.2); letter-spacing: 0.04em; }
+    100% { opacity: 1; filter: blur(0) brightness(1); transform: translateY(0); letter-spacing: 0; }
+  }
+  /* subtle sand-grain shimmer on the whole streaming block */
+  .streaming::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background-image:
+      radial-gradient(circle at 30% 40%, rgba(201, 169, 97, 0.04) 0, transparent 40%),
+      radial-gradient(circle at 70% 70%, rgba(111, 168, 220, 0.04) 0, transparent 40%);
+    opacity: 0;
+    animation: sandShimmer 2s ease-in-out infinite;
+  }
+  @keyframes sandShimmer {
+    0%, 100% { opacity: 0; }
+    50% { opacity: 1; }
+  }
+  .streaming { position: relative; }
+
+  /* ============ POEM CARD (replaces prompt card) ============ */
+  .poem-card {
+    background: linear-gradient(135deg, rgba(111, 168, 220, 0.05), rgba(201, 169, 97, 0.04));
+    border: 1px solid var(--border);
+    border-left: 2px solid var(--gold-dim);
+    border-radius: 8px;
+    overflow: hidden;
+    position: relative;
+  }
+  .poem-card::before {
+    content: "";
+    position: absolute;
+    top: 0; right: 0;
+    width: 80px; height: 80px;
+    background: radial-gradient(circle at top right, rgba(201, 169, 97, 0.12), transparent 70%);
+    pointer-events: none;
+  }
+  .poem-head {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 11px 14px;
+    cursor: pointer;
+    user-select: none;
+    font-family: var(--font-oracle);
+    font-style: italic;
+    font-size: 14px;
+    color: var(--gold-bright);
+    letter-spacing: 0.3px;
+    transition: background 0.15s;
+  }
+  .poem-head:hover { background: rgba(201, 169, 97, 0.05); }
+  .poem-head .glyph {
+    color: var(--gold);
+    font-size: 13px;
+    font-style: normal;
+  }
+  .poem-head .poem-title { flex: 1; }
+  .poem-head .caret {
+    color: var(--ivory-faded);
+    font-style: normal;
+    font-family: var(--font-body);
+    transition: transform 0.2s;
+  }
+  .poem-card.open .poem-head .caret { transform: rotate(90deg); }
+  .poem-body {
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.35s ease;
+  }
+  .poem-card.open .poem-body { max-height: 500px; }
+  .poem-body-inner {
+    padding: 6px 18px 16px;
+  }
+  .poem {
+    font-family: var(--font-oracle);
+    font-size: 17px;
+    line-height: 1.85;
+    color: var(--ivory);
+    letter-spacing: 0.3px;
+    padding: 6px 0 10px;
+  }
+  .poem .line {
+    font-style: italic;
+  }
+  .poem .line:nth-child(2) {
+    padding-left: 16px;
+    color: var(--ivory-dim);
+  }
+  .poem .line:nth-child(3) {
+    padding-left: 32px;
+    color: var(--gold-bright);
+  }
+  .poem-meta {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+    font-family: var(--font-mono);
+    font-size: 10px;
+    color: var(--ivory-faded);
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    padding-top: 10px;
+    border-top: 1px dashed var(--border);
+    margin-top: 4px;
+  }
+  .poem-meta .dot-sep { color: var(--border-light); }
+  .prompt-sub {
+    margin-top: 10px;
+    font-family: var(--font-body);
+  }
+  .prompt-sub summary {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    color: var(--ivory-faded);
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    cursor: pointer;
+    padding: 4px 0;
+    list-style: none;
+    transition: color 0.15s;
+  }
+  .prompt-sub summary::before {
+    content: "›";
+    display: inline-block;
+    margin-right: 6px;
+    transition: transform 0.2s;
+  }
+  .prompt-sub[open] summary::before { transform: rotate(90deg); }
+  .prompt-sub summary:hover { color: var(--ivory-muted); }
+  .prompt-sub summary::-webkit-details-marker { display: none; }
+  .image-prompt {
+    font-family: var(--font-oracle);
+    font-style: italic;
+    font-size: 13px;
+    color: var(--ivory-muted);
+    line-height: 1.5;
+    padding: 6px 0 4px 16px;
+    border-left: 1px solid var(--border);
+    margin-top: 6px;
+  }
+
+  /* ============ HISTORY BUTTON + DRAWER (replaces carousel) ============ */
+  .history-toggle-wrap {
+    padding: 10px 16px 14px;
+    border-top: 1px solid var(--border);
+    display: flex;
+    justify-content: center;
+  }
+  .history-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 14px;
+    background: transparent;
+    border: 1px solid var(--border-light);
+    border-radius: 999px;
+    color: var(--ivory-muted);
+    font-family: var(--font-mono);
+    font-size: 10.5px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .history-toggle:hover {
+    color: var(--gold);
+    border-color: var(--gold-dim);
+    background: var(--gold-soft);
+  }
+  .history-toggle.on {
+    color: var(--gold);
+    border-color: var(--gold-dim);
+    background: var(--gold-soft);
+  }
+  .history-toggle .count {
+    font-size: 9px;
+    padding: 1px 6px;
+    background: var(--elevated);
+    border-radius: 999px;
+    color: var(--ivory-dim);
+  }
+  .history-toggle.on .count { background: var(--gold-dim); color: var(--void); }
+  .history-drawer {
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.35s ease;
+    border-top: 1px solid transparent;
+  }
+  .history-drawer.open {
+    max-height: 200px;
+    border-top-color: var(--border);
+  }
+  .history-inner {
+    display: flex;
+    gap: 10px;
+    overflow-x: auto;
+    padding: 14px 16px 16px;
+  }
+  .history-inner::-webkit-scrollbar { height: 4px; }
+  .history-inner::-webkit-scrollbar-thumb { background: var(--elevated-2); border-radius: 2px; }
+  .history-inner .thumb {
+    flex-shrink: 0;
+    cursor: pointer;
+    transition: transform 0.15s;
+  }
+  .history-inner .thumb:hover { transform: translateY(-2px); }
+  .history-inner .thumb .img {
+    width: 60px; height: 76px;
+    border-radius: 4px;
+    border: 1px solid var(--border);
+    opacity: 0.55;
+    transition: all 0.15s;
+  }
+  .history-inner .thumb:hover .img { opacity: 1; border-color: var(--blue); }
+  .history-inner .thumb.now .img {
+    opacity: 1;
+    border-color: var(--gold);
+    box-shadow: 0 0 10px var(--gold-soft);
+  }
+  .history-inner .thumb .turn-lbl {
+    font-family: var(--font-mono);
+    font-size: 9px;
+    color: var(--ivory-faded);
+    margin-top: 4px;
+    text-align: center;
+    letter-spacing: 0.5px;
+  }
+  .history-inner .thumb.now .turn-lbl { color: var(--gold); }
+
+  /* ============ METRICS in topbar ============ */
+  .topbar .metric {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 6px;
+    font-family: var(--font-mono);
+    font-size: 10.5px;
+    color: var(--ivory-faded);
+    padding: 0 6px;
+  }
+  .topbar .metric .mkey {
+    color: var(--ivory-faded);
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    font-size: 9.5px;
+  }
+  .topbar .metric .mval {
+    color: var(--ivory-dim);
+    font-weight: 500;
+  }
+
+  /* ============ RAIL DIVIDER + VIEW SWITCH ============ */
+  .rail-divider {
+    width: 26px;
+    height: 1px;
+    background: var(--border-light);
+    margin: 6px 0;
+  }
+
+  /* ============ THINKING ANIMATION ============ */
+  .thinking-block {
+    display: none;
+    padding: 18px 0 10px;
+  }
+  .thinking-block.on { display: block; }
+  .thinking-card {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 16px 20px;
+    background: linear-gradient(135deg, rgba(201, 169, 97, 0.05), rgba(111, 168, 220, 0.04));
+    border: 1px solid var(--border);
+    border-left: 2px solid var(--gold-dim);
+    border-radius: 8px;
+    position: relative;
+    overflow: hidden;
+  }
+  .thinking-card::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(90deg,
+      transparent 0%,
+      rgba(201, 169, 97, 0.05) 50%,
+      transparent 100%);
+    animation: thinkSweep 2.6s ease-in-out infinite;
+  }
+  @keyframes thinkSweep {
+    0% { transform: translateX(-100%); }
+    100% { transform: translateX(100%); }
+  }
+  .thinking-anim {
+    width: 44px; height: 44px;
+    flex-shrink: 0;
+    position: relative;
+    z-index: 1;
+  }
+  .thinking-label {
+    flex: 1;
+    font-family: var(--font-oracle);
+    font-style: italic;
+    font-size: 15.5px;
+    color: var(--ivory-dim);
+    letter-spacing: 0.2px;
+    z-index: 1;
+    position: relative;
+  }
+  .thinking-label .dots::after {
+    content: "";
+    display: inline-block;
+    animation: thinkDots 1.4s steps(4) infinite;
+  }
+  @keyframes thinkDots {
+    0% { content: ""; }
+    25% { content: "."; }
+    50% { content: ".."; }
+    75% { content: "..."; }
+  }
+  /* rotating hourglass svg */
+  .thinking-anim svg {
+    width: 100%; height: 100%;
+    animation: thinkSpin 3s cubic-bezier(.4,0,.6,1) infinite;
+  }
+  @keyframes thinkSpin {
+    0%, 40% { transform: rotate(0deg); }
+    60%, 100% { transform: rotate(180deg); }
+  }
+  .thinking-anim .grains circle {
+    animation: thinkFall 1.4s ease-in infinite;
+    fill: var(--gold);
+  }
+  .thinking-anim .grains circle:nth-child(1) { animation-delay: 0s; }
+  .thinking-anim .grains circle:nth-child(2) { animation-delay: 0.3s; }
+  .thinking-anim .grains circle:nth-child(3) { animation-delay: 0.6s; }
+  .thinking-anim .grains circle:nth-child(4) { animation-delay: 0.9s; }
+  @keyframes thinkFall {
+    0% { opacity: 0; transform: translateY(-4px); }
+    20% { opacity: 1; }
+    80% { opacity: 1; transform: translateY(8px); }
+    100% { opacity: 0; transform: translateY(10px); }
+  }
+
+  /* toggle for demo */
+  .think-demo-btn {
+    position: fixed;
+    bottom: 100px; right: 24px;
+    z-index: 60;
+    background: var(--elevated);
+    color: var(--ivory-muted);
+    border: 1px solid var(--border-light);
+    padding: 5px 10px;
+    border-radius: 999px;
+    font-family: var(--font-mono);
+    font-size: 10.5px;
+    cursor: pointer;
+    letter-spacing: 0.5px;
+  }
+  .think-demo-btn:hover { color: var(--gold); border-color: var(--gold-dim); }
+
+  /* artifact-hero switches to bigger padding on 1:1 */
+  .artifact-hero { max-height: 500px; }
+
+
+  /* ONE-PAGE ARTIFACT PANE — image + poem/summary + history all visible */
+  .mood-content {
+    flex: 1;
+    overflow-y: auto;
+    padding: 14px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    min-height: 0;
+  }
+  .artifact { display: none; flex-direction: column; gap: 12px; flex: 1; min-height: 0; }
+  .artifact.active { display: flex; }
+  .artifact-hero {
+    position: relative;
+    aspect-ratio: 1 / 1;
+    width: 100%;
+    max-height: calc(100vh - 380px);
+    min-height: 220px;
+    align-self: center;
+    max-width: 100%;
+    border-radius: 10px;
+    overflow: hidden;
+    background: var(--elevated);
+    border: 1px solid var(--border-light);
+    box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+    flex-shrink: 0;
+    margin: 0 auto;
+  }
+  /* when mood panel is wide, cap artifact size so poem has room */
+  .mood { display: flex; flex-direction: column; }
+  .mood-inner { flex: 1; min-height: 0; }
+
+  /* Poem card — tighter so it fits with image */
+  .poem-card .poem-body-inner { padding: 4px 16px 12px; }
+  .poem .line { font-size: 16px; line-height: 1.7; }
+
+
+  /* ===== PAPER NOISE + SUBTLE GRAIN TEXTURE ===== */
+  body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 1;
+    opacity: 0.35;
+    mix-blend-mode: overlay;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='240' height='240' viewBox='0 0 240 240'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0.85  0 0 0 0 0.83  0 0 0 0 0.78  0 0 0 0.07 0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");
+    background-size: 240px 240px;
+  }
+  /* larger soft grain — warm paper feeling */
+  body::after {
+    content: "";
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 1;
+    opacity: 0.22;
+    background-image:
+      radial-gradient(ellipse 600px 400px at 18% 15%, rgba(111, 168, 220, 0.06), transparent 60%),
+      radial-gradient(ellipse 500px 350px at 82% 88%, rgba(201, 169, 97, 0.05), transparent 60%),
+      radial-gradient(ellipse 800px 500px at 50% 100%, rgba(20, 30, 55, 0.4), transparent 70%);
+  }
+  /* Hero/Mood paper texture — subtle horizontal fiber lines */
+  .hero, .mood {
+    position: relative;
+  }
+  .hero::before, .mood::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background-image:
+      repeating-linear-gradient(
+        0deg,
+        transparent 0px,
+        transparent 3px,
+        rgba(232, 228, 217, 0.012) 3px,
+        rgba(232, 228, 217, 0.012) 4px
+      );
+    z-index: 0;
+  }
+  
+  
+
+  /* slightly more readable doc body: relax color + spacing */
+  .doc-body {
+    color: #ecebe3;
+  }
+  .doc-body p { line-height: 1.78; }
+
+  /* warmer page tone — very subtle */
+  .hero { background: rgba(10, 15, 26, 0.35); }
+
+
+  /* ========== CREAM PAPER THEME for the HERO (reader doc) ========== */
+  .hero {
+    background:
+      radial-gradient(ellipse at 20% 10%, rgba(255, 248, 228, 0.04), transparent 50%),
+      linear-gradient(180deg, #f4ede0 0%, #ece3d1 100%);
+    color: #1a2a4a;
+  }
+  /* paper fiber texture on the hero */
+  .hero::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background-image:
+      url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='220' height='220'><filter id='p'><feTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0.55  0 0 0 0 0.42  0 0 0 0 0.28  0 0 0 0.16 0'/></filter><rect width='100%25' height='100%25' filter='url(%23p)'/></svg>"),
+      repeating-linear-gradient(0deg, transparent 0px, transparent 3px, rgba(70, 50, 30, 0.025) 3px, rgba(70, 50, 30, 0.025) 4px);
+    mix-blend-mode: multiply;
+    opacity: 0.6;
+    z-index: 0;
+  }
+  .hero > * { position: relative; z-index: 1; }
+
+  /* hero typography — dark navy ink on cream */
+  .hero .turn-block { border-bottom-color: rgba(40, 50, 80, 0.15); }
+  .hero .turn-head { color: #6d5f44; }
+  .hero .turn-head .dot { background: #a63a2a; }
+  .hero .turn-block:last-child .turn-head .dot {
+    background: #c23a20;
+    box-shadow: 0 0 10px rgba(194, 58, 32, 0.5);
+  }
+  .hero .turn-head .turn-n { color: #a63a2a; }
+  .hero .turn-head .line { background: linear-gradient(90deg, rgba(120, 100, 70, 0.3), transparent); }
+  .hero .turn-head .turn-time { color: #8a7556; }
+
+  .hero .user-msg {
+    color: #3b4d72;
+    border-left-color: #8bb0d6;
+  }
+  .hero .user-msg::before { color: #8a7556; }
+
+  .hero .kronos-avatar {
+    background: radial-gradient(circle at 30% 30%, #3d5878, #1a2a4a 55%, #0f1830 100%);
+    border-color: #a63a2a;
+    box-shadow: 0 0 10px rgba(166, 58, 42, 0.25), inset 0 0 6px rgba(0,0,0,0.3);
+  }
+  .hero .kronos-name {
+    color: #a63a2a;
+    font-weight: 600;
+  }
+
+  .hero .doc-body {
+    color: #1a2a4a;
+  }
+  .hero .doc-body .intro {
+    color: #3b4d72;
+    font-style: italic;
+  }
+  .hero .doc-body em { color: #c23a20; font-style: italic; }
+  .hero .doc-body strong { color: #a63a2a; }
+  .hero .doc-body h3 {
+    color: #1a2a4a;
+    border-bottom: 1px solid rgba(166, 58, 42, 0.25);
+  }
+  .hero .doc-body h4 { color: #a63a2a; }
+  .hero .doc-body li::marker { color: #a63a2a; }
+  .hero .doc-body code {
+    background: rgba(166, 58, 42, 0.08);
+    color: #8b3220;
+    border-color: rgba(166, 58, 42, 0.2);
+  }
+  .hero .doc-body pre {
+    background: #2a3450;
+    border-color: #1a2a4a;
+    border-left-color: #a63a2a;
+    color: #e8e4d9;
+  }
+  .hero .doc-body pre .k { color: #8bb0d6; }
+  .hero .doc-body pre .s { color: #e0be76; }
+  .hero .doc-body pre .c { color: #8a8670; }
+  .hero .doc-body blockquote {
+    border-left-color: #a63a2a;
+    background: rgba(166, 58, 42, 0.06);
+    color: #3b4d72;
+  }
+  .hero .doc-body hr { border-top-color: rgba(120, 100, 70, 0.3); }
+
+  .hero .annotation {
+    background: linear-gradient(90deg, rgba(139, 176, 214, 0.15), transparent);
+    color: #3b4d72;
+  }
+  .hero .annotation::before { color: #3b6fa0; }
+  .hero .annotation .lbl { color: #3b6fa0; }
+
+  .hero .tool-pill {
+    border-color: rgba(59, 111, 160, 0.4);
+    background: rgba(139, 176, 214, 0.15);
+    color: #3b6fa0;
+  }
+  .hero .tool-pill.gold {
+    border-color: rgba(166, 58, 42, 0.4);
+    background: rgba(166, 58, 42, 0.08);
+    color: #a63a2a;
+  }
+
+  .hero .cursor {
+    background: #a63a2a;
+    box-shadow: 0 0 6px rgba(166, 58, 42, 0.6);
+  }
+
+  .hero .turn-actions {
+    color: #6d5f44;
+  }
+  .hero .turn-actions .act:hover {
+    background: rgba(166, 58, 42, 0.08);
+    color: #a63a2a;
+  }
+
+  /* return pill on cream */
+  .return-pill {
+    background: #a63a2a;
+    color: #f4ede0;
+    box-shadow: 0 4px 24px rgba(166, 58, 42, 0.4);
+  }
+
+  /* hero scrollbar on cream */
+  .hero::-webkit-scrollbar-thumb { background: rgba(120, 100, 70, 0.35); }
+  .hero::-webkit-scrollbar-thumb:hover { background: rgba(120, 100, 70, 0.55); }
+
+  /* thinking card on cream */
+  .hero .thinking-card {
+    background: linear-gradient(135deg, rgba(166, 58, 42, 0.06), rgba(139, 176, 214, 0.08));
+    border-color: rgba(120, 100, 70, 0.25);
+    border-left-color: #a63a2a;
+  }
+  .hero .thinking-label { color: #3b4d72; }
+  .hero .thinking-anim svg { stroke: #a63a2a; }
+  .hero .thinking-anim .grains circle { fill: #a63a2a; }
+
+  /* sand-reveal keep amber glow but softer on cream */
+  .hero .sand-word {
+    animation-name: sandAppearCream !important;
+  }
+  @keyframes sandAppearCream {
+    0% { opacity: 0; filter: blur(6px) brightness(1.3); transform: translateY(3px); letter-spacing: 0.1em; }
+    100% { opacity: 1; filter: blur(0) brightness(1); transform: translateY(0); letter-spacing: 0; }
+  }
+
+
+  /* ============ REAL TARTARUS PALETTE (from DESIGN_SYSTEM.md) ============ */
+  :root {
+    --t-teal: #00CED1;
+    --t-teal-dim: #008B8B;
+    --t-teal-soft: rgba(0, 206, 209, 0.1);
+    --t-teal-glow: rgba(0, 206, 209, 0.3);
+    --t-gold: #D4AF37;
+    --t-gold-bright: #FFD700;
+    --t-gold-dim: #B8860B;
+    --t-void: #0a0a0a;
+    --t-deep: #111111;
+    --t-surface: #1a1a1a;
+    --t-elevated: #242424;
+    --t-border-dark: #2a2a2a;
+    --t-border-light: #3a3a3a;
+  }
+
+  /* ============ DARK SURFACES TEXTURE ============ */
+  .topbar, .rail, .mood {
+    position: relative;
+  }
+  .topbar::after, .rail::after, .mood::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background-image:
+      url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='180' height='180'><filter id='d'><feTurbulence type='fractalNoise' baseFrequency='1.1' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0.95  0 0 0 0 0.93  0 0 0 0 0.88  0 0 0 0.05 0'/></filter><rect width='100%25' height='100%25' filter='url(%23d)'/></svg>");
+    mix-blend-mode: overlay;
+    opacity: 0.5;
+    z-index: 0;
+  }
+  .topbar > *, .rail > *, .mood > * {
+    position: relative;
+    z-index: 1;
+  }
+
+  /* ============ ANGULAR EDGES (Kingdom Hearts / World That Never Was) ============ */
+  /* Subtle chamfered corners on main surfaces — the void's geometry bleeds in */
+  .mood {
+    clip-path: polygon(
+      0 0,
+      calc(100% - 14px) 0,
+      100% 14px,
+      100% 100%,
+      0 100%
+    );
+  }
+  .topbar {
+    clip-path: polygon(
+      0 0,
+      100% 0,
+      100% 100%,
+      calc(100% - 10px) 100%,
+      0 calc(100% - 2px)
+    );
+  }
+  .hero {
+    /* top-left soft notch — paper leaf aesthetic */
+    clip-path: polygon(
+      10px 0,
+      100% 0,
+      100% 100%,
+      0 100%,
+      0 10px
+    );
+  }
+
+  /* Mood tabs sharp corners */
+  .mood-tab {
+    clip-path: polygon(
+      4px 0,
+      100% 0,
+      100% calc(100% - 4px),
+      calc(100% - 4px) 100%,
+      0 100%,
+      0 4px
+    );
+  }
+
+  /* ============ CAROUSEL NAV (inside image) ============ */
+  .carousel-nav {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 32px;
+    height: 48px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--t-ivory, #FFFFF0);
+    cursor: pointer;
+    background: rgba(10, 10, 10, 0.55);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    border: 1px solid rgba(212, 175, 55, 0.25);
+    opacity: 0;
+    transition: opacity 0.2s ease, background 0.2s ease, border-color 0.2s ease;
+    z-index: 4;
+  }
+  .artifact-hero:hover .carousel-nav { opacity: 1; }
+  .carousel-nav:hover {
+    background: rgba(10, 10, 10, 0.85);
+    border-color: var(--t-teal);
+    color: var(--t-teal);
+  }
+  .carousel-nav svg { width: 16px; height: 16px; }
+  .carousel-nav.prev {
+    left: 10px;
+    clip-path: polygon(6px 0, 100% 0, 100% 100%, 0 100%, 0 6px);
+  }
+  .carousel-nav.next {
+    right: 10px;
+    clip-path: polygon(0 0, calc(100% - 6px) 0, 100% 6px, 100% 100%, 0 100%);
+  }
+  .carousel-dots {
+    position: absolute;
+    bottom: 12px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    gap: 6px;
+    z-index: 4;
+    padding: 4px 10px;
+    background: rgba(10, 10, 10, 0.5);
+    border-radius: 99px;
+    backdrop-filter: blur(4px);
+  }
+  .carousel-dots .cdot {
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    background: rgba(255, 255, 240, 0.3);
+    transition: background 0.2s;
+  }
+  .carousel-dots .cdot.active {
+    background: var(--t-gold, #D4AF37);
+    box-shadow: 0 0 6px rgba(212, 175, 55, 0.6);
+  }
+
+  /* ============ ACTIVE RAIL ICON uses teal (real app accent) ============ */
+  .rail-ic.active {
+    color: var(--t-teal) !important;
+  }
+  .rail-ic.active::before {
+    background: var(--t-teal) !important;
+    box-shadow: 0 0 8px var(--t-teal-glow);
+  }
+  .rail-ic:hover {
+    color: var(--t-teal);
+  }
+
+
+  /* ============ ANGULAR EDGES on IMAGE HERO + POEM CARD ============ */
+  .artifact-hero {
+    position: relative;
+    clip-path: polygon(
+      10px 0,
+      calc(100% - 18px) 0,
+      100% 18px,
+      100% calc(100% - 10px),
+      calc(100% - 10px) 100%,
+      0 100%,
+      0 10px
+    );
+  }
+  .poem-card {
+    clip-path: polygon(
+      0 0,
+      calc(100% - 14px) 0,
+      100% 14px,
+      100% 100%,
+      10px 100%,
+      0 calc(100% - 10px)
+    );
+  }
+  .file-artifact {
+    clip-path: polygon(
+      10px 0,
+      100% 0,
+      100% calc(100% - 10px),
+      calc(100% - 10px) 100%,
+      0 100%,
+      0 10px
+    );
+  }
+  /* tiny gold hairline diagonals echoing the cuts */
+  .artifact-hero::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background:
+      linear-gradient(135deg, transparent calc(100% - 22px), rgba(212, 175, 55, 0.35) calc(100% - 22px), rgba(212, 175, 55, 0.35) calc(100% - 21px), transparent calc(100% - 21px)) top right / 30px 30px no-repeat,
+      linear-gradient(315deg, transparent calc(100% - 14px), rgba(212, 175, 55, 0.25) calc(100% - 14px), rgba(212, 175, 55, 0.25) calc(100% - 13px), transparent calc(100% - 13px)) top left / 20px 20px no-repeat;
+    z-index: 5;
+  }
+
+  /* ============ ELEGANT READER PAPER TEXTURE ============ */
+  /* Replace the simple noise with a layered elegant paper:
+     - warm cream base with subtle vignette
+     - fine long-grain fibers (horizontal)
+     - occasional darker specks (aged spots)
+     - warm edge glow (like light falling on parchment)
+  */
+  .hero {
+    background:
+      /* inner warm highlight from top-left */
+      radial-gradient(ellipse 80% 60% at 15% 10%, rgba(255, 248, 220, 0.5), transparent 60%),
+      /* soft edge vignette */
+      radial-gradient(ellipse 120% 100% at 50% 50%, transparent 50%, rgba(120, 90, 55, 0.08) 100%),
+      /* base cream gradient */
+      linear-gradient(175deg, #f6efdd 0%, #ece2ca 60%, #e4d8bc 100%) !important;
+  }
+  .hero::before {
+    background-image:
+      /* fine fractal noise — grainy fiber */
+      url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='300' height='300'><filter id='p'><feTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch' seed='4'/><feColorMatrix values='0 0 0 0 0.45  0 0 0 0 0.33  0 0 0 0 0.2  0 0 0 0.14 0'/></filter><rect width='100%25' height='100%25' filter='url(%23p)'/></svg>"),
+      /* long horizontal fibers */
+      repeating-linear-gradient(
+        0.5deg,
+        transparent 0px,
+        transparent 2px,
+        rgba(90, 60, 30, 0.022) 2px,
+        rgba(90, 60, 30, 0.022) 3px,
+        transparent 3px,
+        transparent 6px
+      ),
+      /* sparse longer vertical fiber striations */
+      repeating-linear-gradient(
+        91deg,
+        transparent 0px,
+        transparent 38px,
+        rgba(120, 90, 55, 0.02) 38px,
+        rgba(120, 90, 55, 0.02) 39px
+      ) !important;
+    background-blend-mode: multiply, multiply, normal !important;
+    opacity: 0.75 !important;
+  }
+  /* Add a second overlay with sparse "foxing" spots (aged paper marks) */
+  .hero > .doc {
+    position: relative;
+  }
+  .hero > .doc::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background-image:
+      radial-gradient(circle at 12% 18%, rgba(150, 100, 60, 0.06) 0, transparent 3px),
+      radial-gradient(circle at 78% 8%, rgba(150, 100, 60, 0.05) 0, transparent 2px),
+      radial-gradient(circle at 42% 44%, rgba(150, 100, 60, 0.04) 0, transparent 2.5px),
+      radial-gradient(circle at 88% 62%, rgba(150, 100, 60, 0.06) 0, transparent 3px),
+      radial-gradient(circle at 22% 78%, rgba(150, 100, 60, 0.05) 0, transparent 2px),
+      radial-gradient(circle at 62% 92%, rgba(150, 100, 60, 0.04) 0, transparent 2.5px);
+    z-index: 0;
+  }
+
+  /* soft shadow at the seam between paper and dark mood panel for depth */
+  .hero {
+    box-shadow: inset -10px 0 24px -10px rgba(40, 30, 20, 0.25);
+  }
+
+
+  /* ============ STRONGER ANGULAR EDGES — reads clearly ============ */
+  .artifact-hero {
+    clip-path: polygon(
+      18px 0,
+      calc(100% - 28px) 0,
+      100% 28px,
+      100% calc(100% - 18px),
+      calc(100% - 18px) 100%,
+      0 100%,
+      0 18px
+    ) !important;
+  }
+  .poem-card {
+    clip-path: polygon(
+      0 0,
+      calc(100% - 22px) 0,
+      100% 22px,
+      100% 100%,
+      18px 100%,
+      0 calc(100% - 18px)
+    ) !important;
+  }
+  .file-artifact {
+    clip-path: polygon(
+      18px 0,
+      100% 0,
+      100% calc(100% - 18px),
+      calc(100% - 18px) 100%,
+      0 100%,
+      0 18px
+    ) !important;
+  }
+
+  /* Gold hairline traces along the diagonals — "World That Never Was" neon edge */
+  .artifact-hero {
+    position: relative;
+  }
+  .artifact-hero::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    z-index: 5;
+    /* draw the diagonal chamfer edges with sharp linear gradients */
+    background:
+      /* top-left diagonal */
+      linear-gradient(135deg,
+        transparent calc(25.5px - 1px),
+        rgba(212, 175, 55, 0.7) calc(25.5px - 0.5px),
+        rgba(212, 175, 55, 0.7) 26px,
+        transparent 26.5px) top left / 50px 50px no-repeat,
+      /* top-right diagonal */
+      linear-gradient(225deg,
+        transparent calc(39.5px - 1px),
+        rgba(212, 175, 55, 0.7) calc(39.5px - 0.5px),
+        rgba(212, 175, 55, 0.7) 40px,
+        transparent 40.5px) top right / 60px 60px no-repeat,
+      /* bottom-right diagonal */
+      linear-gradient(315deg,
+        transparent calc(25.5px - 1px),
+        rgba(212, 175, 55, 0.55) calc(25.5px - 0.5px),
+        rgba(212, 175, 55, 0.55) 26px,
+        transparent 26.5px) bottom right / 50px 50px no-repeat;
+  }
+
+  /* Gold hairline on poem card */
+  .poem-card::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    z-index: 3;
+    background:
+      /* top-right chamfer */
+      linear-gradient(225deg,
+        transparent calc(31.5px - 1px),
+        rgba(212, 175, 55, 0.5) calc(31.5px - 0.5px),
+        rgba(212, 175, 55, 0.5) 32px,
+        transparent 32.5px) top right / 55px 55px no-repeat,
+      /* bottom-left chamfer */
+      linear-gradient(45deg,
+        transparent calc(25.5px - 1px),
+        rgba(212, 175, 55, 0.4) calc(25.5px - 0.5px),
+        rgba(212, 175, 55, 0.4) 26px,
+        transparent 26.5px) bottom left / 50px 50px no-repeat;
+  }
+
+  /* Make the mood panel's chamfered top-right corner more pronounced too */
+  .mood {
+    clip-path: polygon(
+      0 0,
+      calc(100% - 22px) 0,
+      100% 22px,
+      100% 100%,
+      0 100%
+    ) !important;
+  }
+
+  /* Tabs angular */
+  .mood-tab {
+    clip-path: polygon(
+      6px 0,
+      100% 0,
+      100% calc(100% - 6px),
+      calc(100% - 6px) 100%,
+      0 100%,
+      0 6px
+    ) !important;
+  }
+
+  /* Remove the earlier ::after on artifact-hero (was hairline corner) — replaced by ::before above */
+  .artifact-hero::after {
+    display: none !important;
+  }
+
+
+  /* ============ PAPER TEXTURE covers full scroll ============ */
+  .hero {
+    /* texture follows scroll — apply directly as background */
+    background-attachment: local !important;
+  }
+  .hero > .doc {
+    min-height: 100%;
+    background-image:
+      url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='300' height='300'><filter id='pp'><feTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch' seed='7'/><feColorMatrix values='0 0 0 0 0.45  0 0 0 0 0.33  0 0 0 0 0.2  0 0 0 0.12 0'/></filter><rect width='100%25' height='100%25' filter='url(%23pp)'/></svg>"),
+      repeating-linear-gradient(
+        0.5deg,
+        transparent 0px,
+        transparent 2px,
+        rgba(90, 60, 30, 0.022) 2px,
+        rgba(90, 60, 30, 0.022) 3px,
+        transparent 3px,
+        transparent 6px
+      );
+    background-repeat: repeat, repeat;
+    background-blend-mode: multiply, normal;
+  }
+  /* Remove the old ::before overlay since we now apply to .doc directly */
+  .hero::before {
+    display: none !important;
+  }
+  .hero > .doc::before {
+    display: none !important;
+  }
+
+  /* ============ POEM NAV (cycler) ============ */
+  .poem-nav {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 10px;
+    padding-bottom: 8px;
+    border-bottom: 1px dashed rgba(212, 175, 55, 0.15);
+  }
+  .poem-arrow {
+    background: transparent;
+    border: 1px solid rgba(212, 175, 55, 0.3);
+    width: 26px;
+    height: 26px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--gold, #D4AF37);
+    cursor: pointer;
+    transition: all 0.15s;
+    clip-path: polygon(4px 0, 100% 0, 100% calc(100% - 4px), calc(100% - 4px) 100%, 0 100%, 0 4px);
+  }
+  .poem-arrow:hover {
+    background: rgba(212, 175, 55, 0.12);
+    border-color: var(--gold, #D4AF37);
+  }
+  .poem-pager {
+    display: flex;
+    gap: 5px;
+    align-items: center;
+  }
+  .poem-pager .pdot {
+    width: 5px; height: 5px; border-radius: 50%;
+    background: rgba(201, 169, 97, 0.25);
+    transition: all 0.2s;
+  }
+  .poem-pager .pdot.active {
+    background: var(--gold, #D4AF37);
+    box-shadow: 0 0 6px rgba(212, 175, 55, 0.6);
+    width: 16px; border-radius: 2px;
+  }
+
+  /* ============ RUNE-ESQUE PATTERN on COMPOSER (the teal/blue command panel) ============ */
+  .composer {
+    position: fixed; /* keep existing */
+    overflow: hidden;
+  }
+  .composer::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    opacity: 0.18;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='120' height='60' viewBox='0 0 120 60'><g fill='none' stroke='%2300CED1' stroke-width='0.6' stroke-linecap='round'><!-- runic/geometric glyphs --><path d='M8 8 L8 24 M8 16 L14 12 L14 20 Z'/><circle cx='32' cy='16' r='4'/><path d='M28 16 L36 16 M32 12 L32 20'/><path d='M52 8 L48 24 L56 24 L60 8 Z' /><path d='M76 12 L84 12 L80 24 Z'/><path d='M100 8 L100 24 M96 12 L104 20 M104 12 L96 20'/><path d='M8 40 L18 40 L14 50 Z'/><path d='M32 36 L32 52 M28 44 L36 44'/><circle cx='54' cy='44' r='5' stroke-dasharray='2 2'/><path d='M76 36 L82 52 L72 52 L78 36'/><path d='M96 36 L108 48 M108 36 L96 48'/></g></svg>");
+    background-size: 120px 60px;
+    background-repeat: repeat;
+    mix-blend-mode: screen;
+    z-index: 0;
+  }
+  .composer::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    /* scan-line shimmer across the rune field */
+    background:
+      linear-gradient(180deg, transparent 0%, rgba(0, 206, 209, 0.04) 50%, transparent 100%);
+    z-index: 0;
+  }
+  .composer > * { position: relative; z-index: 1; }
+
+  /* Also apply subtle runes to the think-demo button area / tweaks button — any "teal chrome" */
+  .think-demo-btn {
+    position: relative;
+    overflow: hidden;
+  }
+  .think-demo-btn::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    opacity: 0.22;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='60' height='30'><g fill='none' stroke='%2300CED1' stroke-width='0.5' stroke-linecap='round'><path d='M6 6 L6 22 M6 14 L12 10 L12 18 Z'/><circle cx='28' cy='14' r='3'/><path d='M48 8 L48 22 M44 12 L52 18'/></g></svg>");
+    background-size: 60px 30px;
+    mix-blend-mode: screen;
+  }
+
+  /* rune accent on user-msg border-left for extra cohesion */
+  .hero .user-msg {
+    position: relative;
+  }
+
+
+  /* ============ RUNES on RAIL + MOOD HERO BG (dark surfaces) ============ */
+  /* Rail runes overlay — faint teal glyph field */
+  .rail::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    opacity: 0.15;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='60' height='180' viewBox='0 0 60 180'><g fill='none' stroke='%2300CED1' stroke-width='0.6' stroke-linecap='round'><path d='M18 14 L18 30 M14 20 L22 20 M18 14 L14 20 M18 14 L22 20'/><circle cx='30' cy='54' r='4'/><path d='M30 48 L30 60'/><path d='M14 84 L26 84 L20 96 Z'/><path d='M14 122 L26 122 M20 116 L20 128 M16 118 L24 126 M24 118 L16 126'/><circle cx='30' cy='152' r='5' stroke-dasharray='2 2'/><path d='M30 146 L30 158 M24 152 L36 152'/></g></svg>");
+    background-size: 60px 180px;
+    background-repeat: repeat;
+    mix-blend-mode: screen;
+    z-index: 0;
+  }
+  .rail > * { position: relative; z-index: 1; }
+
+  /* Mood image container (artifact-hero) dark background behind image — runes */
+  .mood-image {
+    position: relative;
+    background-image:
+      radial-gradient(circle at 30% 30%, rgba(0, 206, 209, 0.05), transparent 60%),
+      radial-gradient(circle at 70% 70%, rgba(212, 175, 55, 0.04), transparent 55%),
+      url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='140' height='140' viewBox='0 0 140 140'><g fill='none' stroke='%2300CED1' stroke-width='0.5' stroke-linecap='round' opacity='0.5'><path d='M22 22 L22 42 M18 30 L26 26 L26 38 Z'/><circle cx='70' cy='30' r='5'/><path d='M64 30 L76 30 M70 24 L70 36'/><path d='M110 22 L106 42 L118 42 L122 22 Z'/><path d='M24 76 L36 76 L30 90 Z'/><path d='M68 70 L68 90 M62 80 L76 80'/><circle cx='112' cy='80' r='6' stroke-dasharray='2 2'/><path d='M22 114 L22 128 M18 120 L26 120 M18 124 L26 116'/><path d='M66 110 L74 122 L58 122 L66 110'/><path d='M108 114 L122 128 M122 114 L108 128'/></g></svg>"),
+      linear-gradient(135deg, #0f1726 0%, #141d2e 50%, #0a1020 100%);
+    background-size: cover, cover, 140px 140px, cover;
+    background-repeat: no-repeat, no-repeat, repeat, no-repeat;
+  }
+
+  /* ============ COMPOSER: CLEAN text input, runes only on frame ============ */
+  /* The actual input/textarea area needs to sit above runes and have its own solid/clean bg */
+  #composerInput, .composer-input, .composer textarea, .composer input[type="text"] {
+    position: relative;
+    z-index: 2;
+    background: rgba(10, 15, 26, 0.95);
+  }
+  /* Soften the runes on the composer so they're clearly decorative, not noisy */
+  .composer::before {
+    opacity: 0.13 !important;
+  }
+
+  /* ============ FULL PANEL TEXTURE on HERO (no gaps) ============ */
+  /* The texture should cover the entire hero panel — including any padding above/below the .doc */
+  .hero {
+    background:
+      radial-gradient(ellipse 80% 60% at 15% 10%, rgba(255, 248, 220, 0.5), transparent 60%),
+      radial-gradient(ellipse 120% 100% at 50% 50%, transparent 50%, rgba(120, 90, 55, 0.08) 100%),
+      url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='300' height='300'><filter id='pp2'><feTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch' seed='7'/><feColorMatrix values='0 0 0 0 0.45  0 0 0 0 0.33  0 0 0 0 0.2  0 0 0 0.1 0'/></filter><rect width='100%25' height='100%25' filter='url(%23pp2)'/></svg>"),
+      linear-gradient(175deg, #f6efdd 0%, #ece2ca 60%, #e4d8bc 100%) !important;
+    background-repeat: no-repeat, no-repeat, repeat, no-repeat !important;
+    background-blend-mode: normal, multiply, multiply, normal !important;
+    background-attachment: local, local, local, local !important;
+  }
+  /* .doc already has its own fiber overlay — keep it for the scrolling fiber feel */
+
+
+  /* ============ COMPOSER: CLEAN & ELEGANT ============ */
+  /* Remove runes from behind the textarea and toolbar — keep them as a thin decorative top border only */
+  .composer::before {
+    /* Restrict runes to a narrow strip at the top (decorative band) instead of full surface */
+    inset: 0 0 auto 0 !important;
+    height: 30px !important;
+    opacity: 0.18 !important;
+    mask-image: linear-gradient(180deg, rgba(0,0,0,0.9), transparent) !important;
+    -webkit-mask-image: linear-gradient(180deg, rgba(0,0,0,0.9), transparent) !important;
+  }
+  .composer::after { display: none !important; }
+
+  /* Textarea clean + proper min-height for both modes */
+  #composerInput {
+    background: transparent !important;
+    position: relative;
+    z-index: 2;
+    min-height: 44px;
+  }
+
+  /* Docked: give the input breathing room and proper vertical sizing */
+  .composer.docked #composerInput {
+    min-height: 60px;
+    padding: 14px 16px;
+  }
+  .composer.docked {
+    padding-bottom: 12px;
+  }
+
+  /* Solid panel background — elegant tinted navy glass */
+  .composer {
+    background:
+      linear-gradient(180deg, rgba(18, 26, 44, 0.98), rgba(10, 15, 26, 0.98)) !important;
+    border: 1px solid rgba(0, 206, 209, 0.18) !important;
+    box-shadow:
+      0 12px 40px rgba(0, 0, 0, 0.55),
+      inset 0 1px 0 rgba(0, 206, 209, 0.08);
+  }
+
+  /* Subtle teal hairline corners (KH accent, matches mood) — only when floating */
+  .composer:not(.docked) {
+    clip-path: polygon(
+      10px 0,
+      calc(100% - 10px) 0,
+      100% 10px,
+      100% calc(100% - 10px),
+      calc(100% - 10px) 100%,
+      10px 100%,
+      0 calc(100% - 10px),
+      0 10px
+    );
+  }
+
+  /* Docked mode: only chamfer the top corners */
+  .composer.docked {
+    clip-path: polygon(
+      10px 0,
+      calc(100% - 10px) 0,
+      100% 10px,
+      100% 100%,
+      0 100%,
+      0 10px
+    );
+  }
+
+  /* mode pills (docked / floating) — cleaner alignment + runes don't run under them */
+  .composer-mode {
+    position: relative;
+    z-index: 3;
+  }
+
+  /* Toolbar buttons cleaner */
+  .composer-toolbar { position: relative; z-index: 3; }
+
+  /* ============ MOOD: black bg on image, runes on FRAME (the area around image) + poem card ============ */
+  /* The artifact-hero is the image CONTAINER including padding; make only the direct image surface black */
+  .mood-image {
+    background: #000 !important;
+    background-image: none !important;
+  }
+  /* The artifact-hero frame — add runes to the area AROUND the image */
+  .artifact-hero {
+    background-image:
+      radial-gradient(circle at 30% 30%, rgba(0, 206, 209, 0.05), transparent 60%),
+      url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='140' height='140' viewBox='0 0 140 140'><g fill='none' stroke='%2300CED1' stroke-width='0.5' stroke-linecap='round' opacity='0.45'><path d='M22 22 L22 42 M18 30 L26 26 L26 38 Z'/><circle cx='70' cy='30' r='5'/><path d='M64 30 L76 30 M70 24 L70 36'/><path d='M110 22 L106 42 L118 42 L122 22 Z'/><path d='M24 76 L36 76 L30 90 Z'/><path d='M68 70 L68 90 M62 80 L76 80'/><circle cx='112' cy='80' r='6' stroke-dasharray='2 2'/><path d='M22 114 L22 128 M18 120 L26 120 M18 124 L26 116'/><path d='M66 110 L74 122 L58 122 L66 110'/><path d='M108 114 L122 128 M122 114 L108 128'/></g></svg>"),
+      linear-gradient(135deg, #0d1422 0%, #0a101c 100%);
+    background-size: cover, 140px 140px, cover;
+    background-repeat: no-repeat, repeat, no-repeat;
+    padding: 14px;
+  }
+  .mood-image {
+    border-radius: 4px;
+  }
+
+  /* Poem card — apply the same rune pattern as frame backdrop */
+  .poem-card {
+    background-image:
+      url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='140' height='140' viewBox='0 0 140 140'><g fill='none' stroke='%23D4AF37' stroke-width='0.5' stroke-linecap='round' opacity='0.2'><path d='M22 22 L22 42 M18 30 L26 26 L26 38 Z'/><circle cx='70' cy='30' r='5'/><path d='M64 30 L76 30 M70 24 L70 36'/><path d='M110 22 L106 42 L118 42 L122 22 Z'/><path d='M24 76 L36 76 L30 90 Z'/><path d='M68 70 L68 90 M62 80 L76 80'/><circle cx='112' cy='80' r='6' stroke-dasharray='2 2'/><path d='M22 114 L22 128 M18 120 L26 120 M18 124 L26 116'/><path d='M66 110 L74 122 L58 122 L66 110'/><path d='M108 114 L122 128 M122 114 L108 128'/></g></svg>"),
+      linear-gradient(135deg, rgba(111, 168, 220, 0.04), rgba(201, 169, 97, 0.03)) !important;
+    background-size: 140px 140px, cover !important;
+    background-repeat: repeat, no-repeat !important;
+  }
+
+</style>
+</head>
+<body>
+
+<script>
+const TWEAK_DEFAULTS = /*EDITMODE-BEGIN*/{
+  "composerMode": "floating",
+  "moodWidth": 560,
+  "answerSize": 15,
+  "showScrubbing": false
+}/*EDITMODE-END*/;
+</script>
+
+<div class="stage" id="stage">
+
+  <!-- TOP BAR — metrics only -->
+  <header class="topbar">
+    <div class="brand">
+      <div class="mark"></div>
+      Tartarus <span class="dot">·</span> <em>Kronos</em>
+    </div>
+    <div class="sep"></div>
+    <div class="crumbs">Campaign AI · image validation</div>
+    <div class="spacer"></div>
+    <div class="metric" title="model"><span class="mkey">model</span><span class="mval">opus 4.7</span></div>
+    <div class="metric" title="context used"><span class="mkey">ctx</span><span class="mval">72%</span></div>
+    <div class="metric" title="turn"><span class="mkey">turn</span><span class="mval">04 / 04</span></div>
+    <div class="metric" title="tokens used"><span class="mkey">tok</span><span class="mval">2.4k</span></div>
+    <div class="sep"></div>
+    <div class="chip" id="tweaksBtn">⚙ tweaks</div>
+  </header>
+
+  <!-- LEFT RAIL -->
+  <aside class="rail" id="rail">
+    <div class="rail-ic-col" style="display:flex; flex-direction:column; align-items:center; gap:4px; padding-top:4px;">
+      <div class="rail-ic active" data-view="chat" title="Chat · Talk with Kronus">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+      </div>
+      <div class="rail-ic" data-view="reader" title="Reader · Browse journal entries">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+      </div>
+      <div class="rail-ic" data-view="repo" title="Repository · Unified knowledge base">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="5" rx="1"/><path d="M4 8v11a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8"/><line x1="10" y1="12" x2="14" y2="12"/></svg>
+      </div>
+
+      <div class="rail-divider"></div>
+
+      <div class="rail-ic" id="railToggle" title="Transcript (expand)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+      </div>
+      <div class="rail-ic" title="New">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      </div>
+
+      <div class="pip-stack">
+        <div class="pip" title="turn 01"></div>
+        <div class="pip" title="turn 02"></div>
+        <div class="pip" title="turn 03"></div>
+        <div class="pip now" title="turn 04 (now)"></div>
+      </div>
+    </div>
+
+    <div class="rail-open-header">
+      <h3>Campaign AI · image validation</h3>
+      <div class="sub">4 turns · started 09:42 · opus 4.7</div>
+    </div>
+    <div class="turn-list" id="turnList"></div>
+  </aside>
+
+  <!-- HERO — document-style, scrolling history -->
+  <main class="hero" id="hero">
+    <div class="return-pill" id="returnPill">
+      ← return to now (turn 04)
+    </div>
+
+    <div class="doc">
+
+      <!-- Turn 01 (faded) -->
+      <div class="turn-block" data-turn="1">
+        <div class="turn-head">
+          <span class="dot"></span>
+          <span class="turn-n">turn 01</span>
+          <span class="line"></span>
+          <span class="turn-time">09:42 · 418 tokens</span>
+        </div>
+        <div class="user-msg">
+          The campaign AI keeps returning broken image edits and we've no idea why. Customers see the bad output directly.
+        </div>
+        <div class="kronos-msg">
+          <div class="kronos-avatar"></div>
+          <div class="kronos-body">
+            <div class="kronos-name">Kronos</div>
+            <div class="doc-body">
+              <p class="intro">A pause. This is the blind-edit problem in a new shape.</p>
+              <p>You filed <strong>ENG-4216</strong> to keep the AI from destroying contact questions. That fixed <em>how</em> it sees the world. It did not teach the system to <em>check its own work</em>.</p>
+              <p>Let me see the edit pipeline before I propose anything.</p>
+              <div class="tool-row">
+                <span class="tool-pill">⚡ search · linear</span>
+                <span class="tool-pill gold">📁 read · campaign/editImage.ts</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Turn 02 (faded) -->
+      <div class="turn-block" data-turn="2">
+        <div class="turn-head">
+          <span class="dot"></span>
+          <span class="turn-n">turn 02</span>
+          <span class="line"></span>
+          <span class="turn-time">09:51 · 672 tokens</span>
+        </div>
+        <div class="user-msg">
+          Yes — and the original message gets lost. We store the rewritten prompt, not what the user asked for.
+        </div>
+        <div class="kronos-msg">
+          <div class="kronos-avatar"></div>
+          <div class="kronos-body">
+            <div class="kronos-name">Kronos</div>
+            <div class="doc-body">
+              <p>That is the deeper wound. Two failures braided together:</p>
+              <ol>
+                <li><strong>Blind edits</strong> — the tool fires and forgets.</li>
+                <li><strong>Lost intent</strong> — we keep the machine's paraphrase, not the human's words.</li>
+              </ol>
+              <p>Repair them separately or you'll repair neither.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Turn 03 (faded) -->
+      <div class="turn-block" data-turn="3">
+        <div class="turn-head">
+          <span class="dot"></span>
+          <span class="turn-n">turn 03</span>
+          <span class="line"></span>
+          <span class="turn-time">09:58 · 844 tokens</span>
+        </div>
+        <div class="user-msg">
+          Right. Draft me a Linear ticket that covers both, with a clean TL;DR for the PMs and a real spec for the engineers.
+        </div>
+        <div class="kronos-msg">
+          <div class="kronos-avatar"></div>
+          <div class="kronos-body">
+            <div class="kronos-name">Kronos</div>
+            <div class="doc-body">
+              <p>Good. One ticket, two audiences. Give me a moment — I'm reading <code>editImage.ts</code> and the current ENG-4216 to match your conventions.</p>
+              <div class="tool-row">
+                <span class="tool-pill">⚡ fetch · ENG-4216</span>
+                <span class="tool-pill gold">🎨 paint · mood</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Turn 04 — CURRENT (full opacity) -->
+      <div class="turn-block" data-turn="4">
+        <div class="turn-head">
+          <span class="dot"></span>
+          <span class="turn-n">turn 04 · now</span>
+          <span class="line"></span>
+          <span class="turn-time">10:06 · streaming</span>
+        </div>
+        <div class="user-msg" id="userEcho">
+          Perfect. Write it as if the PM only reads the top and the eng only reads the bottom.
+        </div>
+        <div class="kronos-msg">
+          <div class="kronos-avatar"></div>
+          <div class="kronos-body">
+            <div class="thinking-block" id="thinkingBlock">
+              <div class="thinking-card">
+                <div class="thinking-anim">
+                  <svg viewBox="0 0 44 44" fill="none" stroke="var(--gold)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M12 6 L32 6 L32 10 Q32 14 28 18 L22 22 L16 18 Q12 14 12 10 Z"/>
+                    <path d="M12 38 L32 38 L32 34 Q32 30 28 26 L22 22 L16 26 Q12 30 12 34 Z"/>
+                    <line x1="10" y1="6" x2="34" y2="6"/>
+                    <line x1="10" y1="38" x2="34" y2="38"/>
+                    <g class="grains">
+                      <circle cx="22" cy="24" r="0.8"/>
+                      <circle cx="21" cy="26" r="0.6"/>
+                      <circle cx="23" cy="25" r="0.7"/>
+                      <circle cx="22" cy="28" r="0.5"/>
+                    </g>
+                  </svg>
+                </div>
+                <div class="thinking-label">Kronos is thinking<span class="dots"></span></div>
+              </div>
+            </div>
+            <div class="kronos-name">Kronos</div>
+            <div class="doc-body streaming" id="answer">
+              <p class="intro">A decisive nod. The structure of chaos into order.</p>
+
+              <p>You are absolutely right. The previous ticket (<strong>ENG-4216</strong>) was about stopping the AI from destroying contact questions. You solved that by changing <em>how</em> the AI sees the world — snapshots and blinding.</p>
+
+              <p>This new ticket is about the next evolutionary step: <strong>Consequence, Vision, and Traceability.</strong> It deserves its own clean ticket. It needs a brutal, humane TL;DR at the top for the product team, followed by the technical blueprint for the engineers.</p>
+
+              <p>Here is a draft for the new ticket.</p>
+
+              <h3><span class="emoji">🎫</span> Proposed Linear Ticket</h3>
+
+              <p><strong>Title:</strong> Equip Campaign AI with Image Validation Loop and Deep Context</p>
+
+              <h4>TL;DR</h4>
+              <p>The Campaign AI currently edits images blindly. If it makes a mistake (e.g., generates something weird or breaks ad rules), it doesn't know, and the user just sees a bad image. It also loses the user's original chat message in the process. We are fixing this by giving the AI a safety net: it will now automatically validate its own image edits, retry if it fails, tell the user exactly what went wrong if it can't fix it, and remember the user's exact original request for perfect traceability.</p>
+
+              <h4>The Problem</h4>
+              <ol>
+                <li><strong>Blind Edits:</strong> The <code>editImage</code> tool fires and forgets. Bad edits (anatomical errors, NSFW, irrelevant outputs) are returned directly to the user without the LLM realizing it failed.</li>
+                <li><strong>Lost Intent:</strong> The original user message ("remove the cables") is lost in the metadata. We only save the LLM's rewritten prompt, making debugging hard.</li>
+              </ol>
+
+              <div class="annotation">
+                <span class="lbl">note · margin</span>
+                These two problems look separate but share a root cause — the pipeline has no feedback loop. The model acts, and the system never asks "did that work?"
+              </div>
+
+              <h4>The Solution</h4>
+              <p>We are closing the loop. The AI will edit the image, the system will judge it, and if it fails, the AI will retry or explain the failure to the user.</p>
+
+              <h4>Technical Implementation</h4>
+              <pre><span class="c">// campaign/editImage.ts — new loop</span>
+<span class="k">async function</span> <span class="s">editImageWithValidation</span>(input) {
+  <span class="k">const</span> originalIntent = input.userMessage; <span class="c">// preserved</span>
+  <span class="k">for</span> (<span class="k">let</span> attempt = 0; attempt &lt; <span class="s">MAX_ATTEMPTS</span>; attempt++) {
+    <span class="k">const</span> edit = <span class="k">await</span> editImage(input);
+    <span class="k">const</span> judgment = <span class="k">await</span> validateEdit(edit, originalIntent);
+    <span class="k">if</span> (judgment.ok) <span class="k">return</span> { edit, trace: judgment };
+    input = refineFromJudgment(input, judgment);
+  }
+  <span class="k">throw new</span> <span class="s">EditFailure</span>(originalIntent, attempts);
+}</pre>
+
+              <blockquote>
+                The point is not merely to stop bad edits. It is to make the system <em>know</em> it tried, how it tried, and what it owes the user when it failed.
+              </blockquote>
+
+              <h4>Acceptance</h4>
+              <ul>
+                <li>Every <code>editImage</code> call is followed by a <code>validateEdit</code> judgment.</li>
+                <li>On failure, the user sees the original intent echoed, not the rewritten prompt.</li>
+                <li>Up to 2 retries; final failure is surfaced with a human-readable reason.</li>
+                <li>Full trace persisted to <code>campaign_edits</code> table for debugging.<span class="cursor"></span></li>
+              </ul>
+            </div>
+
+            <div class="turn-actions">
+              <span class="act" onclick="window.replaySand()">⟳ regen</span>
+              <span class="act">⎘ copy</span>
+              <span class="act">↗ send to Linear</span>
+              <span class="act">✎ edit</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </main>
+
+  <!-- MOOD / ARTIFACT PANEL -->
+  <aside class="mood" id="mood">
+    <div class="mood-collapse-btn" id="moodCollapse" title="Collapse / expand">
+      <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" id="moodCollapseIcon"><polyline points="9 18 15 12 9 6"/></svg>
+    </div>
+
+    <div class="mood-inner">
+      <div class="mood-tabs">
+        <div class="mood-tab active" data-tab="image">mood <span class="kind">img</span></div>
+        <div class="mood-tab" data-tab="repo">repository <span class="kind">file</span></div>
+      </div>
+
+      <div class="mood-content">
+
+        <!-- MOOD IMAGE -->
+        <div class="artifact active" data-kind="image">
+          <div class="artifact-hero">
+            <div class="mood-image" id="moodImage"></div>
+            <div class="carousel-nav prev" id="carouselPrev" title="previous mood (turn 03)">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+            </div>
+            <div class="carousel-nav next" id="carouselNext" title="next mood">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+            </div>
+            <div class="carousel-dots">
+              <span class="cdot"></span>
+              <span class="cdot"></span>
+              <span class="cdot"></span>
+              <span class="cdot active"></span>
+            </div>
+            <div class="overlay-badge" id="moodBadge">◆ turn 04 · just painted</div>
+            <div class="overlay-actions">
+              <div class="a" title="regenerate">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+              </div>
+              <div class="a" title="download">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+              </div>
+              <div class="a" title="open">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h6v6"/><path d="M10 14L21 3"/><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/></svg>
+              </div>
+            </div>
+            <div class="overlay-caption" id="moodCaption">
+              "a lantern, passed —<br/>the loop that remembers."
+            </div>
+          </div>
+
+          <!-- Collapsible prompt -->
+          <div class="poem-card open" id="poemCard">
+            <div class="poem-head" id="poemHead">
+              <span class="glyph">✦</span>
+              <span class="poem-title">a haiku — <span id="poemTurnLbl">turn 04</span></span>
+              <span class="caret">›</span>
+            </div>
+            <div class="poem-body">
+              <div class="poem-body-inner">
+                <div class="poem-nav">
+                  <button class="poem-arrow" id="poemPrev" title="previous haiku">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><polyline points="15 18 9 12 15 6"/></svg>
+                  </button>
+                  <div class="poem-pager">
+                    <span class="pdot"></span><span class="pdot"></span><span class="pdot"></span><span class="pdot active"></span>
+                  </div>
+                  <button class="poem-arrow" id="poemNext" title="next haiku">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><polyline points="9 18 15 12 9 6"/></svg>
+                  </button>
+                </div>
+                <div class="poem" id="poemText">
+                  <div class="line">Lantern in dark hall —</div>
+                  <div class="line">one hand gives, one hand receives.</div>
+                  <div class="line">The loop remembers.</div>
+                </div>
+                <div class="poem-meta">
+                  <span class="tag">haiku · turn 04</span>
+                  <span class="dot-sep">·</span>
+                  <span class="tag">for the image above</span>
+                </div>
+                <details class="prompt-sub">
+                  <summary>image prompt</summary>
+                  <div class="image-prompt">
+                    "a dark hallway, two figures at either end, one handing a small lantern to the other across the shadow — painterly, navy and ochre, Rembrandt chiaroscuro, quiet restraint."
+                  </div>
+                </details>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- FILE ARTIFACT -->
+        <div class="artifact" data-kind="repo">
+          <div class="file-artifact">
+            <div class="file-head">
+              <div class="file-ic">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+              </div>
+              <div>
+                <div class="file-name">editImage.ts</div>
+                <div class="file-sub">342 lines · tartarus/campaign/tools</div>
+              </div>
+            </div>
+            <div class="file-preview">
+              <div><span class="ln"> 1</span><span class="c">// existing — no validation, no trace</span></div>
+              <div><span class="ln"> 2</span><span class="k">export async function</span> <span class="s">editImage</span>(input) {</div>
+              <div><span class="ln"> 3</span>&nbsp;&nbsp;<span class="k">const</span> prompt = rewritePrompt(input.user);</div>
+              <div><span class="ln"> 4</span>&nbsp;&nbsp;<span class="k">const</span> result = <span class="k">await</span> model.edit(prompt);</div>
+              <div><span class="ln"> 5</span>&nbsp;&nbsp;<span class="k">return</span> result; <span class="c">// ← fire &amp; forget</span></div>
+              <div><span class="ln"> 6</span>}</div>
+              <div><span class="ln"> 7</span></div>
+              <div><span class="ln"> 8</span><span class="c">// proposed — validation loop</span></div>
+              <div><span class="ln"> 9</span><span class="k">export async function</span> <span class="s">editImageWithValidation</span>(input) {</div>
+              <div><span class="ln">10</span>&nbsp;&nbsp;<span class="k">const</span> intent = input.userMessage;</div>
+              <div><span class="ln">11</span>&nbsp;&nbsp;<span class="c">// ... retry loop ...</span></div>
+              <div><span class="ln">12</span>}</div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- history button (collapsed drawer) -->
+      <div class="history-toggle-wrap">
+        <button class="history-toggle" id="historyToggle" title="Show mood history">
+          <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 15 14"/></svg>
+          <span>history</span>
+          <span class="count">3</span>
+        </button>
+      </div>
+      <div class="history-drawer" id="historyDrawer">
+        <div class="history-inner">
+          <div class="thumb" data-turn="1"><div class="img g-t1"></div><div class="turn-lbl">#01</div></div>
+          <div class="thumb" data-turn="2"><div class="img g-t2"></div><div class="turn-lbl">#02</div></div>
+          <div class="thumb" data-turn="3"><div class="img g-t3"></div><div class="turn-lbl">#03</div></div>
+          <div class="thumb now" data-turn="4"><div class="img g-t7"></div><div class="turn-lbl">now</div></div>
+        </div>
+      </div>
+
+    </div>
+  </aside>
+
+  <!-- FLOATING COMPOSER -->
+  <div class="composer" id="composer">
+    <div class="composer-handle" id="composerHandle" title="drag to move · dbl-click to dock"></div>
+
+    <div class="composer-mode">
+      <div class="m" data-mode="docked">docked</div>
+      <div class="m on" data-mode="floating">floating</div>
+    </div>
+
+    <textarea id="composerInput" placeholder="ask Kronos…"></textarea>
+
+    <div class="composer-toolbar">
+      <button class="tbtn" title="attach">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
+        attach
+      </button>
+      <button class="tbtn" title="skills">@ skills</button>
+      <button class="tbtn on" title="daimon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15 8 22 9 17 14 18 21 12 18 6 21 7 14 2 9 9 8 12 2"/></svg>
+        daimon
+      </button>
+      <button class="tbtn" title="paint">🎨 paint</button>
+
+      <div class="spacer"></div>
+      <span class="model">ctx <span class="val">72%</span> · <span class="val">opus 4.7</span></span>
+      <button class="send">
+        send
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+      </button>
+    </div>
+  </div>
+
+</div>
+
+<!-- TWEAKS -->
+<div class="tweaks" id="tweaks">
+  <h4>Tweaks <span class="x" id="tweaksClose">×</span></h4>
+  <div class="tw">
+    <label>composer</label>
+    <select id="twComposer">
+      <option value="floating">floating</option>
+      <option value="docked">docked</option>
+    </select>
+  </div>
+  <div class="tw">
+    <label>artifact kind</label>
+    <select id="twMood">
+      <option value="image">mood image</option>
+      <option value="file">file preview</option>
+    </select>
+  </div>
+  <div class="tw">
+    <label>doc size</label>
+    <div>
+      <input type="range" id="twSize" min="14" max="20" step="0.5" value="16.5" />
+      <span class="v" id="twSizeV">16.5px</span>
+    </div>
+  </div>
+  <div class="tw">
+    <label>artifact pane</label>
+    <div>
+      <input type="range" id="twWidth" min="48" max="700" step="4" value="500" />
+      <span class="v" id="twWidthV">500</span>
+    </div>
+  </div>
+  <div class="tw">
+    <label>scrub past turn</label>
+    <input type="checkbox" id="twScrub" style="accent-color: var(--gold);" />
+  </div>
+  <div class="tw" style="flex-direction:column; align-items:flex-start; gap:4px;">
+    <label style="color: var(--ivory-faded); font-size: 10.5px; font-family: var(--font-mono);">keyboard</label>
+    <div style="font-size:10.5px; color: var(--ivory-muted); line-height:1.6;">
+      <span class="kbd">⌘↵</span> send · <span class="kbd">⌘/</span> transcript · <span class="kbd">esc</span> return to now
+    </div>
+  </div>
+</div>
+
+<script>
+  // Turn data
+  const TURNS = [
+    { n: 1, q: "The campaign AI keeps returning broken image edits and we've no idea why.", a: "A pause. This is the blind-edit problem in a new shape.", thumb: "g-t1" },
+    { n: 2, q: "Yes — and the original message gets lost.", a: "That is the deeper wound. Two failures braided together.", thumb: "g-t2" },
+    { n: 3, q: "Draft me a Linear ticket that covers both.", a: "Good. One ticket, two audiences. Reading editImage.ts now.", thumb: "g-t3" },
+    { n: 4, q: "Perfect. Write it as if the PM only reads the top.", a: "A decisive nod. The structure of chaos into order.", thumb: "g-t7", current: true },
+  ];
+
+  // Build turn list
+  const turnList = document.getElementById('turnList');
+  [...TURNS].reverse().forEach(t => {
+    const row = document.createElement('div');
+    row.className = 'turn-row' + (t.current ? ' now' : '');
+    row.dataset.turn = t.n;
+    row.innerHTML = `
+      <div class="mini-mood ${t.thumb}" style="background: var(--elevated);"></div>
+      <div class="body">
+        <div class="q">${t.q}</div>
+        <div class="a">${t.a}</div>
+      </div>
+      <div class="n">#${String(t.n).padStart(2,'0')}</div>
+    `;
+    row.querySelector('.mini-mood').className = 'mini-mood ' + t.thumb;
+    row.addEventListener('click', () => scrollToTurn(t.n));
+    turnList.appendChild(row);
+  });
+
+  // Rail toggle
+  const rail = document.getElementById('rail');
+  const railToggle = document.getElementById('railToggle');
+  railToggle.addEventListener('click', (e) => {
+    e.stopPropagation();
+    rail.classList.toggle('open');
+  });
+  document.addEventListener('click', (e) => {
+    if (rail.classList.contains('open') && !rail.contains(e.target)) {
+      rail.classList.remove('open');
+    }
+  });
+  document.querySelectorAll('.pip').forEach((p, i) => {
+    p.addEventListener('click', () => scrollToTurn(i + 1));
+  });
+
+  // Scroll-to-turn (scrubbing = scroll + highlight; we scroll the hero to past turn)
+  const hero = document.getElementById('hero');
+  const returnPill = document.getElementById('returnPill');
+  function scrollToTurn(n) {
+    const block = document.querySelector(`.turn-block[data-turn="${n}"]`);
+    if (!block) return;
+    block.scrollIntoView({ block: 'start', behavior: 'smooth' });
+    // since scrollIntoView could interfere, also manually set:
+    hero.scrollTop = block.offsetTop - 40;
+    // highlight in transcript
+    document.querySelectorAll('.turn-row').forEach(r => {
+      r.classList.toggle('viewing', Number(r.dataset.turn) === n && n !== 4);
+      r.classList.toggle('now', Number(r.dataset.turn) === 4);
+    });
+    // highlight thumb
+    document.querySelectorAll('.mood-strip .thumb').forEach(t => {
+      t.classList.toggle('now', Number(t.dataset.turn) === n);
+    });
+    returnPill.classList.toggle('show', n !== 4);
+  }
+  returnPill.addEventListener('click', () => scrollToTurn(4));
+
+  // Filmstrip click
+  document.querySelectorAll('.mood-strip .thumb').forEach(t => {
+    t.addEventListener('click', () => scrollToTurn(Number(t.dataset.turn)));
+  });
+
+  // Mood tabs
+  const moodTabs = document.querySelectorAll('.mood-tab');
+  const artifacts = document.querySelectorAll('.artifact');
+  function switchArtifact(kind) {
+    moodTabs.forEach(t => t.classList.toggle('active', t.dataset.tab === kind));
+    artifacts.forEach(a => a.classList.toggle('active', a.dataset.kind === kind));
+  }
+  moodTabs.forEach(t => t.addEventListener('click', () => switchArtifact(t.dataset.tab)));
+
+  // Mood collapse
+  const mood = document.getElementById('mood');
+  const moodCollapse = document.getElementById('moodCollapse');
+  const moodCollapseIcon = document.getElementById('moodCollapseIcon');
+  moodCollapse.addEventListener('click', () => {
+    mood.classList.toggle('collapsed');
+    composer.classList.toggle('mood-collapsed', mood.classList.contains('collapsed'));
+    moodCollapseIcon.innerHTML = mood.classList.contains('collapsed')
+      ? '<polyline points="15 18 9 12 15 6"/>'
+      : '<polyline points="9 18 15 12 9 6"/>';
+  });
+
+  // (prompt-card removed — replaced by poem card, handled below)
+
+  // Composer
+  const composer = document.getElementById('composer');
+  const composerHandle = document.getElementById('composerHandle');
+  const composerInput = document.getElementById('composerInput');
+  const composerModeBtns = document.querySelectorAll('.composer-mode .m');
+
+  let composerMode = 'floating';
+  function setComposerMode(mode) {
+    composerMode = mode;
+    composerModeBtns.forEach(b => b.classList.toggle('on', b.dataset.mode === mode));
+    composer.classList.toggle('docked', mode === 'docked');
+    // when docking, also reset inline float positions
+    if (mode === 'docked') {
+      composer.style.left = '';
+      composer.style.top = '';
+      composer.style.right = '';
+      composer.style.bottom = '';
+      composer.style.transform = '';
+    } else {
+      composer.style.bottom = '28px';
+      composer.style.left = '50%';
+      composer.style.transform = 'translateX(-50%)';
+    }
+  }
+  composerModeBtns.forEach(b => b.addEventListener('click', () => setComposerMode(b.dataset.mode)));
+  composerHandle.addEventListener('dblclick', () => {
+    setComposerMode(composerMode === 'docked' ? 'floating' : 'docked');
+  });
+
+  // Textarea auto-grow
+  composerInput.addEventListener('input', () => {
+    composerInput.style.height = 'auto';
+    composerInput.style.height = Math.min(composerInput.scrollHeight, 280) + 'px';
+  });
+
+  // Keyboard
+  document.addEventListener('keydown', (e) => {
+    if ((e.metaKey || e.ctrlKey) && e.key === '/') {
+      e.preventDefault();
+      rail.classList.toggle('open');
+    }
+    if (e.key === 'Escape') {
+      if (returnPill.classList.contains('show')) scrollToTurn(4);
+    }
+  });
+
+  // Drag floating composer
+  (function() {
+    let dragging = false, startX = 0, startY = 0, startL = 0, startT = 0;
+    composerHandle.addEventListener('mousedown', (e) => {
+      if (composerMode !== 'floating') return;
+      dragging = true;
+      startX = e.clientX; startY = e.clientY;
+      const rect = composer.getBoundingClientRect();
+      startL = rect.left; startT = rect.top;
+      document.body.style.cursor = 'grabbing';
+      e.preventDefault();
+    });
+    window.addEventListener('mousemove', (e) => {
+      if (!dragging) return;
+      const nl = startL + (e.clientX - startX);
+      const nt = startT + (e.clientY - startY);
+      composer.style.left = nl + 'px';
+      composer.style.top = nt + 'px';
+      composer.style.right = 'auto';
+      composer.style.bottom = 'auto';
+      composer.style.transform = 'none';
+    });
+    window.addEventListener('mouseup', () => {
+      if (dragging) {
+        dragging = false;
+        document.body.style.cursor = '';
+      }
+    });
+  })();
+
+  // Tweaks
+  const tweaks = document.getElementById('tweaks');
+  const tweaksBtn = document.getElementById('tweaksBtn');
+  const tweaksClose = document.getElementById('tweaksClose');
+  tweaksBtn.addEventListener('click', (e) => { e.stopPropagation(); tweaks.classList.toggle('show'); });
+  tweaksClose.addEventListener('click', () => tweaks.classList.remove('show'));
+
+  const twComposer = document.getElementById('twComposer');
+  const twMood = document.getElementById('twMood');
+  const twSize = document.getElementById('twSize');
+  const twSizeV = document.getElementById('twSizeV');
+  const twWidth = document.getElementById('twWidth');
+  const twWidthV = document.getElementById('twWidthV');
+  const twScrub = document.getElementById('twScrub');
+  const answer = document.getElementById('answer');
+
+  twComposer.value = TWEAK_DEFAULTS.composerMode;
+  setComposerMode(twComposer.value);
+  twComposer.addEventListener('change', () => { setComposerMode(twComposer.value); postEdit({ composerMode: twComposer.value }); });
+
+  twMood.addEventListener('change', () => switchArtifact(twMood.value));
+
+  twSize.value = TWEAK_DEFAULTS.answerSize;
+  twSizeV.textContent = twSize.value + 'px';
+  document.querySelectorAll('.doc-body').forEach(d => d.style.fontSize = twSize.value + 'px');
+  twSize.addEventListener('input', () => {
+    twSizeV.textContent = twSize.value + 'px';
+    document.querySelectorAll('.doc-body').forEach(d => d.style.fontSize = twSize.value + 'px');
+    postEdit({ answerSize: Number(twSize.value) });
+  });
+
+  twWidth.value = TWEAK_DEFAULTS.moodWidth;
+  twWidthV.textContent = twWidth.value + 'px';
+  mood.style.width = twWidth.value + 'px';
+  twWidth.addEventListener('input', () => {
+    twWidthV.textContent = twWidth.value + 'px';
+    mood.style.width = twWidth.value + 'px';
+    mood.classList.toggle('collapsed', Number(twWidth.value) <= 60);
+    postEdit({ moodWidth: Number(twWidth.value) });
+  });
+
+  twScrub.addEventListener('change', () => {
+    scrollToTurn(twScrub.checked ? 2 : 4);
+  });
+
+  document.addEventListener('click', (e) => {
+    if (!tweaks.contains(e.target) && e.target !== tweaksBtn) tweaks.classList.remove('show');
+  });
+
+  // Edit mode
+  window.addEventListener('message', (e) => {
+    const d = e.data || {};
+    if (d.type === '__activate_edit_mode') tweaks.classList.add('show');
+    if (d.type === '__deactivate_edit_mode') tweaks.classList.remove('show');
+  });
+  window.parent && window.parent.postMessage({ type: '__edit_mode_available' }, '*');
+  function postEdit(edits) {
+    try { window.parent.postMessage({ type: '__edit_mode_set_keys', edits }, '*'); } catch(_){}
+  }
+
+  
+  
+  // ============ THINKING DEMO ============
+  const thinkingBlock = document.getElementById('thinkingBlock');
+  const thinkDemoBtn = document.getElementById('thinkDemoBtn');
+  if (thinkDemoBtn && thinkingBlock) {
+    thinkDemoBtn.addEventListener('click', () => {
+      thinkingBlock.classList.toggle('on');
+      thinkDemoBtn.textContent = thinkingBlock.classList.contains('on') ? '× stop thinking' : '↻ demo thinking';
+    });
+  }
+
+  // ============ RAIL VIEW SWITCH (chat/reader/repo) ============
+  document.querySelectorAll('.rail-ic[data-view]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.rail-ic[data-view]').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+    });
+  });
+
+
+  // ============ SAND-APPEARING STREAMING EFFECT ============
+  // Wrap words in the streaming element's LAST UL (simulating streaming tail) with .sand-word
+  (function initSand() {
+    const streamEl = document.getElementById('answer');
+    if (!streamEl) return;
+    // Find the last list (the acceptance items) — treat them as "just streamed"
+    const lastList = streamEl.querySelector('ul:last-of-type');
+    if (!lastList) return;
+
+    const items = [...lastList.querySelectorAll('li')];
+    let delay = 0;
+    items.forEach((li) => {
+      // split into words, skip code/elements
+      const walk = (node) => {
+        if (node.nodeType === 3) {
+          // text node
+          const frag = document.createDocumentFragment();
+          const parts = node.nodeValue.split(/(\s+)/);
+          parts.forEach(p => {
+            if (/^\s+$/.test(p)) {
+              frag.appendChild(document.createTextNode(p));
+            } else if (p.length) {
+              const s = document.createElement('span');
+              s.className = 'sand-word';
+              s.style.animationDelay = delay + 'ms';
+              s.textContent = p;
+              delay += 35;
+              frag.appendChild(s);
+            }
+          });
+          node.parentNode.replaceChild(frag, node);
+        } else if (node.nodeType === 1 && !['CODE','PRE'].includes(node.tagName)) {
+          [...node.childNodes].forEach(walk);
+        }
+      };
+      [...li.childNodes].forEach(walk);
+    });
+
+    // after the total delay, drop the streaming shimmer
+    setTimeout(() => {
+      streamEl.classList.remove('streaming');
+    }, Math.max(1200, delay + 800));
+  })();
+
+  // Replay sand effect: on regen button click or manual trigger
+  window.replaySand = function() {
+    const streamEl = document.getElementById('answer');
+    if (!streamEl) return;
+    streamEl.classList.add('streaming');
+    const words = streamEl.querySelectorAll('.sand-word');
+    words.forEach((w, i) => {
+      w.style.animation = 'none';
+      void w.offsetWidth;
+      w.style.animation = '';
+      w.style.animationDelay = (i * 35) + 'ms';
+    });
+    setTimeout(() => streamEl.classList.remove('streaming'), Math.max(1200, words.length * 35 + 800));
+  };
+
+  // ============ POEM CARD TOGGLE ============
+  const poemCard = document.getElementById('poemCard');
+  const poemHead = document.getElementById('poemHead');
+  if (poemHead) poemHead.addEventListener('click', () => poemCard.classList.toggle('open'));
+
+  // ============ HISTORY DRAWER TOGGLE ============
+  const historyToggle = document.getElementById('historyToggle');
+  const historyDrawer = document.getElementById('historyDrawer');
+  if (historyToggle) {
+    historyToggle.addEventListener('click', () => {
+      historyToggle.classList.toggle('on');
+      historyDrawer.classList.toggle('open');
+    });
+    // wire up thumbs inside drawer
+    historyDrawer.querySelectorAll('.thumb').forEach(t => {
+      t.addEventListener('click', () => scrollToTurn(Number(t.dataset.turn)));
+    });
+  }
+
+
+  // Scroll to current turn on load
+  setTimeout(() => {
+    const cur = document.querySelector('.turn-block[data-turn="4"]');
+    if (cur) hero.scrollTop = cur.offsetTop - 40;
+  }, 100);
+
+  // Track scroll to toggle return pill
+  hero.addEventListener('scroll', () => {
+    const curBlock = document.querySelector('.turn-block[data-turn="4"]');
+    if (!curBlock) return;
+    const scrolledPastCurrent = hero.scrollTop < curBlock.offsetTop - 200;
+    returnPill.classList.toggle('show', scrolledPastCurrent);
+  });
+
+    // Simple carousel nav demo — cycles through turns
+    (function() {
+      const prev = document.getElementById('carouselPrev');
+      const next = document.getElementById('carouselNext');
+      const dots = document.querySelectorAll('.carousel-dots .cdot');
+      const badge = document.getElementById('moodBadge');
+      const turnTexts = [
+        '◆ turn 01 · blind edits',
+        '◆ turn 02 · lost intent',
+        '◆ turn 03 · drafting',
+        '◆ turn 04 · just painted'
+      ];
+      let idx = 3;
+      function setIdx(n) {
+        idx = (n + 4) % 4;
+        dots.forEach((d, i) => d.classList.toggle('active', i === idx));
+        if (badge) badge.textContent = turnTexts[idx];
+      }
+      if (prev) prev.addEventListener('click', () => setIdx(idx - 1));
+      if (next) next.addEventListener('click', () => setIdx(idx + 1));
+    })();
+
+
+    // Poem cycler — four haiku, one per turn
+    (function() {
+      const prev = document.getElementById('poemPrev');
+      const next = document.getElementById('poemNext');
+      const dots = document.querySelectorAll('.poem-pager .pdot');
+      const poem = document.getElementById('poemText');
+      const lbl = document.getElementById('poemTurnLbl');
+      const poems = [
+        { lbl: 'turn 01', lines: ['A pipe without eyes —', 'the image forgets its own', 'broken silhouette.'] },
+        { lbl: 'turn 02', lines: ['The paraphrase lies.', 'The user\'s voice is buried', 'beneath the machine.'] },
+        { lbl: 'turn 03', lines: ['Two wounds, one thread —', 'you asked for a single ticket.', 'I draft with both hands.'] },
+        { lbl: 'turn 04', lines: ['Lantern in dark hall —', 'one hand gives, one hand receives.', 'The loop remembers.'] }
+      ];
+      let idx = 3;
+      function render() {
+        dots.forEach((d, i) => d.classList.toggle('active', i === idx));
+        poem.innerHTML = poems[idx].lines.map(l => '<div class="line">' + l + '</div>').join('');
+        if (lbl) lbl.textContent = poems[idx].lbl;
+      }
+      if (prev) prev.addEventListener('click', (e) => { e.stopPropagation(); idx = (idx - 1 + 4) % 4; render(); });
+      if (next) next.addEventListener('click', (e) => { e.stopPropagation(); idx = (idx + 1) % 4; render(); });
+    })();
+
+</script>
+
+<button class="think-demo-btn" id="thinkDemoBtn">↻ demo thinking</button>
+</body>
+</html>

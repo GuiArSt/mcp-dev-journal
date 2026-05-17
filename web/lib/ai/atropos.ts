@@ -4,6 +4,7 @@
  */
 
 import { z } from "zod";
+import { getPrompt } from "@/lib/ai/prompt-store";
 
 // ============================================================================
 // Zod Schemas
@@ -215,7 +216,8 @@ export function buildMemoryInjection(memory: AtroposMemory): string {
  */
 export function getAtroposSystemPrompt(memory: AtroposMemory): string {
   const memorySection = buildMemoryInjection(memory);
-  return ATROPOS_POEM + memorySection;
+  const poem = getPrompt("atropos-poem", ATROPOS_POEM);
+  return poem + memorySection;
 }
 
 /**

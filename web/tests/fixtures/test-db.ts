@@ -37,7 +37,7 @@ export function createTestDb() {
     );
 
     -- Project summaries
-    CREATE TABLE IF NOT EXISTS project_summaries (
+    CREATE TABLE IF NOT EXISTS repository_overviews (
       repository TEXT PRIMARY KEY,
       git_url TEXT,
       summary TEXT,

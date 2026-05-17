@@ -1,0 +1,12 @@
+{
+  "repos": [
+    {
+      "id": "tartarus",
+      "path": "/Users/you/Documents/Software/Laboratory/tartarus"
+    },
+    {
+      "id": "other-repo",
+      "path": "~/src/other-repo"
+    }
+  ]
+}

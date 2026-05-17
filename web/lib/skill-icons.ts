@@ -151,12 +151,6 @@ export function getSkillIconUrl(skillName: string): string | null {
     }
   }
 
-  // Try direct slug format (kebab-case)
-  const kebabCase = normalized.replace(/[^a-z0-9]+/g, "");
-  if (kebabCase.length > 2) {
-    return `https://cdn.simpleicons.org/${kebabCase}/8b4513`;
-  }
-
   return null;
 }
 
@@ -168,7 +162,7 @@ export function getSkillIconUrlWithColor(
   color: string = "8b4513"
 ): string | null {
   const normalized = skillName.toLowerCase().trim();
-  const slug = TECH_ICON_MAP[normalized] || normalized.replace(/[^a-z0-9]+/g, "");
-  if (slug.length < 2) return null;
+  const slug = TECH_ICON_MAP[normalized];
+  if (!slug) return null;
   return `https://cdn.simpleicons.org/${slug}/${color.replace("#", "")}`;
 }

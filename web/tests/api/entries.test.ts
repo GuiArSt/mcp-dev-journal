@@ -100,7 +100,7 @@ describe("/api/entries", () => {
       ];
 
       const mockDb = createDrizzleMock(mockEntries, 1, [{ commitHash: "abc1234", count: 2 }]);
-      vi.mocked(getDrizzleDb).mockReturnValue(mockDb as ReturnType<typeof getDrizzleDb>);
+      vi.mocked(getDrizzleDb).mockReturnValue(mockDb as unknown as ReturnType<typeof getDrizzleDb>);
 
       const request = new NextRequest("http://localhost:3000/api/entries");
       const response = await GET(request);
@@ -116,7 +116,7 @@ describe("/api/entries", () => {
 
     it("should filter by repository", async () => {
       const mockDb = createDrizzleMock([], 0, []);
-      vi.mocked(getDrizzleDb).mockReturnValue(mockDb as ReturnType<typeof getDrizzleDb>);
+      vi.mocked(getDrizzleDb).mockReturnValue(mockDb as unknown as ReturnType<typeof getDrizzleDb>);
 
       const request = new NextRequest(
         "http://localhost:3000/api/entries?repository=my-repo"
@@ -130,7 +130,7 @@ describe("/api/entries", () => {
 
     it("should filter by branch", async () => {
       const mockDb = createDrizzleMock([], 0, []);
-      vi.mocked(getDrizzleDb).mockReturnValue(mockDb as ReturnType<typeof getDrizzleDb>);
+      vi.mocked(getDrizzleDb).mockReturnValue(mockDb as unknown as ReturnType<typeof getDrizzleDb>);
 
       const request = new NextRequest(
         "http://localhost:3000/api/entries?branch=develop"
@@ -144,7 +144,7 @@ describe("/api/entries", () => {
 
     it("should respect custom pagination limits", async () => {
       const mockDb = createDrizzleMock([], 0, []);
-      vi.mocked(getDrizzleDb).mockReturnValue(mockDb as ReturnType<typeof getDrizzleDb>);
+      vi.mocked(getDrizzleDb).mockReturnValue(mockDb as unknown as ReturnType<typeof getDrizzleDb>);
 
       const request = new NextRequest(
         "http://localhost:3000/api/entries?limit=10&offset=20"
@@ -191,7 +191,7 @@ describe("/api/entries", () => {
         }));
 
       const mockDb = createDrizzleMock(mockEntries, 25, []);
-      vi.mocked(getDrizzleDb).mockReturnValue(mockDb as ReturnType<typeof getDrizzleDb>);
+      vi.mocked(getDrizzleDb).mockReturnValue(mockDb as unknown as ReturnType<typeof getDrizzleDb>);
 
       const request = new NextRequest(
         "http://localhost:3000/api/entries?limit=10&offset=0"
@@ -226,7 +226,7 @@ describe("/api/entries", () => {
       ];
 
       const mockDb = createDrizzleMock(mockEntries, 1, [{ commitHash: "abc1234", count: 3 }]);
-      vi.mocked(getDrizzleDb).mockReturnValue(mockDb as ReturnType<typeof getDrizzleDb>);
+      vi.mocked(getDrizzleDb).mockReturnValue(mockDb as unknown as ReturnType<typeof getDrizzleDb>);
 
       const request = new NextRequest("http://localhost:3000/api/entries");
       const response = await GET(request);

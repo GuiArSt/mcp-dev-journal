@@ -9,6 +9,7 @@ import {
   FileText,
   Briefcase,
   Code2,
+  MessageSquareText,
   Building2,
   GraduationCap,
   BookOpen,
@@ -41,6 +42,8 @@ export interface SoulConfigState {
   workExperience: boolean;
   education: boolean;
   journalEntries: boolean;
+  // Chat memory context - summaries only; full chats stay behind memory tools.
+  chatIndex: boolean;
   // Linear context - mirrored from Linear API
   linearProjects: boolean;
   linearIssues: boolean;
@@ -74,6 +77,8 @@ interface SectionStats {
   educationTokens: number;
   journalEntries: number;
   journalEntriesTokens: number;
+  chatIndex: number;
+  chatIndexTokens: number;
   // Legacy fields for backwards compatibility
   linearProjects: number;
   linearProjectsTokens: number;
@@ -102,6 +107,7 @@ const DEFAULT_CONFIG: SoulConfigState = {
   workExperience: false,
   education: false,
   journalEntries: false,
+  chatIndex: false,
   linearProjects: false,
   linearIssues: false,
   linearIncludeCompleted: false,
@@ -122,6 +128,8 @@ const FALLBACK_STATS: SectionStats = {
   educationTokens: 500,
   journalEntries: 30,
   journalEntriesTokens: 15000,
+  chatIndex: 0,
+  chatIndexTokens: 0,
   linearProjects: 0,
   linearProjectsTokens: 0,
   linearIssues: 0,
@@ -172,6 +180,13 @@ const REPOSITORY_SECTIONS = [
     icon: BookOpen,
     statsKey: "journalEntries",
     tokensKey: "journalEntriesTokens",
+  },
+  {
+    key: "chatIndex",
+    label: "Chat Index",
+    icon: MessageSquareText,
+    statsKey: "chatIndex",
+    tokensKey: "chatIndexTokens",
   },
 ] as const;
 
@@ -259,6 +274,7 @@ export function SoulConfig({
     (config.workExperience ? currentStats.workExperienceTokens : 0) +
     (config.education ? currentStats.educationTokens : 0) +
     (config.journalEntries ? currentStats.journalEntriesTokens : 0) +
+    (config.chatIndex ? currentStats.chatIndexTokens : 0) +
     (config.linearProjects ? linearProjectTokens : 0) +
     (config.linearIssues ? linearIssueTokens : 0);
 
@@ -278,6 +294,7 @@ export function SoulConfig({
       workExperience: true,
       education: true,
       journalEntries: true,
+      chatIndex: true,
       linearProjects: true,
       linearIssues: true,
     });
@@ -292,6 +309,7 @@ export function SoulConfig({
       workExperience: false,
       education: false,
       journalEntries: false,
+      chatIndex: false,
       linearProjects: false,
       linearIssues: false,
     });
@@ -321,11 +339,12 @@ export function SoulConfig({
     config.workExperience,
     config.education,
     config.journalEntries,
+    config.chatIndex,
     config.linearProjects,
     config.linearIssues,
   ].filter(Boolean).length;
 
-  const totalSections = 8;
+  const totalSections = 9;
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -364,7 +383,7 @@ export function SoulConfig({
             style={{ borderBottom: `1px solid ${TARTARUS.borderSubtle}` }}
           >
             <div>
-              <h4 style={headerStyles.title}>Soul Repository</h4>
+              <h4 style={headerStyles.title}>Soul Library</h4>
               <p style={headerStyles.subtitle}>Context for {agentName}</p>
             </div>
             <div className="flex gap-1">
@@ -387,9 +406,9 @@ export function SoulConfig({
 
           {/* Content */}
           <div className="max-h-[400px] space-y-4 overflow-y-auto px-4 py-3">
-            {/* Repository Section */}
+            {/* Library Section */}
             <div>
-              <div style={sectionStyles.label}>Repository</div>
+              <div style={sectionStyles.label}>Library</div>
               <div className="space-y-1">
                 {REPOSITORY_SECTIONS.map(({ key, label, icon: Icon, statsKey, tokensKey }) => {
                   const enabled = config[key as keyof SoulConfigState] as boolean;

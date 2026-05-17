@@ -15,6 +15,7 @@ export type ModelSelection =
   | "claude-sonnet-4.6"
   | "claude-opus-4.6"
   | "claude-opus-4.7"
+  | "gpt-5.5"
   | "gpt-5.4"
   | "gpt-5.3-instant";
 
@@ -41,6 +42,7 @@ export const MODEL_CONTEXT_LIMITS: Record<ModelSelection, number> = {
   "claude-sonnet-4.6": 1000000,
   "claude-opus-4.6": 1000000,
   "claude-opus-4.7": 1000000,
+  "gpt-5.5": 1000000,
   "gpt-5.4": 1000000,
   "gpt-5.3-instant": 200000,
 };
@@ -102,6 +104,15 @@ const MODELS: Record<
     color: TARTARUS.anthropic,
     hasThinking: true,
     provider: "Anthropic",
+  },
+  "gpt-5.5": {
+    name: "GPT-5.5",
+    shortName: "GPT-5.5",
+    description: "OpenAI latest lane (safe fallback)",
+    context: "1M",
+    color: TARTARUS.openai,
+    hasThinking: true,
+    provider: "OpenAI",
   },
   "gpt-5.4": {
     name: "GPT-5.4",

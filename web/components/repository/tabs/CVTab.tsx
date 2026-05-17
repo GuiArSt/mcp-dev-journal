@@ -175,7 +175,7 @@ export function CVTab({
                           onCancel={() => setEditingSkill(null)}
                         />
                       ) : (
-                        <Link key={skill.id} href={`/repository/skill/${skill.id}`}>
+                        <Link key={skill.id} href={`/library/skill/${skill.id}`}>
                           <Card
                             className="group relative h-full cursor-pointer overflow-hidden border-[var(--tartarus-border)] bg-[var(--tartarus-surface)] transition-[border-color,box-shadow] duration-200 ease-[cubic-bezier(0.23,1,0.32,1)] hover:border-[var(--tartarus-teal-dim)] hover:shadow-[0_0_20px_rgba(0,206,209,0.1)]"
                           >
@@ -296,7 +296,7 @@ export function CVTab({
                   </div>
 
                   {/* Experience Card */}
-                  <Link href={`/repository/experience/${exp.id}`} className="flex-1">
+                  <Link href={`/library/experience/${exp.id}`} className="flex-1">
                     <Card
                       className="group relative cursor-pointer overflow-hidden border-[var(--tartarus-border)] bg-[var(--tartarus-surface)] transition-[border-color,box-shadow] duration-200 ease-[cubic-bezier(0.23,1,0.32,1)] hover:border-[var(--tartarus-teal-dim)] hover:shadow-[0_0_20px_rgba(0,206,209,0.1)]"
                     >
@@ -456,7 +456,7 @@ export function CVTab({
                 onCancel={() => setEditingEducation(null)}
               />
             ) : (
-              <Link key={edu.id} href={`/repository/education/${edu.id}`}>
+              <Link key={edu.id} href={`/library/education/${edu.id}`}>
                 <Card className="group relative h-full cursor-pointer overflow-hidden border-[var(--tartarus-border)] bg-[var(--tartarus-surface)] transition-[border-color,box-shadow] duration-200 ease-[cubic-bezier(0.23,1,0.32,1)] hover:border-[var(--tartarus-teal-dim)] hover:shadow-[0_0_20px_rgba(0,206,209,0.1)]">
                   <div className="h-0.5 bg-gradient-to-r from-[var(--tartarus-gold)] to-[var(--tartarus-teal)]" />
 

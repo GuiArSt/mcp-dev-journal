@@ -93,41 +93,74 @@ export const toolSpecs = {
     }),
   },
 
-  // ===== Project Summary Tools =====
+  // ===== Repository overview (Entry 0) tools =====
   journal_get_project_summary: {
     description:
-      "Get the high-level project summary for a repository. Contains architecture, purpose, and key decisions.",
+      "Get the Repository overview (Entry 0) for a repository: technical + narrative fields — architecture, purpose, key decisions, and living-summary sections.",
     inputSchema: z.object({
       repository: z.string().min(1).transform(normalizeRepository).describe("Repository name"),
     }),
   },
 
   journal_upsert_project_summary: {
-    description: "Create or update the project summary for a repository.",
-    inputSchema: z.object({
-      repository: z.string().min(1).transform(normalizeRepository).describe("Repository name"),
-      git_url: z.string().url().describe("Git repository URL"),
-      summary: z.string().min(10).describe("High-level project summary"),
-      purpose: z.string().min(10).describe("Why this project exists"),
-      architecture: z.string().min(10).describe("Overall architecture"),
-      key_decisions: z.string().min(10).describe("Major decisions"),
-      technologies: z
-        .string()
-        .min(3)
-        .describe(
-          "Comma-separated list of technologies. NO markdown formatting, NO labels like 'Frontend:' or 'Backend:'. Just technology names separated by commas. Example: 'Next.js, React, TypeScript, PostgreSQL, Tailwind CSS'"
-        ),
-      status: z
-        .string()
-        .min(3)
-        .describe(
-          "Current project status - a short phrase like 'Production-ready', 'In development', 'Beta', etc."
-        ),
-    }),
+    description:
+      "Create or merge-update the Repository overview (Entry 0). Omitted fields keep existing DB values. Prefer: call journal_get_project_summary, merge with facts from Cursor, then send only changed fields (or the full row). Extended Entry 0 sections (file_structure, tech_stack, …) are optional.",
+    inputSchema: z
+      .object({
+        repository: z.string().min(1).transform(normalizeRepository).describe("Repository name"),
+        git_url: z.string().url().nullable().optional().describe("Remote Git URL (optional on partial update)"),
+        summary: z.string().min(3).optional().describe("High-level overview text"),
+        purpose: z.string().min(3).optional().describe("Why this repository exists"),
+        architecture: z.string().min(3).optional().describe("Structure and major components"),
+        key_decisions: z.string().min(3).optional().describe("Major decisions"),
+        technologies: z
+          .string()
+          .min(3)
+          .optional()
+          .describe(
+            "Comma-separated technologies; avoid markdown labels. Example: 'Next.js, TypeScript, SQLite'"
+          ),
+        status: z.string().min(2).optional().describe("Short status phrase, e.g. In development"),
+        file_structure: z.string().min(1).optional(),
+        tech_stack: z.string().min(1).optional(),
+        frontend: z.string().min(1).optional(),
+        backend: z.string().min(1).optional(),
+        database_info: z.string().min(1).optional(),
+        services: z.string().min(1).optional(),
+        custom_tooling: z.string().min(1).optional(),
+        data_flow: z.string().min(1).optional(),
+        patterns: z.string().min(1).optional(),
+        commands: z.string().min(1).optional(),
+        extended_notes: z.string().min(1).optional(),
+      })
+      .refine(
+        (d) =>
+          [
+            d.git_url,
+            d.summary,
+            d.purpose,
+            d.architecture,
+            d.key_decisions,
+            d.technologies,
+            d.status,
+            d.file_structure,
+            d.tech_stack,
+            d.frontend,
+            d.backend,
+            d.database_info,
+            d.services,
+            d.custom_tooling,
+            d.data_flow,
+            d.patterns,
+            d.commands,
+            d.extended_notes,
+          ].some((v) => v !== undefined && v !== null && String(v).trim() !== ""),
+        { message: "Provide at least one non-empty field to write (or call journal_get_project_summary first for a full merge)." },
+      ),
   },
 
   journal_list_project_summaries: {
-    description: "List all project summaries across repositories.",
+    description: "List Repository overviews (Entry 0) across repositories.",
     inputSchema: z.object({
       limit: z.number().optional().default(30).describe("Max summaries to return"),
       offset: z.number().optional().default(0).describe("Pagination offset"),
@@ -398,38 +431,260 @@ export const toolSpecs = {
     }),
   },
 
-  // ===== Image Generation =====
-  replicate_generate_image: {
+  // ===== Memory / Chat Index Tools =====
+  memory_list_chat_index: {
     description:
-      "Generate an image using Gemini 3 Pro Image (Nano Banana Pro), FLUX, or other models. Gemini 3 Pro has 4K support and excellent text rendering. Use this when the user wants to create images from text prompts.",
+      "List summarized Kronus chat memories. Returns compact conversation summaries with UUIDs/IDs only, never full chat content. Use this to search the chat index before fetching a specific conversation.",
     inputSchema: z.object({
-      prompt: z.string().min(1).describe("Text prompt describing the image to generate"),
-      model: z
+      query: z.string().optional().describe("Optional search across chat titles and summaries"),
+      limit: z.number().optional().default(20).describe("Max summaries to return"),
+      offset: z.number().optional().default(0).describe("Pagination offset for older chats"),
+    }),
+  },
+
+  memory_fetch_chat: {
+    description:
+      "Fetch the readable full content of a specific Kronus chat by UUID or numeric id. Use this only after the chat index points to a relevant conversation; chat index summaries are usually enough.",
+    inputSchema: z.object({
+      uuid: z.string().optional().describe("Conversation UUID from the chat index"),
+      id: z.number().optional().describe("Numeric conversation id fallback if no UUID exists"),
+      maxChars: z
+        .number()
+        .optional()
+        .default(80000)
+        .describe("Maximum characters of chat content to return, capped server-side"),
+    }),
+  },
+
+  // ===== AI Integration Library Tools =====
+  ai_integrations_list: {
+    description:
+      "List AI coding-agent integrations indexed by the Tartarus Library. Use this to inspect Codex, Claude Code, Gemini CLI, Cursor, and CodeRabbit status, auth state, source paths, and registry UUIDs.",
+    inputSchema: z.object({}),
+  },
+
+  ai_integration_fetch: {
+    description:
+      "Fetch one Library AI integration by key, including redacted config summary and scan metadata.",
+    inputSchema: z.object({
+      key: z.string().min(1).describe("Integration key, e.g. codex, claude_code, gemini_cli, cursor, coderabbit"),
+    }),
+  },
+
+  ai_artifacts_list: {
+    description:
+      "List indexed configs, skills, rules, prompts, AGENTS/GEMINI files, Cursor rules, and CodeRabbit Skills from the AI Integration Library.",
+    inputSchema: z.object({
+      integrationKey: z.string().optional().describe("Optional integration key filter"),
+      kind: z.string().optional().describe("Optional artifact kind filter"),
+      limit: z.number().optional().default(50).describe("Max artifacts to return"),
+      offset: z.number().optional().default(0).describe("Pagination offset"),
+    }),
+  },
+
+  ai_artifact_fetch: {
+    description: "Fetch one indexed AI integration artifact by ID, including redacted stored content.",
+    inputSchema: z.object({
+      id: z.number().int().positive().describe("AI artifact ID"),
+    }),
+  },
+
+  ai_log_sessions_list: {
+    description:
+      "List normalized AI agent log sessions using Tartarus canonical events: timestamp, sequence, actor, eventType, text, tooling, params.",
+    inputSchema: z.object({
+      integrationKey: z.string().optional().describe("Optional integration key filter"),
+      limit: z.number().optional().default(50).describe("Max sessions to return"),
+      offset: z.number().optional().default(0).describe("Pagination offset"),
+    }),
+  },
+
+  ai_log_session_fetch: {
+    description: "Fetch one normalized AI log session by ID with canonical event rows.",
+    inputSchema: z.object({
+      id: z.number().int().positive().describe("AI log session ID"),
+    }),
+  },
+
+  ai_proposals_list: {
+    description:
+      "List Library-managed AI integration replacement proposals. V1 proposals are tartarus_proposal copies and are never auto-applied to external tools.",
+    inputSchema: z.object({
+      integrationKey: z.string().optional().describe("Optional integration key filter"),
+      limit: z.number().optional().default(50).describe("Max proposals to return"),
+      offset: z.number().optional().default(0).describe("Pagination offset"),
+    }),
+  },
+
+  ai_proposal_fetch: {
+    description:
+      "Fetch one Library-managed AI integration proposal by ID, including replacement content and tartarus_proposal metadata.",
+    inputSchema: z.object({
+      id: z.number().int().positive().describe("AI proposal ID"),
+    }),
+  },
+
+  // ===== Shelf control (Hourglass chat) =====
+  set_artifact: {
+    description:
+      "Switch what's currently displayed on the shared Shelf panel. Takes the UUID of any artifact listed in your 'Shared Display Shelf' context block. Use this to call the user's attention to a specific artifact you want to discuss — e.g., 'look at the poem from turn 02' or 'pull up that document about power'. The panel updates immediately.",
+    inputSchema: z.object({
+      uuid: z
+        .string()
+        .min(1)
+        .describe(
+          "UUID of a shelf artifact (copy it verbatim from the '# Shared Display Shelf' block in your context).",
+        ),
+      why: z
         .string()
         .optional()
-        .default("gemini-3-pro-image-preview")
+        .describe("Brief one-line reason you're switching the display (surfaced in UI)."),
+    }),
+  },
+
+  // ===== Image Generation =====
+  generate_image: {
+    description:
+      "Generate an image from a text prompt. Routes to OpenAI GPT Image 2 by default (best for text rendering, infographics, photorealism). Pass provider='gemini' for faster, painterly Nano Banana 2. Pass commit_hash / document_id / portfolio_project_id to attach the image to a journal entry, document, or portfolio project — REQUIRED when generating an image FOR a specific journal/doc you're writing.",
+    inputSchema: z.object({
+      prompt: z
+        .string()
+        .min(1)
         .describe(
-          "Model identifier. " +
-            "Gemini 3 Pro Image (default): 'gemini-3-pro-image-preview' or 'nano-banana-pro' (4K, best text rendering). " +
-            "Gemini 2.5 Flash: 'gemini-2.5-flash-image-preview' (fast). " +
-            "FLUX.2: 'black-forest-labs/flux-2-pro' (best quality), 'black-forest-labs/flux-schnell' (fastest). " +
-            "Imagen: 'imagen-3.0-generate-002'. " +
-            "Stable Diffusion: 'stability-ai/stable-diffusion-3.5-large', 'stability-ai/sdxl'."
+          "Detailed text prompt describing the image. For infographics, include the exact labels/numbers to render verbatim in single quotes (e.g., label 'Awareness' exactly).",
         ),
-      width: z.number().optional().default(1024).describe("Image width in pixels"),
-      height: z.number().optional().default(1024).describe("Image height in pixels"),
-      num_outputs: z.number().optional().default(1).describe("Number of images to generate"),
-      guidance_scale: z
-        .number()
+      provider: z
+        .enum(["openai", "gemini"])
+        .optional()
+        .default("openai")
+        .describe(
+          "'openai' (default) → GPT Image 2, best for in-image text. 'gemini' → Nano Banana 2, faster + painterly.",
+        ),
+      model: z
+        .enum(["nano-banana-2", "nano-banana-pro", "nano-banana", "gpt-image-2"])
         .optional()
         .describe(
-          "Guidance scale (Replicate models only, usually 3.5-7.5 for FLUX, 1-20 for SDXL)"
+          "Specific model override.",
         ),
-      num_inference_steps: z
-        .number()
+      mode: z
+        .enum(["mood", "infographic"])
+        .optional()
+        .default("mood")
+        .describe(
+          "'mood' for evocative painterly art (square 1:1), 'infographic' for clean diagrams with text (landscape 3:2). Infographic mode defaults size to 2K and quality to high.",
+        ),
+      style_hint: z
+        .string()
         .optional()
         .describe(
-          "Number of inference steps (Replicate models only, more steps = higher quality but slower)"
+          "Free-form style label woven into the prompt. Common: 'comic strip' (renders landscape like infographic), 'scientific still', 'mood painting', 'Klimt mood', 'Hopper solitude', 'ukiyo-e movement'. Pass any other style as free text — the painter interprets.",
+        ),
+      size: z
+        .enum(["512", "1K", "2K", "4K"])
+        .optional()
+        .describe("Image resolution. Default: '1K' for mood, '2K' for infographic."),
+      quality: z
+        .enum(["low", "medium", "high"])
+        .optional()
+        .describe(
+          "Quality/latency tradeoff (applied to GPT Image 2). Default: 'low' for mood, 'high' for infographic.",
+        ),
+      commit_hash: z
+        .string()
+        .optional()
+        .describe(
+          "Attach the image to a journal entry by its commit hash. Use this whenever you're generating an image FOR a journal entry — the image will be linked and reachable from the entry.",
+        ),
+      document_id: z
+        .number()
+        .int()
+        .optional()
+        .describe(
+          "Attach the image to a document by its numeric id. Use when illustrating a writing/note in the repository.",
+        ),
+      portfolio_project_id: z
+        .string()
+        .optional()
+        .describe(
+          "Attach the image to a portfolio project by id. Use when generating cover art / hero images for a portfolio piece.",
+        ),
+    }),
+  },
+
+  /**
+   * `wake_muse` — let the Muse decide what (and how) to paint, given an
+   * intent. Distinct from `generate_image`: with `generate_image` Kronus
+   * supplies a fully-formed prompt; with `wake_muse` the Muse owns the
+   * style and renderMode. **The user ALWAYS confirms before any paint
+   * runs** — there is no auto-accept. This tool surfaces a proposal in
+   * the right panel; the user accepts (paints) or skips.
+   */
+  wake_muse: {
+    description:
+      "Wake the Muse so she paints something fitting for the moment. The Muse decides the style, prompt, and (when alternatives>1) offers the user a picker. Use when the user asks for 'an image' without specifying details, when the conversation has reached a vivid scene worth marking, or when art would land better than your words. Use generate_image instead when the user gave you an explicit prompt. Pass commit_hash / document_id / portfolio_project_id to attach the eventual paint. Note: every paint requires explicit user confirmation; you cannot bypass it.",
+    inputSchema: z.object({
+      intent: z
+        .string()
+        .min(1)
+        .describe(
+          "Short brief for the Muse. What should she render? E.g. 'this conversation about the gate metaphor', 'an infographic for the muse architecture', 'whatever you find here.' She'll combine this with the chat log + shelf to decide.",
+        ),
+      alternatives: z
+        .number()
+        .int()
+        .min(1)
+        .max(4)
+        .optional()
+        .default(1)
+        .describe(
+          "How many distinct variants the Muse should offer. 1 = single proposal card, 2-4 = alternatives picker. The user confirms before paint.",
+        ),
+      commit_hash: z
+        .string()
+        .optional()
+        .describe(
+          "Attach the resulting image to a journal entry by commit hash.",
+        ),
+      document_id: z
+        .number()
+        .int()
+        .optional()
+        .describe(
+          "Attach the resulting image to a document by its numeric id.",
+        ),
+      portfolio_project_id: z
+        .string()
+        .optional()
+        .describe(
+          "Attach the resulting image to a portfolio project by id.",
+        ),
+    }),
+  },
+
+  /**
+   * `link_artifact` — retroactively attach an existing artifact (by UUID)
+   * to a journal entry, document, or portfolio project. Use this for
+   * library/repository elements that should belong to a journal you're
+   * writing, or to fix orphan images after-the-fact. Currently supports
+   * media artifacts; cross-type linking (e.g. attaching a document to a
+   * journal) is deferred.
+   */
+  link_artifact: {
+    description:
+      "Attach an existing artifact (by UUID, from the object registry) to a journal entry, document, or portfolio project. Use to bind a previously-generated image to a journal you're writing, or to fix orphan artifacts. Returns the resolved linkage. NOTE: only media (images) can be retroactively linked right now.",
+    inputSchema: z.object({
+      uuid: z
+        .string()
+        .min(1)
+        .describe("UUID of the artifact to link (must already exist in the object registry)."),
+      target_kind: z
+        .enum(["journal", "document", "portfolio"])
+        .describe("What to link the artifact TO."),
+      target_id: z
+        .string()
+        .min(1)
+        .describe(
+          "Identifier of the target. For journal: commit_hash. For document: numeric id OR slug. For portfolio: project id.",
         ),
     }),
   },
@@ -437,7 +692,7 @@ export const toolSpecs = {
   // ===== Media/Image Storage Tools =====
   save_image: {
     description:
-      "Save an image to the Media library. Images are stored centrally and can be linked to Journal entries and/or Repository documents. Use this after generating an image to permanently store it.",
+      "Save an image to the Media library. Images are stored centrally and can be linked to Journal entries and/or Library documents. Use this after generating an image to permanently store it.",
     inputSchema: z.object({
       url: z.string().url().describe("URL of the image to download and save"),
       filename: z
@@ -490,10 +745,10 @@ export const toolSpecs = {
     }),
   },
 
-  // ===== Repository Tools =====
+  // ===== Library Tools =====
   repository_search_documents: {
     description:
-      "Search and query documents from the Repository. Can filter by type (writing, prompt, note), search by keywords, and control pagination.",
+      "Search and query documents from the Library. Can filter by type (writing, prompt, note), search by keywords, and control pagination.",
     inputSchema: z.object({
       type: z.enum(["writing", "prompt", "note"]).optional().describe("Filter by document type"),
       search: z.string().optional().describe("Search in title and content"),
@@ -503,7 +758,7 @@ export const toolSpecs = {
   },
 
   repository_get_document: {
-    description: "Get a specific document from the Repository by slug or ID",
+    description: "Get a specific document from the Library by slug or ID",
     inputSchema: z.object({
       slug: z.string().optional().describe("Document slug"),
       id: z.number().optional().describe("Document ID"),
@@ -511,7 +766,7 @@ export const toolSpecs = {
   },
 
   repository_create_document: {
-    description: "Create a new document in the Repository",
+    description: "Create a new document in the Library",
     inputSchema: z.object({
       title: z.string().min(1).describe("Document title"),
       content: z.string().min(1).describe("Document content (markdown supported)"),
@@ -525,7 +780,7 @@ export const toolSpecs = {
   },
 
   repository_update_document: {
-    description: "Update an existing document in the Repository",
+    description: "Update an existing document in the Library",
     inputSchema: z.object({
       id: z.number().describe("Document ID to update"),
       title: z.string().optional().describe("New title"),
@@ -536,7 +791,7 @@ export const toolSpecs = {
   },
 
   repository_list_skills: {
-    description: "List all skills from the CV/Repository",
+    description: "List all skills from the CV/Library",
     inputSchema: z.object({
       category: z.string().optional().describe("Filter by category"),
     }),
@@ -654,47 +909,54 @@ export const toolSpecs = {
     description: "List portfolio projects",
     inputSchema: z.object({
       featured: z.boolean().optional().describe("Filter by featured status"),
-      status: z.string().optional().describe("Filter by status (active, completed, archived)"),
+      status: z
+        .enum(["shipped", "wip", "archived"])
+        .optional()
+        .describe("Filter by status"),
     }),
   },
 
   repository_get_portfolio_project: {
     description: "Get a specific portfolio project by ID",
     inputSchema: z.object({
-      id: z.number().describe("Portfolio project ID"),
+      id: z.string().describe("Portfolio project ID (string slug, e.g. 'langfuse-refactor')"),
     }),
   },
 
   repository_create_portfolio_project: {
     description: "Create a new portfolio project",
     inputSchema: z.object({
+      id: z.string().describe("Unique project ID slug (lowercase + dashes)"),
       title: z.string().describe("Project title"),
       category: z.string().describe("Project category (e.g. 'AI/ML', 'Web App', 'Mobile')"),
       company: z.string().optional().describe("Company/client name"),
       role: z.string().optional().describe("Your role in the project"),
-      status: z.string().default("active").describe("Project status (active, completed, archived)"),
+      status: z
+        .enum(["shipped", "wip", "archived"])
+        .default("wip")
+        .describe("Project status"),
       featured: z.boolean().default(false).describe("Whether this is a featured project"),
       technologies: z.array(z.string()).optional().describe("Technologies used"),
       tags: z.array(z.string()).optional().describe("Tags for categorization"),
       description: z.string().optional().describe("Project description (markdown)"),
-      image_url: z.string().optional().describe("URL of project image"),
+      image: z.string().optional().describe("Project image path or URL"),
     }),
   },
 
   repository_update_portfolio_project: {
     description: "Update an existing portfolio project",
     inputSchema: z.object({
-      id: z.number().describe("Portfolio project ID to update"),
+      id: z.string().describe("Portfolio project ID to update"),
       title: z.string().optional().describe("Updated title"),
       category: z.string().optional().describe("Updated category"),
       company: z.string().optional().describe("Updated company"),
       role: z.string().optional().describe("Updated role"),
-      status: z.string().optional().describe("Updated status"),
+      status: z.enum(["shipped", "wip", "archived"]).optional().describe("Updated status"),
       featured: z.boolean().optional().describe("Updated featured status"),
       technologies: z.array(z.string()).optional().describe("Updated technologies"),
       tags: z.array(z.string()).optional().describe("Updated tags"),
       description: z.string().optional().describe("Updated description"),
-      image_url: z.string().optional().describe("Updated image URL"),
+      image: z.string().optional().describe("Updated image path or URL"),
     }),
   },
 
@@ -733,49 +995,6 @@ export const toolSpecs = {
         .optional()
         .default("main")
         .describe("Branch, tag, or commit SHA (default: main)"),
-    }),
-  },
-
-  // ===== Web Search Tools (Perplexity) =====
-  perplexity_search: {
-    description:
-      "Search the web using Perplexity. Returns ranked search results with metadata. Best for finding current information, news, documentation.",
-    inputSchema: z.object({
-      query: z.string().min(1).describe("Search query"),
-    }),
-  },
-
-  perplexity_ask: {
-    description:
-      "Ask a question with real-time web search using Perplexity sonar-pro model. Great for quick questions, factual lookups, and conversational research.",
-    inputSchema: z.object({
-      question: z.string().min(1).describe("Question to ask"),
-    }),
-  },
-
-  perplexity_research: {
-    description:
-      "Deep, comprehensive research using Perplexity sonar-deep-research model. Use for thorough analysis, detailed reports, complex topics. Takes longer but provides exhaustive results.",
-    inputSchema: z.object({
-      topic: z.string().min(1).describe("Topic to research in depth"),
-      strip_thinking: z
-        .boolean()
-        .optional()
-        .default(true)
-        .describe("Remove thinking tags to save tokens"),
-    }),
-  },
-
-  perplexity_reason: {
-    description:
-      "Advanced reasoning and problem-solving using Perplexity sonar-reasoning-pro model. Perfect for complex analytical tasks, multi-step problems, logical analysis.",
-    inputSchema: z.object({
-      problem: z.string().min(1).describe("Problem or question requiring reasoning"),
-      strip_thinking: z
-        .boolean()
-        .optional()
-        .default(true)
-        .describe("Remove thinking tags to save tokens"),
     }),
   },
 
@@ -960,6 +1179,26 @@ export const toolSpecs = {
     }),
   },
 
+  // ===== Cursor local agent (server-side SDK; CURSOR_API_KEY) =====
+  cursor_repository_insight: {
+    description:
+      "Delegate a read-only codebase question to a Cursor local agent running on a registered git working tree on the server. " +
+      "Use for deep file reads, architecture questions, or locating symbols when Tartarus library tools are not enough. " +
+      "Requires server env CURSOR_API_KEY and paths registered via CURSOR_DELEGATE_REPOS_FILE and/or CURSOR_DELEGATE_CWD_ALLOWLIST. " +
+      "Pass project_id from the configured list (see error messages if unknown).",
+    inputSchema: z.object({
+      project_id: z
+        .string()
+        .min(1)
+        .describe("Registered project id (slug from delegate repos JSON or directory basename for allowlist-only paths)"),
+      question: z
+        .string()
+        .min(10)
+        .max(24000)
+        .describe("Specific question about the repository; include file or area hints when possible"),
+    }),
+  },
+
   // ===== Skill Management Tools (always available) =====
   activate_skill: {
     description:
@@ -1075,15 +1314,28 @@ export const toolCategories: Record<string, ToolName[]> = {
     "update_media",
   ],
   imageGeneration: [
-    "replicate_generate_image",
+    "generate_image",
+    "wake_muse",
+    "link_artifact",
   ],
   webSearch: [
     "gemini_search",
-    "perplexity_search",
-    "perplexity_ask",
-    "perplexity_research",
-    "perplexity_reason",
   ],
+  memory: [
+    "memory_list_chat_index",
+    "memory_fetch_chat",
+  ],
+  aiIntegrations: [
+    "ai_integrations_list",
+    "ai_integration_fetch",
+    "ai_artifacts_list",
+    "ai_artifact_fetch",
+    "ai_log_sessions_list",
+    "ai_log_session_fetch",
+    "ai_proposals_list",
+    "ai_proposal_fetch",
+  ],
+  cursorDelegate: ["cursor_repository_insight"],
   google: [
     "google_drive_list_files",
     "google_drive_get_file",

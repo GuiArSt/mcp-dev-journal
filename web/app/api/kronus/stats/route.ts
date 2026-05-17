@@ -12,6 +12,7 @@ import {
 } from "@/lib/db/drizzle";
 import { eq, desc } from "drizzle-orm";
 import { getAgentConfig } from "@/lib/ai/kronus";
+import { buildChatIndexContext } from "@/lib/chat-memory";
 
 /**
  * Estimate token count from text (rough: ~4 chars per token for English)
@@ -98,6 +99,10 @@ export async function GET() {
       const content = `### ${entry.repository} - ${entry.commitHash.substring(0, 7)}\n**Branch:** ${entry.branch}\n**Author:** ${entry.codeAuthor || entry.author}\n**Why:** ${entry.why || "N/A"}\n**What Changed:** ${entry.whatChanged || "N/A"}\n**Decisions:** ${entry.decisions || "N/A"}\n**Technologies:** ${entry.technologies || "N/A"}`;
       journalTokens += estimateTokens(content);
     }
+
+    // ===== CHAT INDEX (summaries only) =====
+    const chatIndex = buildChatIndexContext();
+    const chatIndexTokens = chatIndex.tokenEstimate;
 
     // ===== LINEAR PROJECTS (from cached database) =====
     const COMPLETED_PROJECT_STATES = ["completed", "canceled"];
@@ -191,6 +196,7 @@ export async function GET() {
       experienceTokens +
       educationTokens +
       journalTokens +
+      chatIndexTokens +
       linearProjectsTokensActive +
       linearIssuesTokensActive;
 
@@ -202,6 +208,7 @@ export async function GET() {
       experienceTokens +
       educationTokens +
       journalTokens +
+      chatIndexTokens +
       linearProjectsTokensAll +
       linearIssuesTokensAll;
 
@@ -218,6 +225,10 @@ export async function GET() {
       educationTokens,
       journalEntries: entries.length,
       journalEntriesTokens: journalTokens,
+      chatIndex: chatIndex.total,
+      chatIndexTokens,
+      chatIndexIncluded: chatIndex.included,
+      chatIndexMissingSummaries: chatIndex.missingSummaryCount,
       // Enhanced Linear stats with breakdown
       linear: {
         projects: {

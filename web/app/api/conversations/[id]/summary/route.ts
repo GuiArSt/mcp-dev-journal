@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { generateText, Output } from "ai";
 import { google } from "@ai-sdk/google";
 import { z } from "zod";
+import { traceAI } from "@/lib/observability";
 import {
   getConversation,
   updateConversationSummary,
@@ -12,6 +13,8 @@ import { withErrorHandler } from "@/lib/api-handler";
 import { requireParams } from "@/lib/validations";
 import { idParamSchema } from "@/lib/validations/schemas";
 import { NotFoundError, ValidationError } from "@/lib/errors";
+import { getPrompt } from "@/lib/ai/prompt-store";
+import { CONVERSATION_SUMMARY_DEFAULT } from "@/lib/ai/prompt-defaults";
 
 const SummarySchema = z.object({
   title: z
@@ -58,32 +61,20 @@ async function generateConversationSummary(
   try {
     const model = google("gemini-3-flash-preview");
 
-    const result = await generateText({
-      model,
-      output: Output.object({ schema: SummarySchema }),
-      system: `You are a conversation summarizer for a developer chat system.
-Your task is to create a title and "living summary" for the conversation.
-
-## Title Guidelines
-- Short and descriptive: 3-6 words maximum
-- Capture the main topic, question, or intent
-- Use title case (capitalize important words)
-- Examples: "React Hooks Best Practices", "Debugging API Timeout", "Git Merge Conflict Help"
-
-## Summary Guidelines
-- Be concise: 2-3 sentences maximum
-- Focus on the essence: What was the user asking? What did the assistant explain?
-- Include context: Mention technologies, concepts, or specific topics if relevant
-- This is for quick scanning - someone should understand the conversation's purpose at a glance
-- Keep it factual and informative, not verbose
-
-## Example Format
-Title: "Setting Up Docker Compose"
-Summary: "User asked about configuring Docker Compose for a multi-service application. Assistant explained service definitions, networking, and volume mounts. Discussion covered best practices for development environments."`,
-      prompt: `Generate a title and living summary for this conversation:
-
-${conversationText}`,
-    });
+    const userPrompt = `Generate a title and living summary for this conversation:\n\n${conversationText}`;
+    const result = await traceAI(
+      "conversation-summary",
+      "gemini-3-flash-preview",
+      () => generateText({
+        model,
+        output: Output.object({ schema: SummarySchema }),
+        system: getPrompt("conversation-summary", CONVERSATION_SUMMARY_DEFAULT),
+        prompt: userPrompt,
+      }),
+      undefined,
+      userPrompt,
+      "/api/conversations/[id]/summary",
+    );
 
     const parsed = result.output;
     if (!parsed?.summary || !parsed?.title) {

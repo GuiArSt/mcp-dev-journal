@@ -76,7 +76,7 @@ const createSchema = (handle: Database.Database) => {
   `);
 
   handle.exec(`
-    CREATE TABLE IF NOT EXISTS project_summaries (
+    CREATE TABLE IF NOT EXISTS repository_overviews (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       repository TEXT UNIQUE NOT NULL,
       git_url TEXT,
@@ -106,21 +106,21 @@ const createSchema = (handle: Database.Database) => {
     );
   `);
 
-  // Migration: Fix project_summaries NOT NULL constraints on existing databases
+  // Migration: Fix repository_overviews NOT NULL constraints on existing databases
   // SQLite doesn't support ALTER COLUMN, so we need to recreate the table
   try {
     // Check if we need to migrate (check if git_url has NOT NULL constraint)
     const tableInfo = handle
-      .prepare("PRAGMA table_info(project_summaries)")
+      .prepare("PRAGMA table_info(repository_overviews)")
       .all() as Array<{ name: string; notnull: number }>;
     const gitUrlColumn = tableInfo.find((col) => col.name === "git_url");
 
     if (gitUrlColumn && gitUrlColumn.notnull === 1) {
-      logger.info("Migrating project_summaries to make columns nullable...");
+      logger.info("Migrating repository_overviews to make columns nullable...");
 
       // Create new table with nullable columns
       handle.exec(`
-        CREATE TABLE IF NOT EXISTS project_summaries_new (
+        CREATE TABLE IF NOT EXISTS repository_overviews_new (
           id INTEGER PRIMARY KEY AUTOINCREMENT,
           repository TEXT UNIQUE NOT NULL,
           git_url TEXT,
@@ -138,22 +138,22 @@ const createSchema = (handle: Database.Database) => {
 
       // Copy data from old table
       handle.exec(`
-        INSERT INTO project_summaries_new (id, repository, git_url, summary, purpose, architecture, key_decisions, technologies, status, linear_project_id, linear_issue_id, updated_at)
+        INSERT INTO repository_overviews_new (id, repository, git_url, summary, purpose, architecture, key_decisions, technologies, status, linear_project_id, linear_issue_id, updated_at)
         SELECT id, repository, git_url, summary, purpose, architecture, key_decisions, technologies, status, linear_project_id, linear_issue_id, updated_at
-        FROM project_summaries;
+        FROM repository_overviews;
       `);
 
       // Drop old table and rename new one
-      handle.exec(`DROP TABLE project_summaries;`);
+      handle.exec(`DROP TABLE repository_overviews;`);
       handle.exec(
-        `ALTER TABLE project_summaries_new RENAME TO project_summaries;`,
+        `ALTER TABLE repository_overviews_new RENAME TO repository_overviews;`,
       );
 
-      logger.success("Successfully migrated project_summaries table");
+      logger.success("Successfully migrated repository_overviews table");
     }
   } catch (error: any) {
     logger.warn(
-      "Could not migrate project_summaries (may already be correct):",
+      "Could not migrate repository_overviews (may already be correct):",
       error.message,
     );
   }
@@ -174,7 +174,7 @@ const createSchema = (handle: Database.Database) => {
   // Migrate existing tables: add Linear integration columns if they don't exist
   try {
     handle.exec(
-      `ALTER TABLE project_summaries ADD COLUMN linear_project_id TEXT;`,
+      `ALTER TABLE repository_overviews ADD COLUMN linear_project_id TEXT;`,
     );
   } catch (error: any) {
     if (!error.message?.includes("duplicate column")) {
@@ -187,7 +187,7 @@ const createSchema = (handle: Database.Database) => {
 
   try {
     handle.exec(
-      `ALTER TABLE project_summaries ADD COLUMN linear_issue_id TEXT;`,
+      `ALTER TABLE repository_overviews ADD COLUMN linear_issue_id TEXT;`,
     );
   } catch (error: any) {
     if (!error.message?.includes("duplicate column")) {
@@ -327,7 +327,7 @@ const createSchema = (handle: Database.Database) => {
     logger.warn("Could not migrate Notion cache table:", error.message);
   }
 
-  // Migration: Living Project Summary (Entry 0) - Enhanced fields for project_summaries
+  // Migration: Living Project Summary (Entry 0) - Enhanced fields for repository_overviews
   const entry0Columns = [
     "file_structure TEXT", // Git-style file tree (agent-provided)
     "tech_stack TEXT", // Frameworks, libraries, versions (indicative)
@@ -347,8 +347,8 @@ const createSchema = (handle: Database.Database) => {
   for (const column of entry0Columns) {
     const [columnName] = column.split(" ");
     try {
-      handle.exec(`ALTER TABLE project_summaries ADD COLUMN ${column};`);
-      logger.debug(`Added column ${columnName} to project_summaries`);
+      handle.exec(`ALTER TABLE repository_overviews ADD COLUMN ${column};`);
+      logger.debug(`Added column ${columnName} to repository_overviews`);
     } catch (error: any) {
       if (!error.message?.includes("duplicate column")) {
         logger.warn(
@@ -410,8 +410,8 @@ const createSchema = (handle: Database.Database) => {
   for (const column of v2Columns) {
     const [columnName] = column.split(" ");
     try {
-      handle.exec(`ALTER TABLE project_summaries ADD COLUMN ${column};`);
-      logger.debug(`Added v2 column ${columnName} to project_summaries`);
+      handle.exec(`ALTER TABLE repository_overviews ADD COLUMN ${column};`);
+      logger.debug(`Added v2 column ${columnName} to repository_overviews`);
     } catch (error: any) {
       if (!error.message?.includes("duplicate column")) {
         logger.warn(
@@ -454,7 +454,7 @@ const createSchema = (handle: Database.Database) => {
     `CREATE INDEX IF NOT EXISTS idx_commit ON journal_entries(commit_hash);`,
   );
   handle.exec(
-    `CREATE INDEX IF NOT EXISTS idx_project_repo ON project_summaries(repository);`,
+    `CREATE INDEX IF NOT EXISTS idx_project_repo ON repository_overviews(repository);`,
   );
   handle.exec(
     `CREATE INDEX IF NOT EXISTS idx_attachments_commit ON entry_attachments(commit_hash);`,
@@ -494,7 +494,110 @@ const createSchema = (handle: Database.Database) => {
     )
   `);
   handle.exec(`CREATE INDEX IF NOT EXISTS idx_object_history_uuid ON tartarus_object_history(object_uuid)`);
+
+  // AI Integration Library — read-only index populated by the web scanner
+  handle.exec(`
+    CREATE TABLE IF NOT EXISTS ai_integrations (
+      key TEXT PRIMARY KEY,
+      display_name TEXT NOT NULL,
+      status TEXT NOT NULL,
+      version TEXT,
+      auth_status TEXT,
+      source_paths TEXT DEFAULT '[]',
+      config_summary TEXT,
+      metadata TEXT DEFAULT '{}',
+      last_scanned_at TEXT
+    );
+    CREATE TABLE IF NOT EXISTS ai_artifacts (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      integration_key TEXT NOT NULL,
+      kind TEXT NOT NULL,
+      source_path TEXT NOT NULL,
+      title TEXT NOT NULL,
+      summary TEXT,
+      content TEXT,
+      metadata TEXT DEFAULT '{}',
+      content_hash TEXT,
+      created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+      updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
+      UNIQUE(integration_key, kind, source_path)
+    );
+    CREATE TABLE IF NOT EXISTS ai_log_sessions (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      integration_key TEXT NOT NULL,
+      stable_id TEXT NOT NULL,
+      source_path TEXT NOT NULL,
+      title TEXT NOT NULL,
+      summary TEXT,
+      started_at TEXT,
+      updated_at TEXT,
+      message_count INTEGER DEFAULT 0,
+      metadata TEXT DEFAULT '{}',
+      created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+      UNIQUE(integration_key, stable_id, source_path)
+    );
+    CREATE TABLE IF NOT EXISTS ai_log_events (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      session_id INTEGER NOT NULL,
+      sequence INTEGER NOT NULL,
+      timestamp TEXT,
+      actor TEXT NOT NULL,
+      event_type TEXT NOT NULL,
+      text TEXT NOT NULL,
+      tooling TEXT,
+      params TEXT DEFAULT '{}',
+      source_event_type TEXT,
+      created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (session_id) REFERENCES ai_log_sessions(id) ON DELETE CASCADE,
+      UNIQUE(session_id, sequence)
+    );
+    CREATE TABLE IF NOT EXISTS ai_proposals (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      integration_key TEXT NOT NULL,
+      target_kind TEXT NOT NULL,
+      target_path TEXT NOT NULL,
+      title TEXT NOT NULL,
+      content TEXT NOT NULL,
+      summary TEXT,
+      status TEXT DEFAULT 'draft',
+      source_artifact_id INTEGER,
+      metadata TEXT DEFAULT '{}',
+      created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+      updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+    );
+  `);
+  handle.exec(`CREATE INDEX IF NOT EXISTS idx_ai_artifacts_integration ON ai_artifacts(integration_key)`);
+  handle.exec(`CREATE INDEX IF NOT EXISTS idx_ai_sessions_integration ON ai_log_sessions(integration_key)`);
+  handle.exec(`CREATE INDEX IF NOT EXISTS idx_ai_events_session ON ai_log_events(session_id, sequence)`);
+  handle.exec(`CREATE INDEX IF NOT EXISTS idx_ai_proposals_integration ON ai_proposals(integration_key, status)`);
 };
+
+/** Rename legacy `project_summaries` → `repository_overviews` before schema DDL (idempotent). */
+function migrateProjectSummariesToRepositoryOverviews(handle: Database.Database): void {
+  const LEGACY = "project_summaries";
+  const CURRENT = "repository_overviews";
+  const old = handle
+    .prepare(
+      `SELECT name FROM sqlite_master WHERE type = 'table' AND name = ? LIMIT 1`,
+    )
+    .get(LEGACY) as { name: string } | undefined;
+  const neu = handle
+    .prepare(
+      `SELECT name FROM sqlite_master WHERE type = 'table' AND name = ? LIMIT 1`,
+    )
+    .get(CURRENT) as { name: string } | undefined;
+  if (old && !neu) {
+    handle.exec(`ALTER TABLE ${LEGACY} RENAME TO ${CURRENT};`);
+    logger.success(`Renamed table ${LEGACY} → ${CURRENT}`);
+  }
+  try {
+    handle.exec(
+      `UPDATE tartarus_objects SET source_table = '${CURRENT}' WHERE source_table = '${LEGACY}';`,
+    );
+  } catch {
+    // registry table may not exist yet
+  }
+}
 
 /** Rename legacy monorepo repository labels to tartarus-workspace (matches normalizeRepository). */
 function runLegacyMonorepoRepositoryRenames(handle: Database.Database): void {
@@ -504,7 +607,7 @@ function runLegacyMonorepoRepositoryRenames(handle: Database.Database): void {
   ];
   const tables = [
     "journal_entries",
-    "project_summaries",
+    "repository_overviews",
     "athena_learning_items",
     "athena_sessions",
   ] as const;
@@ -552,6 +655,7 @@ export const initDatabase = (dbPath?: string): Database.Database => {
       db.pragma("journal_mode = WAL");
       db.pragma("foreign_keys = ON");
       db.pragma("busy_timeout = 5000"); // Wait 5 seconds for locks
+      migrateProjectSummariesToRepositoryOverviews(db);
       createSchema(db);
       runLegacyMonorepoRepositoryRenames(db);
       logger.success(`Journal database ready at ${finalPath}`);
@@ -749,7 +853,7 @@ export const listRepositories = (): string[] => {
   const summaryRows = db
     .prepare(
       `
-    SELECT DISTINCT repository FROM project_summaries
+    SELECT DISTINCT repository FROM repository_overviews
   `,
     )
     .all() as Array<{ repository: string }>;
@@ -971,7 +1075,7 @@ export const upsertProjectSummary = (summary: ProjectSummaryInsert): number => {
   };
 
   const upsertStmt = db.prepare(`
-    INSERT INTO project_summaries (
+    INSERT INTO repository_overviews (
       repository, git_url, summary, purpose, architecture, key_decisions, technologies, status,
       linear_project_id, linear_issue_id,
       file_structure, tech_stack, frontend, backend, database_info, services,
@@ -1022,7 +1126,7 @@ export const getProjectSummary = (
     throw new Error("Database not initialized");
   }
   const row = db
-    .prepare("SELECT * FROM project_summaries WHERE repository = ? LIMIT 1")
+    .prepare("SELECT * FROM repository_overviews WHERE repository = ? LIMIT 1")
     .get(normalizeRepository(repository));
   return row ? mapProjectSummaryRow(row) : null;
 };
@@ -1036,12 +1140,12 @@ export const listAllProjectSummariesPaginated = (
   }
   const rows = db
     .prepare(
-      "SELECT * FROM project_summaries ORDER BY repository ASC LIMIT ? OFFSET ?",
+      "SELECT * FROM repository_overviews ORDER BY repository ASC LIMIT ? OFFSET ?",
     )
     .all(limit, offset);
 
   const totalRow = db
-    .prepare("SELECT COUNT(*) as count FROM project_summaries")
+    .prepare("SELECT COUNT(*) as count FROM repository_overviews")
     .get() as { count: number };
 
   return {
@@ -1076,7 +1180,7 @@ export const getProjectSummaryV2 = (
 ): ProjectSummaryV2 | null => {
   if (!db) throw new Error("Database not initialized");
   const row = db
-    .prepare("SELECT * FROM project_summaries WHERE repository = ? LIMIT 1")
+    .prepare("SELECT * FROM repository_overviews WHERE repository = ? LIMIT 1")
     .get(normalizeRepository(repository));
   return row ? mapProjectSummaryV2Row(row) : null;
 };
@@ -1197,7 +1301,7 @@ export const createProjectSummaryV2 = (params: {
   const columnList = columns.join(", ");
 
   const stmt = db.prepare(
-    `INSERT INTO project_summaries (${columnList}) VALUES (${placeholders})`,
+    `INSERT INTO repository_overviews (${columnList}) VALUES (${placeholders})`,
   );
 
   const result = stmt.run(legacyParams);
@@ -1264,7 +1368,7 @@ export const updateProjectTechnicalV2 = (params: {
     .join(", ");
 
   db.prepare(
-    `UPDATE project_summaries SET ${setClauses}, updated_at = CURRENT_TIMESTAMP WHERE repository = @repository`,
+    `UPDATE repository_overviews SET ${setClauses}, updated_at = CURRENT_TIMESTAMP WHERE repository = @repository`,
   ).run(updateParams);
 
   logger.success(
@@ -1328,7 +1432,7 @@ export const updateProjectNarrativeV2 = (params: {
     .join(", ");
 
   db.prepare(
-    `UPDATE project_summaries SET ${setClauses}, updated_at = CURRENT_TIMESTAMP WHERE repository = @repository`,
+    `UPDATE repository_overviews SET ${setClauses}, updated_at = CURRENT_TIMESTAMP WHERE repository = @repository`,
   ).run(updateParams);
 
   logger.success(
@@ -1595,7 +1699,7 @@ export const exportToSQL = (outputPath: string): void => {
     .prepare("SELECT * FROM journal_entries ORDER BY created_at ASC")
     .all() as JournalEntry[];
   const summaries = db
-    .prepare("SELECT * FROM project_summaries ORDER BY repository ASC")
+    .prepare("SELECT * FROM repository_overviews ORDER BY repository ASC")
     .all() as ProjectSummary[];
 
   // Get attachment metadata (not binary data) for the backup
@@ -1646,7 +1750,7 @@ export const exportToSQL = (outputPath: string): void => {
       return String(v);
     });
 
-    sql += `INSERT INTO project_summaries (repository, git_url, summary, purpose, architecture, key_decisions, technologies, status, linear_project_id, linear_issue_id, updated_at) VALUES (${values.join(", ")});\n`;
+    sql += `INSERT INTO repository_overviews (repository, git_url, summary, purpose, architecture, key_decisions, technologies, status, linear_project_id, linear_issue_id, updated_at) VALUES (${values.join(", ")});\n`;
   }
 
   sql += "\n-- Journal Entries\n";
@@ -2773,6 +2877,163 @@ export const getConversationById = (
     .prepare("SELECT id, title, messages, summary, created_at, updated_at FROM chat_conversations WHERE id = ?")
     .get(id) as any;
   return row || null;
+};
+
+const parseJsonField = <T>(value: string | null | undefined, fallback: T): T => {
+  if (!value) return fallback;
+  try {
+    return JSON.parse(value) as T;
+  } catch {
+    return fallback;
+  }
+};
+
+export const listAiIntegrations = (): any[] => {
+  if (!db) throw new Error("Database not initialized");
+  return db.prepare(`
+    SELECT i.*, o.uuid
+    FROM ai_integrations i
+    LEFT JOIN tartarus_objects o ON o.source_table = 'ai_integrations' AND o.source_id = i.key
+    ORDER BY i.display_name
+  `).all().map((row: any) => ({
+    key: row.key,
+    displayName: row.display_name,
+    status: row.status,
+    version: row.version,
+    authStatus: row.auth_status,
+    sourcePaths: parseJsonField(row.source_paths, []),
+    configSummary: row.config_summary,
+    metadata: parseJsonField(row.metadata, {}),
+    lastScannedAt: row.last_scanned_at,
+    uuid: row.uuid ?? null,
+  }));
+};
+
+export const getAiIntegration = (key: string): any | null => {
+  if (!db) throw new Error("Database not initialized");
+  const row = db.prepare(`
+    SELECT i.*, o.uuid
+    FROM ai_integrations i
+    LEFT JOIN tartarus_objects o ON o.source_table = 'ai_integrations' AND o.source_id = i.key
+    WHERE i.key = ?
+  `).get(key) as any;
+  if (!row) return null;
+  return {
+    key: row.key,
+    displayName: row.display_name,
+    status: row.status,
+    version: row.version,
+    authStatus: row.auth_status,
+    sourcePaths: parseJsonField(row.source_paths, []),
+    configSummary: row.config_summary,
+    metadata: parseJsonField(row.metadata, {}),
+    lastScannedAt: row.last_scanned_at,
+    uuid: row.uuid ?? null,
+  };
+};
+
+export const listAiArtifacts = (integrationKey?: string, limit = 50, offset = 0): any[] => {
+  if (!db) throw new Error("Database not initialized");
+  const params: any[] = [];
+  const where = integrationKey ? "WHERE a.integration_key = ?" : "";
+  if (integrationKey) params.push(integrationKey);
+  params.push(Math.min(limit, 100), offset);
+  return db.prepare(`
+    SELECT a.id, a.integration_key, a.kind, a.source_path, a.title, a.summary,
+           a.metadata, a.content_hash, a.created_at, a.updated_at, o.uuid
+    FROM ai_artifacts a
+    LEFT JOIN tartarus_objects o ON o.source_table = 'ai_artifacts' AND o.source_id = CAST(a.id AS TEXT)
+    ${where}
+    ORDER BY a.updated_at DESC
+    LIMIT ? OFFSET ?
+  `).all(...params).map((row: any) => ({
+    ...row,
+    metadata: parseJsonField(row.metadata, {}),
+  }));
+};
+
+export const getAiArtifact = (id: number): any | null => {
+  if (!db) throw new Error("Database not initialized");
+  const row = db.prepare(`
+    SELECT a.*, o.uuid
+    FROM ai_artifacts a
+    LEFT JOIN tartarus_objects o ON o.source_table = 'ai_artifacts' AND o.source_id = CAST(a.id AS TEXT)
+    WHERE a.id = ?
+  `).get(id) as any;
+  return row ? { ...row, metadata: parseJsonField(row.metadata, {}) } : null;
+};
+
+export const listAiLogSessions = (integrationKey?: string, limit = 50, offset = 0): any[] => {
+  if (!db) throw new Error("Database not initialized");
+  const params: any[] = [];
+  const where = integrationKey ? "WHERE s.integration_key = ?" : "";
+  if (integrationKey) params.push(integrationKey);
+  params.push(Math.min(limit, 100), offset);
+  return db.prepare(`
+    SELECT s.*, o.uuid
+    FROM ai_log_sessions s
+    LEFT JOIN tartarus_objects o ON o.source_table = 'ai_log_sessions' AND o.source_id = CAST(s.id AS TEXT)
+    ${where}
+    ORDER BY COALESCE(s.updated_at, s.created_at) DESC
+    LIMIT ? OFFSET ?
+  `).all(...params).map((row: any) => ({
+    ...row,
+    metadata: parseJsonField(row.metadata, {}),
+  }));
+};
+
+export const getAiLogSession = (id: number): any | null => {
+  if (!db) throw new Error("Database not initialized");
+  const session = db.prepare(`
+    SELECT s.*, o.uuid
+    FROM ai_log_sessions s
+    LEFT JOIN tartarus_objects o ON o.source_table = 'ai_log_sessions' AND o.source_id = CAST(s.id AS TEXT)
+    WHERE s.id = ?
+  `).get(id) as any;
+  if (!session) return null;
+  const events = db.prepare("SELECT * FROM ai_log_events WHERE session_id = ? ORDER BY sequence").all(id).map((row: any) => ({
+    id: row.id,
+    sequence: row.sequence,
+    timestamp: row.timestamp,
+    actor: row.actor,
+    eventType: row.event_type,
+    text: row.text,
+    tooling: parseJsonField(row.tooling, null),
+    params: parseJsonField(row.params, {}),
+    sourceEventType: row.source_event_type,
+  }));
+  return { ...session, metadata: parseJsonField(session.metadata, {}), events };
+};
+
+export const listAiProposals = (integrationKey?: string, limit = 50, offset = 0): any[] => {
+  if (!db) throw new Error("Database not initialized");
+  const params: any[] = [];
+  const where = integrationKey ? "WHERE p.integration_key = ?" : "";
+  if (integrationKey) params.push(integrationKey);
+  params.push(Math.min(limit, 100), offset);
+  return db.prepare(`
+    SELECT p.id, p.integration_key, p.target_kind, p.target_path, p.title, p.summary,
+           p.status, p.source_artifact_id, p.metadata, p.created_at, p.updated_at, o.uuid
+    FROM ai_proposals p
+    LEFT JOIN tartarus_objects o ON o.source_table = 'ai_proposals' AND o.source_id = CAST(p.id AS TEXT)
+    ${where}
+    ORDER BY p.updated_at DESC
+    LIMIT ? OFFSET ?
+  `).all(...params).map((row: any) => ({
+    ...row,
+    metadata: parseJsonField(row.metadata, {}),
+  }));
+};
+
+export const getAiProposal = (id: number): any | null => {
+  if (!db) throw new Error("Database not initialized");
+  const row = db.prepare(`
+    SELECT p.*, o.uuid
+    FROM ai_proposals p
+    LEFT JOIN tartarus_objects o ON o.source_table = 'ai_proposals' AND o.source_id = CAST(p.id AS TEXT)
+    WHERE p.id = ?
+  `).get(id) as any;
+  return row ? { ...row, metadata: parseJsonField(row.metadata, {}) } : null;
 };
 
 /**

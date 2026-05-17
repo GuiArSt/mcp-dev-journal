@@ -71,7 +71,7 @@ export function WritingsTab({
   return (
     <div className="grid auto-rows-fr gap-4 md:grid-cols-2 lg:grid-cols-3">
       {writings.map((doc) => (
-        <Link key={doc.id} href={`/repository/${doc.slug}`} className="stagger-item">
+        <Link key={doc.id} href={`/library/${doc.slug}`} className="stagger-item">
           <Card className="group relative flex h-full cursor-pointer flex-col overflow-hidden border-[var(--tartarus-border)] bg-[var(--tartarus-surface)] transition-[border-color,box-shadow] duration-200 ease-[cubic-bezier(0.23,1,0.32,1)] hover:border-[var(--tartarus-teal-dim)] hover:shadow-[0_0_20px_rgba(0,206,209,0.1)]">
             {/* Edit with Kronus button */}
             <Button

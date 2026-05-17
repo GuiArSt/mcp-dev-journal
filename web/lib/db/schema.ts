@@ -37,10 +37,10 @@ export const journalEntries = sqliteTable("journal_entries", {
 });
 
 /**
- * Project summaries - high-level repository overviews (Entry 0)
- * Enhanced with Living Project Summary fields for capturing project knowledge
+ * Repository overview (Entry 0) — canonical technical + narrative memory per `repository`.
+ * SQLite table: `repository_overviews` (renamed from legacy `project_summaries`).
  */
-export const projectSummaries = sqliteTable("project_summaries", {
+export const repositoryOverviews = sqliteTable("repository_overviews", {
   repository: text("repository").primaryKey(),
   gitUrl: text("git_url"),
   summary: text("summary"),
@@ -68,6 +68,9 @@ export const projectSummaries = sqliteTable("project_summaries", {
   lastSyncedEntry: text("last_synced_entry"), // Last journal entry hash used for update
   entriesSynced: integer("entries_synced"), // Count of entries analyzed
 });
+
+/** @deprecated Use `repositoryOverviews` — alias for gradual TypeScript migration */
+export const projectSummaries = repositoryOverviews;
 
 /**
  * Entry attachments - files linked to journal entries
@@ -209,6 +212,10 @@ export const mediaAssets = sqliteTable("media_assets", {
   prompt: text("prompt"), // AI generation prompt if applicable
   model: text("model"), // AI model used if applicable
   tags: text("tags").default("[]"),
+  /** Stable identifier for queryable lookup. Convention for muse paints:
+   *  `muse:{renderMode}:turn-{N}:{first-8-of-prompt-hash}`. Other paths
+   *  may stamp their own labels (user-upload, etc.). */
+  label: text("label"),
   summary: text("summary"), // AI-generated 3-sentence summary for indexing
   // Storage URLs
   driveUrl: text("drive_url"), // Google Drive long-term archival URL
@@ -250,6 +257,10 @@ export const conversations = sqliteTable("chat_conversations", {
   soulConfig: text("soul_config").default("{}"),
   /** JSON: Kronus UI snapshot (model, tools, skills, format) restored when opening the chat */
   sessionConfig: text("session_config"),
+  /** JSON: Hourglass artifact shelf — append-only ArtifactRef[] with uuid + snapshot fields */
+  artifactRefs: text("artifact_refs").default("[]"),
+  /** Hourglass chat log — append-only chronological event stream. JSON ChatLogEntry[]. */
+  chatLog: text("chat_log").default("[]"),
   // Compression fields
   isCompressed: integer("is_compressed", { mode: "boolean" }).default(false),
   compressionSummary: text("compression_summary"), // JSON: CompressionSummary
@@ -428,7 +439,7 @@ export const athenaSessions = sqliteTable("athena_sessions", {
 
 /**
  * Portfolio projects - shipped work, case studies, showcased projects
- * Distinct from project_summaries (which are git repository documentation)
+ * Distinct from `repository_overviews` (per-repo Entry 0 documentation)
  */
 export const portfolioProjects = sqliteTable("portfolio_projects", {
   id: text("id").primaryKey(), // e.g., 'langfuse-refactor'
@@ -702,8 +713,12 @@ export const promptTraceLinks = sqliteTable("prompt_trace_links", {
 export type JournalEntry = typeof journalEntries.$inferSelect;
 export type NewJournalEntry = typeof journalEntries.$inferInsert;
 
-export type ProjectSummary = typeof projectSummaries.$inferSelect;
-export type NewProjectSummary = typeof projectSummaries.$inferInsert;
+export type RepositoryOverview = typeof repositoryOverviews.$inferSelect;
+export type NewRepositoryOverview = typeof repositoryOverviews.$inferInsert;
+/** @deprecated Use RepositoryOverview */
+export type ProjectSummary = RepositoryOverview;
+/** @deprecated Use NewRepositoryOverview */
+export type NewProjectSummary = NewRepositoryOverview;
 
 export type EntryAttachment = typeof entryAttachments.$inferSelect;
 export type NewEntryAttachment = typeof entryAttachments.$inferInsert;
@@ -819,3 +834,87 @@ export type NewTartarusObject = typeof tartarusObjects.$inferInsert;
 
 export type TartarusObjectHistoryEntry = typeof tartarusObjectHistory.$inferSelect;
 export type NewTartarusObjectHistoryEntry = typeof tartarusObjectHistory.$inferInsert;
+
+// ============================================================================
+// AI INTEGRATION LIBRARY
+// ============================================================================
+
+export const aiIntegrations = sqliteTable("ai_integrations", {
+  key: text("key").primaryKey(),
+  displayName: text("display_name").notNull(),
+  status: text("status").notNull(),
+  version: text("version"),
+  authStatus: text("auth_status"),
+  sourcePaths: text("source_paths").default("[]"),
+  configSummary: text("config_summary"),
+  metadata: text("metadata").default("{}"),
+  lastScannedAt: text("last_scanned_at"),
+});
+
+export const aiArtifacts = sqliteTable("ai_artifacts", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  integrationKey: text("integration_key").notNull(),
+  kind: text("kind").notNull(),
+  sourcePath: text("source_path").notNull(),
+  title: text("title").notNull(),
+  summary: text("summary"),
+  content: text("content"),
+  metadata: text("metadata").default("{}"),
+  contentHash: text("content_hash"),
+  createdAt: text("created_at").default("CURRENT_TIMESTAMP"),
+  updatedAt: text("updated_at").default("CURRENT_TIMESTAMP"),
+});
+
+export const aiLogSessions = sqliteTable("ai_log_sessions", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  integrationKey: text("integration_key").notNull(),
+  stableId: text("stable_id").notNull(),
+  sourcePath: text("source_path").notNull(),
+  title: text("title").notNull(),
+  summary: text("summary"),
+  startedAt: text("started_at"),
+  updatedAt: text("updated_at"),
+  messageCount: integer("message_count").default(0),
+  metadata: text("metadata").default("{}"),
+  createdAt: text("created_at").default("CURRENT_TIMESTAMP"),
+});
+
+export const aiLogEvents = sqliteTable("ai_log_events", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  sessionId: integer("session_id").notNull(),
+  sequence: integer("sequence").notNull(),
+  timestamp: text("timestamp"),
+  actor: text("actor").notNull(),
+  eventType: text("event_type").notNull(),
+  text: text("text").notNull(),
+  tooling: text("tooling"),
+  params: text("params").default("{}"),
+  sourceEventType: text("source_event_type"),
+  createdAt: text("created_at").default("CURRENT_TIMESTAMP"),
+});
+
+export const aiProposals = sqliteTable("ai_proposals", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  integrationKey: text("integration_key").notNull(),
+  targetKind: text("target_kind").notNull(),
+  targetPath: text("target_path").notNull(),
+  title: text("title").notNull(),
+  content: text("content").notNull(),
+  summary: text("summary"),
+  status: text("status").default("draft"),
+  sourceArtifactId: integer("source_artifact_id"),
+  metadata: text("metadata").default("{}"),
+  createdAt: text("created_at").default("CURRENT_TIMESTAMP"),
+  updatedAt: text("updated_at").default("CURRENT_TIMESTAMP"),
+});
+
+export type AiIntegration = typeof aiIntegrations.$inferSelect;
+export type NewAiIntegration = typeof aiIntegrations.$inferInsert;
+export type AiArtifact = typeof aiArtifacts.$inferSelect;
+export type NewAiArtifact = typeof aiArtifacts.$inferInsert;
+export type AiLogSession = typeof aiLogSessions.$inferSelect;
+export type NewAiLogSession = typeof aiLogSessions.$inferInsert;
+export type AiLogEvent = typeof aiLogEvents.$inferSelect;
+export type NewAiLogEvent = typeof aiLogEvents.$inferInsert;
+export type AiProposal = typeof aiProposals.$inferSelect;
+export type NewAiProposal = typeof aiProposals.$inferInsert;

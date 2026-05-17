@@ -190,3 +190,61 @@ export interface SkillCategory {
   icon: string;
   sortOrder: number;
 }
+
+export interface AiIntegration {
+  key: string;
+  displayName: string;
+  status: "available" | "missing" | "needs_auth" | "error";
+  version: string | null;
+  authStatus: string | null;
+  sourcePaths: string[];
+  configSummary: string | null;
+  metadata: Record<string, unknown>;
+  lastScannedAt: string | null;
+  uuid: string | null;
+}
+
+export interface AiArtifact {
+  id: number;
+  uuid: string | null;
+  integrationKey: string;
+  kind: string;
+  sourcePath: string;
+  title: string;
+  summary: string | null;
+  content?: string | null;
+  metadata: Record<string, unknown>;
+  contentHash: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface AiLogSession {
+  id: number;
+  uuid: string | null;
+  integrationKey: string;
+  stableId: string;
+  sourcePath: string;
+  title: string;
+  summary: string | null;
+  startedAt: string | null;
+  updatedAt: string | null;
+  messageCount: number;
+  metadata: Record<string, unknown>;
+}
+
+export interface AiProposal {
+  id: number;
+  uuid: string | null;
+  integrationKey: string;
+  targetKind: string;
+  targetPath: string;
+  title: string;
+  content?: string;
+  summary: string | null;
+  status: "draft" | "accepted" | "superseded";
+  sourceArtifactId: number | null;
+  metadata: Record<string, unknown>;
+  createdAt: string;
+  updatedAt: string;
+}

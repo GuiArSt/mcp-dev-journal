@@ -59,7 +59,7 @@ function exportToSQL(outputPath: string): void {
     .prepare("SELECT * FROM journal_entries ORDER BY created_at ASC")
     .all() as any[];
   const summaries = db
-    .prepare("SELECT * FROM project_summaries ORDER BY repository ASC")
+    .prepare("SELECT * FROM repository_overviews ORDER BY repository ASC")
     .all() as any[];
 
   const attachmentMetadata = db
@@ -99,7 +99,7 @@ function exportToSQL(outputPath: string): void {
       return String(v);
     });
 
-    sql += `INSERT INTO project_summaries (repository, git_url, summary, purpose, architecture, key_decisions, technologies, status, updated_at) VALUES (${values.join(", ")});\n`;
+    sql += `INSERT INTO repository_overviews (repository, git_url, summary, purpose, architecture, key_decisions, technologies, status, updated_at) VALUES (${values.join(", ")});\n`;
   }
 
   sql += "\n-- Journal Entries\n";

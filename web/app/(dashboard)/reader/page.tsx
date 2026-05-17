@@ -45,7 +45,7 @@ interface ProjectSummary {
   linear_issue_id?: string;
   entry_count: number;
   last_entry_date?: string;
-  // Living Project Summary (Entry 0) fields
+  // Repository overview (Entry 0) — same row shape as /api/repository-overviews
   file_structure?: string;
   tech_stack?: string;
   frontend?: string;
@@ -121,7 +121,7 @@ export default function ReaderPage() {
   const fetchProjects = async () => {
     setLoading(true);
     try {
-      const response = await fetch("/api/project-summaries");
+      const response = await fetch("/api/repository-overviews");
       const data = await response.json();
       setProjects(data.summaries || []);
       // Auto-expand first project if exists
@@ -223,16 +223,16 @@ export default function ReaderPage() {
 
   // Navigate to chat to create new project
   const createNewProject = () => {
-    const context = `I want to CREATE a new project in my journal. Please help me set it up.
+    const context = `I want to CREATE a **Repository overview** (Entry 0) for a journal repository.
 
-I'll need:
-- **Repository name**: The name of the repository/project
-- **Git URL**: Optional GitHub/GitLab URL
-- **Summary**: A brief description of what the project is about
-- **Purpose**: The goals and objectives
-- **Technologies**: Key technologies used
+We'll store one canonical row per **repository** name (not per branch).
 
-Please guide me through creating a new project summary using the journal_create_project_summary tool.`;
+Please:
+1. Confirm the **repository** string (kebab-case, matches journal entries).
+2. Call **journal_get_project_summary** — if 404, we're creating; if 200, we're updating.
+3. Use **journal_upsert_project_summary** with at least summary, purpose, architecture, key_decisions, technologies, status (and optional **git_url**). You can add extended sections later (file_structure, tech_stack, frontend, backend, …).
+
+If you use **Cursor** on the codebase first, merge what you read into those fields before upserting.`;
 
     sessionStorage.setItem("kronusPrefill", context);
     router.push("/chat");
@@ -268,22 +268,21 @@ You can use the journal_create_entry tool to create a new entry.`;
   const editProjectWithKronus = (project: ProjectSummary, e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    const context = `I want to UPDATE this project summary. Please help me modify it:
+    const context = `I want to UPDATE the **Repository overview** (Entry 0) for **${project.repository}**.
 
-**Repository:** ${project.repository}
-${project.git_url ? `**Git URL:** ${project.git_url}` : ""}
+Workflow (Kronus + optional Cursor):
+1. Call **journal_get_project_summary** with repository \`${project.repository}\` to load the full row from Tartarus.
+2. If I pasted notes from **Cursor** (repo facts, file paths, decisions), merge them into the right fields.
+3. Call **journal_upsert_project_summary** with **only the fields that change** (or the full merged object). Omitted keys keep existing values.
 
-**Current Summary:**
-${project.summary?.substring(0, 500)}${project.summary && project.summary.length > 500 ? "..." : ""}
-
-**Current Purpose:**
-${project.purpose?.substring(0, 300) || "(none)"}${project.purpose && project.purpose.length > 300 ? "..." : ""}
-
+Snapshot (truncated) for quick context:
+${project.git_url ? `**Git URL:** ${project.git_url}\n` : ""}
+**Summary:** ${project.summary?.substring(0, 500) || "(none)"}${project.summary && project.summary.length > 500 ? "…" : ""}
+**Purpose:** ${project.purpose?.substring(0, 300) || "(none)"}${project.purpose && project.purpose.length > 300 ? "…" : ""}
 **Technologies:** ${project.technologies || "(none)"}
-
 **Status:** ${project.status || "(none)"}
 
-What would you like to change? You can update any field using the journal_update_project_summary tool.`;
+Extended Entry 0 (if set): file_structure, tech_stack, frontend, backend, database_info, services, data_flow, patterns, commands, extended_notes — all updatable via the same upsert.`;
 
     sessionStorage.setItem("kronusPrefill", context);
     router.push("/chat");
@@ -316,26 +315,39 @@ What changes would you like to make? You can update any field using the journal_
     router.push("/chat");
   };
 
-  // Analyze project entries with AI to update Entry 0
+  // Analyze journal entries with AI to refresh Repository overview (Entry 0)
   const analyzeProject = async (repository: string, e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
 
     setAnalyzingProject(repository);
     try {
-      const response = await fetch("/api/project-summaries/analyze", {
+      const response = await fetch("/api/repository-overviews/analyze", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ repository, entries_to_analyze: 10 }),
       });
 
+      const data = (await response.json()) as {
+        error?: string;
+        message?: string;
+        cursor?: { used?: boolean; project_id?: string; error?: string };
+      };
+
       if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || "Analysis failed");
+        throw new Error(data.error || "Analysis failed");
       }
 
       // Refresh projects to show updated Entry 0
       await fetchProjects();
+
+      let notice = data.message || "Repository overview updated.";
+      if (data.cursor?.used && data.cursor.project_id) {
+        notice += `\n\nCursor tree check: ${data.cursor.project_id}`;
+      } else if (data.cursor?.error) {
+        notice += `\n\nCursor (optional): ${data.cursor.error}`;
+      }
+      alert(notice);
     } catch (error) {
       console.error("Failed to analyze project:", error);
       alert(error instanceof Error ? error.message : "Analysis failed");
@@ -344,7 +356,7 @@ What changes would you like to make? You can update any field using the journal_
     }
   };
 
-  // Delete project summary (and optionally entries)
+  // Delete Repository overview (and optionally journal entries)
   const deleteProject = async (repository: string, deleteEntries: boolean) => {
     setDeletingProject(repository);
     try {
@@ -353,7 +365,7 @@ What changes would you like to make? You can update any field using the journal_
         params.set("deleteEntries", "true");
       }
 
-      const response = await fetch(`/api/project-summaries?${params}`, {
+      const response = await fetch(`/api/repository-overviews?${params}`, {
         method: "DELETE",
       });
 
@@ -407,14 +419,14 @@ What changes would you like to make? You can update any field using the journal_
       <header className="flex min-h-14 flex-col gap-2 border-b border-[var(--tartarus-border)] px-3 py-2 md:flex-row md:items-center md:justify-between md:px-6 md:py-0">
         <div className="flex items-center gap-3">
           <Layers className="h-5 w-5 text-[var(--tartarus-teal)]" />
-          <h1 className="text-lg font-semibold text-[var(--tartarus-ivory)]">Tartarus</h1>
+          <h1 className="text-lg font-semibold text-[var(--tartarus-ivory)]">Reader</h1>
         </div>
         <div className="flex items-center gap-2">
           <Badge
             variant="outline"
             className="border-[var(--tartarus-border)] text-[var(--tartarus-ivory-muted)]"
           >
-            {projects.length} projects
+            {projects.length} repositories
           </Badge>
           <Button
             size="sm"
@@ -426,7 +438,7 @@ What changes would you like to make? You can update any field using the journal_
               alt="Kronus"
               className="mr-2 h-4 w-4 rounded-full object-cover"
             />
-            New Project
+            New overview
           </Button>
         </div>
       </header>
@@ -436,7 +448,7 @@ What changes would you like to make? You can update any field using the journal_
         <div className="relative max-w-md flex-1">
           <Search className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-[var(--tartarus-ivory-muted)]" />
           <Input
-            placeholder="Search projects and entries..."
+            placeholder="Search repositories and journal entries..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="border-[var(--tartarus-border)] bg-[var(--tartarus-surface)] pl-9 text-[var(--tartarus-ivory)] placeholder:text-[var(--tartarus-ivory-faded)]"
@@ -448,7 +460,7 @@ What changes would you like to make? You can update any field using the journal_
               value="projects"
               className="data-[state=active]:bg-[var(--tartarus-teal-soft)] data-[state=active]:text-[var(--tartarus-teal)]"
             >
-              Projects
+              Repositories
             </TabsTrigger>
             <TabsTrigger
               value="timeline"
@@ -486,7 +498,7 @@ What changes would you like to make? You can update any field using the journal_
                   <div className="flex h-16 w-16 items-center justify-center rounded-full bg-[var(--tartarus-elevated)]">
                     <FolderGit2 className="h-8 w-8 text-[var(--tartarus-ivory-muted)]" />
                   </div>
-                  <p className="text-[var(--tartarus-ivory-muted)]">No projects found.</p>
+                  <p className="text-[var(--tartarus-ivory-muted)]">No repositories found.</p>
                   <Button
                     onClick={createNewProject}
                     className="bg-[var(--tartarus-gold)] text-[var(--tartarus-void)] hover:bg-[var(--tartarus-gold-bright)]"
@@ -496,7 +508,7 @@ What changes would you like to make? You can update any field using the journal_
                       alt="Kronus"
                       className="mr-2 h-4 w-4 rounded-full object-cover"
                     />
-                    Create First Project
+                    Create first overview
                   </Button>
                 </div>
               </div>

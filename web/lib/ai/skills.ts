@@ -61,6 +61,7 @@ export const LEAN_SOUL_CONFIG: SoulConfigState = {
   workExperience: false,
   education: false,
   journalEntries: false,
+  chatIndex: false,
   linearProjects: false,
   linearIssues: false,
   linearIncludeCompleted: false,
@@ -72,6 +73,7 @@ export const LEAN_SOUL_CONFIG: SoulConfigState = {
 export const LEAN_TOOLS_CONFIG: ToolsConfigState = {
   journal: true,
   repository: true,
+  cursorDelegate: false,
   linear: false,
   git: false,
   media: false,
@@ -80,6 +82,8 @@ export const LEAN_TOOLS_CONFIG: ToolsConfigState = {
   slite: false,
   notion: false,
   google: false,
+  memory: false,
+  aiIntegrations: false,
 };
 
 /** All soul sections enabled */
@@ -90,6 +94,7 @@ export const ALL_SOUL_CONFIG: SoulConfigState = {
   workExperience: true,
   education: true,
   journalEntries: true,
+  chatIndex: true,
   linearProjects: true,
   linearIssues: true,
   linearIncludeCompleted: false,
@@ -101,6 +106,7 @@ export const ALL_SOUL_CONFIG: SoulConfigState = {
 export const ALL_TOOLS_CONFIG: ToolsConfigState = {
   journal: true,
   repository: true,
+  cursorDelegate: true,
   linear: true,
   git: true,
   media: true,
@@ -109,6 +115,8 @@ export const ALL_TOOLS_CONFIG: ToolsConfigState = {
   slite: true,
   notion: true,
   google: true,
+  memory: true,
+  aiIntegrations: true,
 };
 
 // ============================================================================
@@ -174,6 +182,7 @@ export function soulConfigsEqual(a: SoulConfigState, b: SoulConfigState): boolea
     a.workExperience === b.workExperience &&
     a.education === b.education &&
     a.journalEntries === b.journalEntries &&
+    a.chatIndex === b.chatIndex &&
     a.linearProjects === b.linearProjects &&
     a.linearIssues === b.linearIssues &&
     a.linearIncludeCompleted === b.linearIncludeCompleted &&
@@ -189,6 +198,7 @@ export function toolsConfigsEqual(a: ToolsConfigState, b: ToolsConfigState): boo
   return (
     a.journal === b.journal &&
     a.repository === b.repository &&
+    a.cursorDelegate === b.cursorDelegate &&
     a.linear === b.linear &&
     a.git === b.git &&
     a.media === b.media &&
@@ -196,7 +206,9 @@ export function toolsConfigsEqual(a: ToolsConfigState, b: ToolsConfigState): boo
     a.webSearch === b.webSearch &&
     a.slite === b.slite &&
     a.notion === b.notion &&
-    a.google === b.google
+    a.google === b.google &&
+    a.memory === b.memory &&
+    a.aiIntegrations === b.aiIntegrations
   );
 }
 
@@ -212,6 +224,7 @@ export function isAlmightyConfig(soul: SoulConfigState, tools: ToolsConfigState)
     soul.workExperience &&
     soul.education &&
     soul.journalEntries &&
+    soul.chatIndex &&
     soul.linearProjects &&
     soul.linearIssues &&
     soul.sliteNotes &&
@@ -220,6 +233,7 @@ export function isAlmightyConfig(soul: SoulConfigState, tools: ToolsConfigState)
   const allTools =
     tools.journal &&
     tools.repository &&
+    tools.cursorDelegate &&
     tools.linear &&
     tools.git &&
     tools.media &&
@@ -227,7 +241,9 @@ export function isAlmightyConfig(soul: SoulConfigState, tools: ToolsConfigState)
     tools.webSearch &&
     tools.slite &&
     tools.notion &&
-    tools.google;
+    tools.google &&
+    tools.memory &&
+    tools.aiIntegrations;
 
   return !!allSoul && !!allTools;
 }

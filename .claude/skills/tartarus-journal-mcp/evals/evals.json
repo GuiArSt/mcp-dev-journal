@@ -1,0 +1,17 @@
+{
+  "skill_name": "tartarus-journal-mcp",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "I just merged a PR that changes the DB schema for chat_log. I already committed. What should I do in Tartarus so journal + Entry 0 stay honest?",
+      "expected_output": "Agent recommends journal_create_entry with file paths; then journal_update_project_technical or submit_summary_report for Entry 0; mentions Cursor-as-validator if local; does not conflate repository documents with Entry 0.",
+      "files": []
+    },
+    {
+      "id": 2,
+      "prompt": "User wants an infographic for the last journal entry in tartarus repo but is not sure if they need a screenshot or GPT image.",
+      "expected_output": "Agent references journal-visual prompt, journal_generate_image vs journal_attach_screenshot constraints (localhost for screenshot), and optional auto after entry.",
+      "files": []
+    }
+  ]
+}

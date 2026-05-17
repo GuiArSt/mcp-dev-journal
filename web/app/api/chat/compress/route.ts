@@ -12,6 +12,8 @@ import { getDatabase } from "@/lib/db";
 import { withErrorHandler } from "@/lib/api-handler";
 import { requireBody, compressRequestSchema, compressionSummarySchema } from "@/lib/validations";
 import { NotFoundError } from "@/lib/errors";
+import { getPrompt } from "@/lib/ai/prompt-store";
+import { CHAT_COMPRESS_DEFAULT } from "@/lib/ai/prompt-defaults";
 
 /**
  * POST /api/chat/compress
@@ -76,19 +78,7 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
   // Use Haiku 4.5 for fast compression
   const model = anthropic("claude-3-5-haiku-20241022");
 
-  const systemPrompt = `You are a conversation summarizer. Your task is to extract structured information from a conversation between a user and Kronus (an AI assistant).
-
-Analyze the conversation and extract:
-1. A brief overview of what was discussed
-2. Main topics covered
-3. Decisions made (with rationale if available)
-4. Tasks and their current status
-5. Code files created or modified
-6. Technical context (technologies, patterns, constraints)
-7. User preferences discovered
-8. Any open questions or unresolved items
-
-Be concise but thorough. Focus on information that would be useful for continuing this conversation later.`;
+  const systemPrompt = getPrompt("chat-compress", CHAT_COMPRESS_DEFAULT);
 
   // AI SDK 6.0 pattern: generateText with Output.object() (generateObject is deprecated)
   const result = await generateText({

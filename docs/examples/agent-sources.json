@@ -1,0 +1,30 @@
+{
+  "version": 1,
+  "integrations": {
+    "codex": {
+      "sessionRoots": ["~/.codex/sessions"],
+      "skillRoots": ["~/.codex/skills"],
+      "configPaths": ["~/.codex/config.toml"]
+    },
+    "claude_code": {
+      "sessionRoots": ["~/.claude/projects"],
+      "skillRoots": ["~/.claude/skills"],
+      "configPaths": ["~/.claude.json"]
+    },
+    "gemini_cli": {
+      "sessionRoots": ["~/.gemini/tmp"],
+      "configPaths": ["~/.gemini/settings.json"]
+    },
+    "cursor": {
+      "sessionRoots": ["~/.cursor/projects"],
+      "skillRoots": ["~/.cursor/skills-cursor"],
+      "configPaths": ["~/.cursor/mcp.json"]
+    }
+  },
+  "workspaces": [
+    {
+      "pathPrefix": "/Users/you/Documents/Software/Laboratory/tartarus",
+      "repository": "tartarus-workspace"
+    }
+  ]
+}

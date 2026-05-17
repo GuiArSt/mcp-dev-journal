@@ -51,7 +51,7 @@ export function NotesTab({ notes, loading }: NotesTabProps) {
   return (
     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
       {notes.map((doc) => (
-        <Link key={doc.slug} href={`/repository/${doc.slug}`} className="stagger-item">
+        <Link key={doc.slug} href={`/library/${doc.slug}`} className="stagger-item">
           <Card className="group relative flex h-full cursor-pointer flex-col overflow-hidden border-[var(--tartarus-border)] bg-[var(--tartarus-surface)] transition-[border-color,box-shadow] duration-200 ease-[cubic-bezier(0.23,1,0.32,1)] hover:border-[var(--tartarus-teal-dim)] hover:shadow-[0_0_20px_rgba(0,206,209,0.1)]">
             {/* Decorative accent bar */}
             <div className="h-0.5 bg-[var(--tartarus-teal)]" />

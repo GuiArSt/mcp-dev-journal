@@ -154,34 +154,35 @@ export function useFileUpload(compressionOptions?: CompressionOptions) {
   }, [handlePaste]);
 
   // Remove a selected image
-  const removeImage = (index: number) => {
+  const removeImage = useCallback((index: number) => {
     setImagePreviews((prev) => prev.filter((_, i) => i !== index));
     setCompressionInfo((prev) => prev.filter((_, i) => i !== index));
 
     // Rebuild FileList without the removed file
-    if (selectedFiles) {
+    setSelectedFiles((current) => {
+      if (!current) return current;
       const dataTransfer = new DataTransfer();
-      Array.from(selectedFiles).forEach((f, i) => {
+      Array.from(current).forEach((f, i) => {
         if (i !== index) dataTransfer.items.add(f);
       });
       if (dataTransfer.files.length === 0) {
-        setSelectedFiles(undefined);
         if (fileInputRef.current) fileInputRef.current.value = "";
+        return undefined;
       } else {
-        setSelectedFiles(dataTransfer.files);
+        return dataTransfer.files;
       }
-    }
-  };
+    });
+  }, []);
 
   // Clear all selected files
-  const clearFiles = () => {
+  const clearFiles = useCallback(() => {
     setSelectedFiles(undefined);
     setImagePreviews([]);
     setCompressionInfo([]);
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
     }
-  };
+  }, []);
 
   return {
     fileInputRef,

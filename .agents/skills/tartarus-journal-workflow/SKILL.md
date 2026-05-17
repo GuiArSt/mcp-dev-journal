@@ -5,6 +5,8 @@ description: Use when working inside the Tartarus repo and the task touches comm
 
 # Tartarus Journal Workflow
 
+**Claude Code (`.claude/skills/`):** For the expanded playbook — Kronus vs Cursor roles, auto mode direction, chat log, infographics, and full MCP tool map — use **`tartarus-journal-mcp`** at `.claude/skills/tartarus-journal-mcp/SKILL.md`. This agents skill stays the **short four-layer model**; keep both aligned when behavior changes.
+
 Use this skill when the user is asking about how work should be documented in Tartarus, how to update project memory after code changes, how commits relate to journal entries, or how MCP tools/resources should be used in this repo.
 
 ## Core model

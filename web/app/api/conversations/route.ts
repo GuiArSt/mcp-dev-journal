@@ -50,12 +50,14 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
   }
 
   // Validate after parsing
-  const { title, messages, sessionConfig } = saveConversationSchema.parse(body);
+  const { title, messages, sessionConfig, artifactRefs, chatLog } = saveConversationSchema.parse(body);
   const sessionJson =
     sessionConfig !== undefined && sessionConfig !== null
       ? JSON.stringify(sessionConfig)
       : null;
-  const id = saveConversation(title, messages, sessionJson);
+  const artifactRefsJson = artifactRefs !== undefined ? JSON.stringify(artifactRefs) : null;
+  const chatLogJson = chatLog !== undefined ? JSON.stringify(chatLog) : null;
+  const id = saveConversation(title, messages, sessionJson, artifactRefsJson, chatLogJson);
 
   return NextResponse.json({
     id,

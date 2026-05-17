@@ -33,9 +33,9 @@ CREATE INDEX IF NOT EXISTS idx_journal_entries_date ON journal_entries(date DESC
 CREATE INDEX IF NOT EXISTS idx_journal_entries_created ON journal_entries(created_at DESC);
 
 -- ============================================
--- 2. PROJECT SUMMARIES ("Entry 0" per repo)
+-- 2. REPOSITORY OVERVIEWS ("Entry 0" per repo; was project_summaries)
 -- ============================================
-CREATE TABLE IF NOT EXISTS project_summaries (
+CREATE TABLE IF NOT EXISTS repository_overviews (
   id BIGSERIAL PRIMARY KEY,
   repository TEXT UNIQUE NOT NULL,
   git_url TEXT NOT NULL,
@@ -51,7 +51,7 @@ CREATE TABLE IF NOT EXISTS project_summaries (
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
-CREATE INDEX IF NOT EXISTS idx_project_summaries_repository ON project_summaries(repository);
+CREATE INDEX IF NOT EXISTS idx_repository_overviews_repository ON repository_overviews(repository);
 
 -- ============================================
 -- 3. ENTRY ATTACHMENTS (images, diagrams, PDFs)
@@ -208,7 +208,7 @@ DECLARE
   t TEXT;
 BEGIN
   FOR t IN SELECT unnest(ARRAY[
-    'journal_entries', 'project_summaries', 'documents',
+    'journal_entries', 'repository_overviews', 'documents',
     'skills', 'work_experience', 'education',
     'media_assets', 'chat_conversations'
   ])
@@ -231,7 +231,7 @@ $$;
 -- Uncomment and configure if you want public access with RLS
 
 -- ALTER TABLE journal_entries ENABLE ROW LEVEL SECURITY;
--- ALTER TABLE project_summaries ENABLE ROW LEVEL SECURITY;
+-- ALTER TABLE repository_overviews ENABLE ROW LEVEL SECURITY;
 -- ALTER TABLE documents ENABLE ROW LEVEL SECURITY;
 -- etc...
 
@@ -247,7 +247,7 @@ $$;
 -- ============================================
 -- Tables created:
 -- 1. journal_entries (commits)
--- 2. project_summaries (repo overviews)
+-- 2. repository_overviews (repo overviews / Entry 0)
 -- 3. entry_attachments (files linked to entries)
 -- 4. documents (writings, prompts)
 -- 5. skills (CV)

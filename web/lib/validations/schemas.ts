@@ -321,6 +321,10 @@ export const saveConversationSchema = z.object({
   messages: z.array(z.any()).min(1, "Messages are required"),
   /** Kronus UI snapshot (model, soul, tools, skills, format) — see web/lib/chat-session-snapshot.ts */
   sessionConfig: z.any().optional(),
+  /** Hourglass artifact shelf — ArtifactRef[] with uuid + snapshot fields */
+  artifactRefs: z.array(z.any()).optional(),
+  /** Hourglass chat log — append-only ChatLogEntry[] */
+  chatLog: z.array(z.any()).optional(),
 });
 
 export type SaveConversation = z.infer<typeof saveConversationSchema>;
@@ -423,7 +427,12 @@ export type CreateExperience = z.infer<typeof createExperienceSchema>;
 /**
  * Update work experience
  */
-export const updateExperienceSchema = createExperienceSchema.partial().omit({ id: true });
+export const updateExperienceSchema = createExperienceSchema
+  .partial()
+  .omit({ id: true })
+  .extend({
+    dateEnd: z.string().nullable().optional(),
+  });
 
 export type UpdateExperience = z.infer<typeof updateExperienceSchema>;
 

@@ -4,5 +4,5 @@
 -- Update journal_entries
 UPDATE journal_entries SET repository = 'jobilla' WHERE repository = 'Jobilla';
 
--- Update project_summaries (if exists)
-UPDATE project_summaries SET repository = 'jobilla' WHERE repository = 'Jobilla';
+-- Update repository_overviews (legacy installs may still have project_summaries)
+UPDATE repository_overviews SET repository = 'jobilla' WHERE repository = 'Jobilla';

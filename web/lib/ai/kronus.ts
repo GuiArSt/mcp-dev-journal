@@ -1,6 +1,7 @@
 import fs from "fs";
 import path from "path";
 import os from "os";
+import { getPrompt } from "@/lib/ai/prompt-store";
 import {
   getDrizzleDb,
   documents,
@@ -16,6 +17,7 @@ import {
 } from "@/lib/db/drizzle";
 import { eq, desc, and } from "drizzle-orm";
 import { formatDateShort } from "@/lib/utils";
+import { buildChatIndexContext } from "@/lib/chat-memory";
 
 // Cache the soul only (repository is dynamic based on config)
 let cachedSoul: string | null = null;
@@ -48,6 +50,7 @@ export interface SoulConfig {
   workExperience: boolean;
   education: boolean;
   journalEntries: boolean;
+  chatIndex: boolean;
   // Linear context - mirrored from Linear API
   linearProjects: boolean;
   linearIssues: boolean;
@@ -65,6 +68,7 @@ export const DEFAULT_SOUL_CONFIG: SoulConfig = {
   workExperience: false, // Can be enabled via Soul Config
   education: false, // Can be enabled via Soul Config
   journalEntries: false, // Can be enabled via Soul Config
+  chatIndex: false, // Summarized chat memory index only
   // Linear context - disabled by default
   linearProjects: false, // Can be enabled via Soul Config
   linearIssues: false, // Can be enabled via Soul Config
@@ -126,6 +130,15 @@ Match the user's tone - be accessible yet ready to dive deep. You have access to
 }
 
 /**
+ * Load the soul from the DB prompt store (seeds from file on first call).
+ * Unlike loadKronusSoul() this always reflects the active version in the DB,
+ * so edits made via the control panel take effect on the next request.
+ */
+export function loadKronusSoulFromStore(): string {
+  return getPrompt("kronus-soul", loadKronusSoul());
+}
+
+/**
  * Estimate token count (rough: ~4 chars per token for English)
  */
 function estimateTokens(text: string): number {
@@ -133,10 +146,10 @@ function estimateTokens(text: string): number {
 }
 
 /**
- * Load the Repository sections based on config
+ * Load the Library sections based on config
  * This is NOT cached - generated fresh for each new conversation based on config
  *
- * The Repository IS the soul's flesh - it defines who the creator is,
+ * The Library is the soul's flesh - it defines who the creator is,
  * what they've built, what they know, and what they've expressed.
  */
 export async function loadRepositoryForSoul(
@@ -368,6 +381,19 @@ ${entriesSection.join("\n\n---\n\n")}`;
       }
     }
 
+    // ===== CHAT INDEX =====
+    if (config.chatIndex) {
+      try {
+        const { content: chatIndexText } = buildChatIndexContext();
+        if (chatIndexText) {
+          sections.push(chatIndexText);
+          totalChars += chatIndexText.length;
+        }
+      } catch (error) {
+        console.warn("[Kronus] Chat index not available:", error);
+      }
+    }
+
     // ===== LINEAR PROJECTS (from cached database) =====
     if (config.linearProjects) {
       try {
@@ -568,15 +594,15 @@ ${pagesSection.join("\n\n---\n\n")}`;
       }
     }
 
-    // ===== ASSEMBLE REPOSITORY =====
+    // ===== ASSEMBLE LIBRARY =====
     if (sections.length === 0) {
       return { content: "", tokenEstimate: 0 };
     }
 
     const repository = `
-# Creator's Repository
+# Creator's Library
 
-This repository IS your soul's flesh - it defines who your creator is,
+This Library is your soul's flesh - it defines who your creator is,
 what they've built, what they know, and what they've expressed.
 When you speak, you draw from this well. When asked, you know these intimately.
 
@@ -586,7 +612,7 @@ ${sections.join("\n\n" + "=".repeat(60) + "\n\n")}
     const tokenEstimate = estimateTokens(repository);
     const agentConfig = getAgentConfig();
     console.log(
-      `[${agentConfig.name}] Repository loaded: ${totalChars} chars, ~${tokenEstimate} tokens (config: ${JSON.stringify(config)})`
+      `[${agentConfig.name}] Library loaded: ${totalChars} chars, ~${tokenEstimate} tokens (config: ${JSON.stringify(config)})`
     );
 
     return { content: repository, tokenEstimate };
@@ -623,9 +649,9 @@ function buildLeanProtocol(agentName: string): string {
 **Journal:**
 - journal_edit_entry (editing why, what_changed, decisions, technologies, kronus_wisdom)
 - journal_regenerate_entry (regenerating with AI)
-- journal_upsert_project_summary (creating/updating project summaries)
+- journal_upsert_project_summary (creating/updating the Repository overview / Entry 0)
 
-**Repository:**
+**Library:**
 - repository_create_document (new writings, prompts, notes)
 - repository_update_document (editing title, content, tags, metadata)
 - repository_create_skill / repository_update_skill
@@ -720,7 +746,7 @@ export async function getKronusSystemPrompt(
   config: SoulConfig = DEFAULT_SOUL_CONFIG
 ): Promise<string> {
   const agentConfig = getAgentConfig();
-  const soul = loadKronusSoul();
+  const soul = loadKronusSoulFromStore();
   const { content: repository, tokenEstimate } = await loadRepositoryForSoul(config);
   const todayDate = formatTodayDate();
 
@@ -753,10 +779,11 @@ ${repository}`;
  */
 export async function getKronusSystemPromptWithSkills(
   activeSkills: import("@/lib/ai/skills").KronusSkill[],
-  allAvailableSkills?: import("@/lib/ai/skills").SkillInfo[]
+  allAvailableSkills?: import("@/lib/ai/skills").SkillInfo[],
+  soulOverride?: Partial<SoulConfig>,
 ): Promise<string> {
   const agentConfig = getAgentConfig();
-  const soul = loadKronusSoul();
+  const soul = loadKronusSoulFromStore();
   const todayDate = formatTodayDate();
 
   // Import skill utilities
@@ -772,14 +799,19 @@ export async function getKronusSystemPromptWithSkills(
     const merged = mergeSkillConfigs(activeSkills);
     effectiveSoulConfig = {
       ...merged.soul,
+      ...Object.fromEntries(
+        Object.entries(soulOverride || {}).filter(([, value]) => value === true),
+      ),
       // Ensure linearIncludeCompleted defaults to false if not explicitly set
-      linearIncludeCompleted: merged.soul.linearIncludeCompleted ?? false,
+      linearIncludeCompleted:
+        soulOverride?.linearIncludeCompleted ?? merged.soul.linearIncludeCompleted ?? false,
     };
     skillPromptSection = buildSkillPromptSection(activeSkills);
   } else {
     effectiveSoulConfig = {
       ...LEAN_SOUL_CONFIG,
-      linearIncludeCompleted: false,
+      ...(soulOverride || {}),
+      linearIncludeCompleted: soulOverride?.linearIncludeCompleted ?? false,
     };
   }
 

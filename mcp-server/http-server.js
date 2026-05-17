@@ -96,17 +96,17 @@ function listBranches(repository) {
 }
 
 function getProjectSummary(repository) {
-  return db.prepare('SELECT * FROM project_summaries WHERE repository = ?').get(repository);
+  return db.prepare('SELECT * FROM repository_overviews WHERE repository = ?').get(repository);
 }
 
 function listAllProjectSummariesPaginated(limit, offset) {
   const summaries = db.prepare(`
-    SELECT * FROM project_summaries
+    SELECT * FROM repository_overviews
     ORDER BY repository
     LIMIT ? OFFSET ?
   `).all(limit, offset);
 
-  const total = db.prepare('SELECT COUNT(*) as count FROM project_summaries').get().count;
+  const total = db.prepare('SELECT COUNT(*) as count FROM repository_overviews').get().count;
 
   return { summaries, total };
 }

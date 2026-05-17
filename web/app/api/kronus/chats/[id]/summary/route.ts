@@ -1,12 +1,3 @@
-/**
- * Kronus Chat Summary API - Individual Chat
- *
- * GET: Check if a chat has a summary
- * POST: Generate or regenerate summary for a specific chat
- *
- * Uses Gemini Flash 3 (hardcoded) for summarization - context size + cost efficiency
- */
-
 import { NextRequest, NextResponse } from "next/server";
 import Database from "better-sqlite3";
 import fs from "fs";
@@ -14,6 +5,9 @@ import path from "path";
 import { generateText, Output } from "ai";
 import { google } from "@ai-sdk/google";
 import { z } from "zod";
+import { traceAI } from "@/lib/observability";
+import { getPrompt } from "@/lib/ai/prompt-store";
+import { KRONUS_CHAT_SUMMARY_DEFAULT } from "@/lib/ai/prompt-defaults";
 
 const SummarySchema = z.object({
   summary: z
@@ -61,22 +55,20 @@ async function summarizeChat(
 
   const conversationText = `Question: ${question}\n\nAnswer: ${answer}${repository ? `\n\nRepository: ${repository}` : ""}`;
 
-  const result = await generateText({
-    model,
-    output: Output.object({ schema: SummarySchema }),
-    system: `You are a conversation summarizer for the Tartarus system.
-Create a "living summary" - a concise description of what a Kronus conversation was about.
-
-## Guidelines
-- Be concise: 2-3 sentences maximum
-- Focus on the essence: What was the user asking? What did Kronus explain?
-- Include context: Mention repository, technologies, or specific topics if relevant
-- Keep it factual and informative
-
-## Format
-"User asked about [topic]. Kronus explained [key points]. Discussion covered [specific aspects]."`,
-    prompt: `Generate a living summary for this Kronus conversation:\n\n${conversationText}`,
-  });
+  const userPrompt = `Generate a living summary for this Kronus conversation:\n\n${conversationText}`;
+  const result = await traceAI(
+    "kronus-chat-summary",
+    "gemini-3-flash",
+    () => generateText({
+      model,
+      output: Output.object({ schema: SummarySchema }),
+      system: getPrompt("kronus-chat-summary", KRONUS_CHAT_SUMMARY_DEFAULT),
+      prompt: userPrompt,
+    }),
+    { repository: repository ?? null },
+    userPrompt,
+    "/api/kronus/chats/[id]/summary",
+  );
 
   return result.output?.summary ?? null;
 }

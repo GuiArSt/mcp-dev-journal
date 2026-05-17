@@ -93,7 +93,7 @@ console.log("\n--- Core Tables ---");
 
 const requiredTables = [
   "journal_entries",
-  "project_summaries",
+  "repository_overviews",
   "entry_attachments",
   "chat_conversations",
   "tartarus_objects",
