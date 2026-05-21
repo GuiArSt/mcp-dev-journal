@@ -20,22 +20,41 @@ function now() {
 async function postJson(path, body) {
   const response = await fetch(`${baseUrl}${path}`, {
     method: "POST",
+    redirect: "manual",
     headers: { "content-type": "application/json" },
     body: JSON.stringify(body),
   });
-  const data = await response.json().catch(() => ({}));
+  const text = await response.text();
+  let data = {};
+  try {
+    data = text ? JSON.parse(text) : {};
+  } catch {
+    data = { raw: text.slice(0, 500) };
+  }
+  if (response.status >= 300 && response.status < 400) {
+    throw new Error(`HTTP ${response.status} redirect to ${response.headers.get("location") ?? "unknown"}. Is the API route allowed by middleware?`);
+  }
   if (!response.ok) {
-    const message = data.error || `HTTP ${response.status}`;
+    const message = data.error || data.raw || `HTTP ${response.status}`;
     throw new Error(message);
   }
   return data;
 }
 
 async function getJson(path) {
-  const response = await fetch(`${baseUrl}${path}`);
-  const data = await response.json().catch(() => ({}));
+  const response = await fetch(`${baseUrl}${path}`, { redirect: "manual" });
+  const text = await response.text();
+  let data = {};
+  try {
+    data = text ? JSON.parse(text) : {};
+  } catch {
+    data = { raw: text.slice(0, 500) };
+  }
+  if (response.status >= 300 && response.status < 400) {
+    throw new Error(`HTTP ${response.status} redirect to ${response.headers.get("location") ?? "unknown"}. Is the API route allowed by middleware?`);
+  }
   if (!response.ok) {
-    const message = data.error || `HTTP ${response.status}`;
+    const message = data.error || data.raw || `HTTP ${response.status}`;
     throw new Error(message);
   }
   return data;

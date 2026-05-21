@@ -34,7 +34,8 @@ export function middleware(request: NextRequest) {
   const isLocalMcp = isLocalhost && (
     request.nextUrl.pathname === "/api/screenshot" ||
     request.nextUrl.pathname.startsWith("/api/media") ||
-    request.nextUrl.pathname.startsWith("/api/chat-hourglass/muse")
+    request.nextUrl.pathname.startsWith("/api/chat-hourglass/muse") ||
+    request.nextUrl.pathname.startsWith("/api/integrations/slack/")
   );
 
   // Allow auth API, health check, AI endpoints, MCP resources, attachment downloads, MCP repository access, local cron, and screenshot
@@ -58,7 +59,6 @@ export function middleware(request: NextRequest) {
 export const config = {
   matcher: ["/((?!_next/static|_next/image|favicon.ico).*)"],
 };
-
 
 
 

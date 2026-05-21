@@ -20,9 +20,21 @@ function now() {
 }
 
 async function request(path, init) {
-  const response = await fetch(`${baseUrl}${path}`, init);
-  const data = await response.json().catch(() => ({}));
-  if (!response.ok) throw new Error(data.error || `HTTP ${response.status}`);
+  const response = await fetch(`${baseUrl}${path}`, {
+    redirect: "manual",
+    ...init,
+  });
+  const text = await response.text();
+  let data = {};
+  try {
+    data = text ? JSON.parse(text) : {};
+  } catch {
+    data = { raw: text.slice(0, 500) };
+  }
+  if (response.status >= 300 && response.status < 400) {
+    throw new Error(`HTTP ${response.status} redirect to ${response.headers.get("location") ?? "unknown"}. Is the API route allowed by middleware?`);
+  }
+  if (!response.ok) throw new Error(data.error || data.raw || `HTTP ${response.status}`);
   return data;
 }
 
