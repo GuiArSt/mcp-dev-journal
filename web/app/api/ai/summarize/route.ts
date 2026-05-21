@@ -2,7 +2,7 @@
  * AI Summarize Endpoint - Generate dense 3-sentence summaries for Kronus indexing
  *
  * Uses AI SDK 6.0 generateText with Output.object() for structured outputs
- * Model: Gemini 3.1 Flash Lite (fast, cheap)
+ * Model: Gemini 3.5 Flash (default summarizer)
  */
 
 import { generateText, Output } from "ai";
@@ -11,6 +11,10 @@ import { z } from "zod";
 import { NextResponse } from "next/server";
 import { registerRequest, deregisterRequest } from "@/lib/request-registry";
 import { traceAI } from "@/lib/observability";
+import { DEFAULT_CHAT_MODEL, getChatModelEntry, resolveChatModelId } from "@/lib/ai/model-catalog";
+
+const SUMMARY_MODEL_KEY = DEFAULT_CHAT_MODEL;
+const SUMMARY_MODEL_ID = resolveChatModelId(getChatModelEntry(SUMMARY_MODEL_KEY), process.env);
 
 /**
  * Input schema for summary generation
@@ -64,7 +68,7 @@ export async function POST(req: Request) {
       controller,
       endpoint: "summarize",
       mode: input.type,
-      model: "gemini-3.1-flash-lite-preview",
+      model: SUMMARY_MODEL_ID,
       startedAt: new Date(),
       metadata: {
         type: input.type,
@@ -73,8 +77,8 @@ export async function POST(req: Request) {
       },
     });
 
-    // Use Gemini 3.1 Flash Lite for fast, cost-effective summarization
-    const model = google("gemini-3.1-flash-lite-preview");
+    // Use the configured default summarizer model.
+    const model = google(SUMMARY_MODEL_ID);
 
     // Build context string from metadata if available
     let metadataContext = "";
@@ -90,7 +94,7 @@ export async function POST(req: Request) {
 
     const result = await traceAI(
       `summarize:${input.type}`,
-      "gemini-3.1-flash-lite-preview",
+      SUMMARY_MODEL_ID,
       () => generateText({
         model,
         abortSignal: controller.signal,

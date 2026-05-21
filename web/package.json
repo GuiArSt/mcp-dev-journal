@@ -7,6 +7,7 @@
     "build": "next build",
     "start": "next start",
     "slack:backfill": "node scripts/slack-backfill.mjs",
+    "slack:summarize": "node scripts/slack-summarize.mjs",
     "lint": "eslint . --ext .ts,.tsx,.js,.jsx",
     "lint:fix": "eslint . --ext .ts,.tsx,.js,.jsx --fix",
     "format": "prettier --check \"**/*.{ts,tsx,js,jsx,json,css}\"",
