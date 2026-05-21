@@ -77,6 +77,7 @@ describe("Slack vault sync", () => {
             ok: true,
             members: [
               { id: "U1", team_id: "T1", name: "g", real_name: "Guillermo", tz: "Europe/Berlin", profile: { title: "Architect" } },
+              { id: "U2", team_id: "T1", name: "ana", real_name: "Ana", tz: "Europe/Berlin" },
             ],
           });
         }
@@ -146,7 +147,7 @@ describe("Slack vault sync", () => {
     expect(calls.filter((call) => call.params.channel === "C2")).toHaveLength(0);
 
     const db = getDatabase();
-    expect(db.prepare("SELECT COUNT(*) as count FROM slack_users").get()).toMatchObject({ count: 1 });
+    expect(db.prepare("SELECT COUNT(*) as count FROM slack_users").get()).toMatchObject({ count: 2 });
     expect(db.prepare("SELECT COUNT(*) as count FROM slack_conversations").get()).toMatchObject({ count: 4 });
     expect(db.prepare("SELECT COUNT(*) as count FROM slack_messages").get()).toMatchObject({ count: 4 });
 
@@ -162,11 +163,94 @@ describe("Slack vault sync", () => {
       configured: true,
       tokenSource: "SLACK_USER_TOKEN",
       auth: { teamId: "T1", userId: "U1" },
-      stats: { users: 1, messages: 4 },
+      stats: { users: 2, messages: 4 },
     });
     expect(listSlackVaultCache(10).recentMessages).toEqual(
       expect.arrayContaining([
-        expect.objectContaining({ conversationId: "C1", text: "thread reply", threadTs: "1710000003.000100" }),
+        expect.objectContaining({
+          authorName: "Ana",
+          conversationId: "C1",
+          conversationTitle: "public-room",
+          text: "thread reply",
+          threadTs: "1710000003.000100",
+        }),
+      ]),
+    );
+  });
+
+  it("can sync messages from cached conversations without rediscovering conversations", async () => {
+    const db = getDatabase();
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS slack_conversations (
+        id TEXT PRIMARY KEY,
+        team_id TEXT,
+        name TEXT,
+        type TEXT NOT NULL,
+        vault_type TEXT NOT NULL,
+        is_member INTEGER DEFAULT 0,
+        is_archived INTEGER DEFAULT 0,
+        is_private INTEGER DEFAULT 0,
+        is_im INTEGER DEFAULT 0,
+        is_mpim INTEGER DEFAULT 0,
+        is_channel INTEGER DEFAULT 0,
+        user_id TEXT,
+        topic TEXT,
+        purpose TEXT,
+        num_members INTEGER,
+        raw_json TEXT NOT NULL,
+        summary TEXT,
+        summarized_at TEXT,
+        latest_ts TEXT,
+        oldest_ts TEXT,
+        synced_at TEXT DEFAULT CURRENT_TIMESTAMP,
+        updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+    db.prepare(`
+      INSERT INTO slack_conversations
+        (id, name, type, vault_type, is_member, is_channel, raw_json)
+      VALUES (?, ?, ?, ?, ?, ?, ?)
+    `).run(
+      "CACHED1",
+      "cached-room",
+      "public_channel",
+      "public_forum",
+      1,
+      1,
+      JSON.stringify({ id: "CACHED1", name: "cached-room", is_channel: true, is_member: true }),
+    );
+
+    const calls: string[] = [];
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: string | URL | Request) => {
+        const url = new URL(typeof input === "string" ? input : input instanceof URL ? input.href : input.url);
+        const method = url.pathname.split("/").pop() ?? "";
+        calls.push(method);
+
+        if (method === "auth.test") {
+          return slackResponse({ ok: true, team_id: "T1", team: "Tartarus Test", user_id: "U1", user: "g" });
+        }
+        if (method === "conversations.history") {
+          return slackResponse({ ok: true, messages: [{ ts: "1710000100.000100", user: "U1", text: "cached sync" }] });
+        }
+        throw new Error(`Unexpected Slack method ${method}`);
+      }),
+    );
+
+    await syncSlackVault({
+      syncUsers: false,
+      syncConversations: false,
+      syncMessages: true,
+      syncThreads: false,
+      maxConversations: 1,
+      messageLimit: 15,
+    });
+
+    expect(calls).toEqual(["auth.test", "conversations.history"]);
+    expect(listSlackVaultCache(10).recentMessages).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ conversationId: "CACHED1", conversationTitle: "cached-room", text: "cached sync" }),
       ]),
     );
   });

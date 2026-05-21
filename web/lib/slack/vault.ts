@@ -13,10 +13,18 @@ export interface SlackSyncOptions {
   messageLimit?: number;
   maxThreadPages?: number;
   threadReplyLimit?: number;
+  maxThreadsPerConversation?: number;
   continueBackfill?: boolean;
+  maxRateLimitWaitMs?: number;
   includeArchived?: boolean;
   includeNonMemberPublic?: boolean;
   forceFull?: boolean;
+}
+
+const DEFAULT_RATE_LIMIT_WAIT_MS = 70_000;
+
+function sleep(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 interface SlackApiResponse<T> {
@@ -83,7 +91,12 @@ function getSlackToken(): { token: string; source: "SLACK_USER_TOKEN" | "SLACK_B
   return null;
 }
 
-async function slackApi<T>(method: string, params: Record<string, string | number | boolean | undefined>, token: string): Promise<SlackApiResponse<T>> {
+async function slackApi<T>(
+  method: string,
+  params: Record<string, string | number | boolean | undefined>,
+  token: string,
+  options: { maxRateLimitWaitMs?: number; attempt?: number } = {},
+): Promise<SlackApiResponse<T>> {
   const url = new URL(`https://slack.com/api/${method}`);
   for (const [key, value] of Object.entries(params)) {
     if (value !== undefined && value !== "") url.searchParams.set(key, String(value));
@@ -100,6 +113,16 @@ async function slackApi<T>(method: string, params: Record<string, string | numbe
   const json = (await res.json()) as SlackApiResponse<T>;
   if (retryAfter) json.retry_after = Number(retryAfter);
   if (!res.ok && !json.error) json.error = `HTTP ${res.status}`;
+
+  const isRateLimited = res.status === 429 || json.error === "ratelimited";
+  const retryAfterMs = Number.isFinite(json.retry_after) ? Number(json.retry_after) * 1000 : 0;
+  const attempt = options.attempt ?? 0;
+  const maxWait = options.maxRateLimitWaitMs ?? DEFAULT_RATE_LIMIT_WAIT_MS;
+  if (isRateLimited && retryAfterMs > 0 && retryAfterMs <= maxWait && attempt < 2) {
+    await sleep(retryAfterMs + 250);
+    return slackApi(method, params, token, { ...options, attempt: attempt + 1 });
+  }
+
   return json;
 }
 
@@ -398,18 +421,27 @@ export function listSlackVaultCache(limit = 50) {
   ensureSlackVaultSchema();
   const db = getDatabase();
   const conversations = db.prepare(`
-    SELECT id, name, type, vault_type as vaultType, is_member as isMember, is_archived as isArchived,
-           is_private as isPrivate, user_id as userId, num_members as numMembers, latest_ts as latestTs,
-           summary, synced_at as syncedAt, updated_at as updatedAt
-    FROM slack_conversations
-    ORDER BY updated_at DESC
+    SELECT c.id, c.name, c.type, c.vault_type as vaultType, c.is_member as isMember, c.is_archived as isArchived,
+           c.is_private as isPrivate, c.user_id as userId, c.num_members as numMembers, c.latest_ts as latestTs,
+           COALESCE(c.name, im.real_name, im.name, c.user_id, c.id) as title,
+           c.summary, c.synced_at as syncedAt, c.updated_at as updatedAt
+    FROM slack_conversations c
+    LEFT JOIN slack_users im ON im.id = c.user_id
+    ORDER BY c.updated_at DESC
     LIMIT ?
   `).all(limit);
   const recentMessages = db.prepare(`
-    SELECT conversation_id as conversationId, ts, user_id as userId, username, subtype, text, thread_ts as threadTs,
-           reply_count as replyCount, synced_at as syncedAt
-    FROM slack_messages
-    ORDER BY CAST(ts AS REAL) DESC
+    SELECT m.conversation_id as conversationId, m.ts, m.user_id as userId, m.username, m.subtype, m.text,
+           m.thread_ts as threadTs, m.reply_count as replyCount, m.synced_at as syncedAt,
+           c.name as conversationName, c.type as conversationType, c.vault_type as conversationVaultType,
+           COALESCE(c.name, im.real_name, im.name, c.user_id, m.conversation_id) as conversationTitle,
+           COALESCE(u.real_name, u.name, m.username, m.user_id, m.bot_id) as authorName,
+           u.name as authorHandle
+    FROM slack_messages m
+    LEFT JOIN slack_conversations c ON c.id = m.conversation_id
+    LEFT JOIN slack_users u ON u.id = m.user_id
+    LEFT JOIN slack_users im ON im.id = c.user_id
+    ORDER BY CAST(m.ts AS REAL) DESC
     LIMIT ?
   `).all(limit);
   return { conversations, recentMessages, status: getSlackVaultStatus() };
@@ -545,7 +577,7 @@ async function syncRepliesForThread(token: string, conversationId: string, threa
   return { conversationId, threadTs, ok: true, pages, replies: count, cursor: cursor || null };
 }
 
-async function syncThreadsForConversation(token: string, conversationId: string, opts: Required<Pick<SlackSyncOptions, "maxThreadPages" | "threadReplyLimit">>) {
+async function syncThreadsForConversation(token: string, conversationId: string, opts: Required<Pick<SlackSyncOptions, "maxThreadPages" | "threadReplyLimit" | "maxThreadsPerConversation">>) {
   const db = getDatabase();
   const parents = db.prepare(`
     SELECT ts
@@ -553,8 +585,8 @@ async function syncThreadsForConversation(token: string, conversationId: string,
     WHERE conversation_id = ?
       AND is_thread_parent = 1
     ORDER BY CAST(ts AS REAL) DESC
-    LIMIT 25
-  `).all(conversationId) as Array<{ ts: string }>;
+    LIMIT ?
+  `).all(conversationId, opts.maxThreadsPerConversation) as Array<{ ts: string }>;
 
   const results = [];
   for (const parent of parents) {
@@ -583,7 +615,9 @@ export async function syncSlackVault(options: SlackSyncOptions = {}) {
     messageLimit: Math.max(1, Math.min(options.messageLimit ?? 15, 200)),
     maxThreadPages: Math.max(1, Math.min(options.maxThreadPages ?? 1, 10)),
     threadReplyLimit: Math.max(1, Math.min(options.threadReplyLimit ?? 15, 200)),
+    maxThreadsPerConversation: Math.max(0, Math.min(options.maxThreadsPerConversation ?? 1, 25)),
     continueBackfill: options.continueBackfill ?? false,
+    maxRateLimitWaitMs: Math.max(0, Math.min(options.maxRateLimitWaitMs ?? DEFAULT_RATE_LIMIT_WAIT_MS, 120_000)),
     includeArchived: options.includeArchived ?? false,
     includeNonMemberPublic: options.includeNonMemberPublic ?? false,
     forceFull: options.forceFull ?? false,
@@ -610,7 +644,24 @@ export async function syncSlackVault(options: SlackSyncOptions = {}) {
       conversations = synced.items;
     } else {
       const db = getDatabase();
-      conversations = db.prepare(`SELECT raw_json FROM slack_conversations ORDER BY updated_at DESC LIMIT ?`).all(opts.maxConversations).map((row: any) => JSON.parse(row.raw_json));
+      conversations = db.prepare(`
+        SELECT c.raw_json
+        FROM slack_conversations c
+        LEFT JOIN slack_sync_state s ON s.scope = 'conversation:' || c.id
+        WHERE (? = 1 OR c.is_archived = 0)
+          AND (
+            c.is_im = 1
+            OR c.is_mpim = 1
+            OR c.is_private = 1
+            OR c.type = 'private_channel'
+            OR (? = 1 OR c.is_member = 1)
+          )
+        ORDER BY
+          CASE WHEN s.updated_at IS NULL THEN 0 ELSE 1 END ASC,
+          s.updated_at ASC,
+          c.updated_at ASC
+        LIMIT ?
+      `).all(opts.includeArchived ? 1 : 0, opts.includeNonMemberPublic ? 1 : 0, opts.maxConversations).map((row: any) => JSON.parse(row.raw_json));
     }
 
     if (opts.syncMessages) {
@@ -635,12 +686,13 @@ export async function syncSlackVault(options: SlackSyncOptions = {}) {
       result.messages = messageResults;
     }
 
-    if (opts.syncThreads && opts.syncMessages) {
+    if (opts.syncThreads && opts.syncMessages && opts.maxThreadsPerConversation > 0) {
       const threadResults = [];
       for (const conversation of eligible) {
         const synced = await syncThreadsForConversation(tokenConfig.token, conversation.id, {
           maxThreadPages: opts.maxThreadPages,
           threadReplyLimit: opts.threadReplyLimit,
+          maxThreadsPerConversation: opts.maxThreadsPerConversation,
         });
         threadResults.push(...synced);
       }

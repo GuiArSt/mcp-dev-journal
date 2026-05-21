@@ -35,6 +35,7 @@ interface SlackConversation {
   userId?: string | null;
   numMembers?: number | null;
   latestTs?: string | null;
+  title?: string | null;
   summary?: string | null;
   syncedAt?: string | null;
   updatedAt?: string | null;
@@ -49,6 +50,12 @@ interface SlackMessage {
   text?: string | null;
   threadTs?: string | null;
   replyCount?: number | null;
+  conversationTitle?: string | null;
+  conversationName?: string | null;
+  conversationType?: string | null;
+  conversationVaultType?: string | null;
+  authorName?: string | null;
+  authorHandle?: string | null;
   syncedAt?: string | null;
 }
 
@@ -69,6 +76,7 @@ function formatCount(value: number | undefined) {
 }
 
 function conversationTitle(conversation: SlackConversation) {
+  if (conversation.title) return conversation.title;
   if (conversation.name) return conversation.name;
   if (conversation.userId) return `DM ${conversation.userId}`;
   return conversation.id;
@@ -114,27 +122,51 @@ export default function SlackIntegrationPage() {
     }
   }
 
-  async function runSync(kind: "pilot" | "backfill") {
+  function hasConversationDirectory() {
+    return Object.values(status?.stats.conversations ?? {}).some((count) => count > 0);
+  }
+
+  async function runSync(kind: "pilot" | "backfill" | "discover") {
     setSyncing(kind);
     setError(null);
     try {
       const body =
-        kind === "pilot"
+        kind === "discover"
           ? {
-              maxConversations: 8,
+              syncUsers: true,
+              syncConversations: true,
+              syncMessages: false,
+              syncThreads: false,
+              maxRateLimitWaitMs: 70_000,
+            }
+          : kind === "pilot"
+          ? {
+              syncUsers: false,
+              syncConversations: !hasConversationDirectory(),
+              syncMessages: true,
+              syncThreads: true,
+              maxConversations: 1,
               maxConversationPages: 1,
               messageLimit: 15,
               maxThreadPages: 1,
               threadReplyLimit: 15,
+              maxThreadsPerConversation: 1,
+              maxRateLimitWaitMs: 70_000,
               includeNonMemberPublic: false,
               forceFull: false,
             }
           : {
-              maxConversations: 30,
-              maxConversationPages: 2,
-              messageLimit: 100,
+              syncUsers: false,
+              syncConversations: false,
+              syncMessages: true,
+              syncThreads: false,
+              maxConversations: 1,
+              maxConversationPages: 1,
+              messageLimit: 15,
               maxThreadPages: 1,
-              threadReplyLimit: 50,
+              threadReplyLimit: 15,
+              maxThreadsPerConversation: 0,
+              maxRateLimitWaitMs: 70_000,
               continueBackfill: true,
               includeNonMemberPublic: false,
               forceFull: true,
@@ -186,6 +218,9 @@ export default function SlackIntegrationPage() {
             <Button variant="outline" onClick={loadCache} disabled={loading || !!syncing}>
               <RefreshCw className="mr-2 h-4 w-4" />
               Refresh
+            </Button>
+            <Button variant="outline" onClick={() => runSync("discover")} disabled={loading || !!syncing || !status?.configured}>
+              {syncing === "discover" ? "Discovering..." : "Rediscover"}
             </Button>
             <Button variant="outline" onClick={() => runSync("pilot")} disabled={loading || !!syncing || !status?.configured}>
               {syncing === "pilot" ? "Syncing..." : "Pilot sync"}
@@ -251,7 +286,9 @@ export default function SlackIntegrationPage() {
               <p className="mt-1 text-sm leading-6 text-[var(--tartarus-ivory-muted)]">
                 The vault copies Slack conversations visible to your token: direct messages, multi-person groups, private
                 channels you can access, and public channels you are a member of. Public channels you have not joined are
-                discovered as metadata but skipped for message history unless explicitly enabled in the API.
+                discovered as metadata but skipped for message history unless explicitly enabled in the API. Because Slack
+                enforces per-method limits, normal sync buttons reuse the cached directory; use Rediscover only when you
+                need to refresh the channel list.
               </p>
             </div>
           </div>
@@ -305,8 +342,11 @@ export default function SlackIntegrationPage() {
                   {(cache?.recentMessages ?? []).slice(0, 40).map((message) => (
                     <div key={`${message.conversationId}:${message.ts}`} className="rounded-md border border-[var(--tartarus-border)] bg-[var(--tartarus-surface)] p-3">
                       <div className="mb-1 flex items-center justify-between gap-2 text-xs text-[var(--tartarus-ivory-muted)]">
-                        <span>{message.conversationId}</span>
+                        <span className="truncate">{message.conversationTitle ?? message.conversationId}</span>
                         {message.threadTs && <span>thread</span>}
+                      </div>
+                      <div className="mb-2 text-xs text-[var(--tartarus-gold)]">
+                        {message.authorName ?? message.userId ?? message.username ?? "unknown"}
                       </div>
                       <p className="line-clamp-4 whitespace-pre-wrap text-sm leading-5">{message.text || message.subtype || "(empty event)"}</p>
                     </div>
