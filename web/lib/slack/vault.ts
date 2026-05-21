@@ -13,6 +13,7 @@ export interface SlackSyncOptions {
   messageLimit?: number;
   maxThreadPages?: number;
   threadReplyLimit?: number;
+  continueBackfill?: boolean;
   includeArchived?: boolean;
   includeNonMemberPublic?: boolean;
   forceFull?: boolean;
@@ -321,6 +322,17 @@ function getConversationLastSyncedTs(conversationId: string): string | null {
   return row?.last_synced_ts ?? null;
 }
 
+function getSyncState(scope: string): { cursor: string | null; lastSyncedTs: string | null } {
+  const db = getDatabase();
+  const row = db.prepare(`SELECT cursor, last_synced_ts FROM slack_sync_state WHERE scope = ?`).get(scope) as
+    | { cursor?: string | null; last_synced_ts?: string | null }
+    | undefined;
+  return {
+    cursor: row?.cursor ?? null,
+    lastSyncedTs: row?.last_synced_ts ?? null,
+  };
+}
+
 function saveSyncState(scope: string, patch: { cursor?: string | null; lastSyncedTs?: string | null; stats?: unknown; error?: string | null }) {
   const db = getDatabase();
   db.prepare(`
@@ -453,12 +465,13 @@ async function syncConversations(token: string, opts: Required<Pick<SlackSyncOpt
   return { pages, conversations: count, items: conversations };
 }
 
-async function syncMessagesForConversation(token: string, conversation: SlackConversation, opts: Required<Pick<SlackSyncOptions, "maxConversationPages" | "messageLimit" | "forceFull">>) {
-  let cursor = "";
+async function syncMessagesForConversation(token: string, conversation: SlackConversation, opts: Required<Pick<SlackSyncOptions, "maxConversationPages" | "messageLimit" | "forceFull" | "continueBackfill">>) {
+  const state = getSyncState(`conversation:${conversation.id}`);
+  let cursor = opts.continueBackfill ? state.cursor ?? "" : "";
   let count = 0;
   let pages = 0;
   let newestTs = getConversationLastSyncedTs(conversation.id);
-  const oldest = opts.forceFull ? undefined : newestTs ?? undefined;
+  const oldest = opts.forceFull || opts.continueBackfill ? undefined : newestTs ?? undefined;
 
   do {
     const res = await slackApi<{ messages: SlackMessage[] }>("conversations.history", {
@@ -565,11 +578,12 @@ export async function syncSlackVault(options: SlackSyncOptions = {}) {
     syncMessages: options.syncMessages ?? true,
     syncThreads: options.syncThreads ?? true,
     types: options.types ?? "public_channel,private_channel,mpim,im",
-    maxConversations: Math.max(1, Math.min(options.maxConversations ?? 8, 100)),
+    maxConversations: Math.max(1, Math.min(options.maxConversations ?? 8, 1000)),
     maxConversationPages: Math.max(1, Math.min(options.maxConversationPages ?? 1, 10)),
     messageLimit: Math.max(1, Math.min(options.messageLimit ?? 15, 200)),
     maxThreadPages: Math.max(1, Math.min(options.maxThreadPages ?? 1, 10)),
     threadReplyLimit: Math.max(1, Math.min(options.threadReplyLimit ?? 15, 200)),
+    continueBackfill: options.continueBackfill ?? false,
     includeArchived: options.includeArchived ?? false,
     includeNonMemberPublic: options.includeNonMemberPublic ?? false,
     forceFull: options.forceFull ?? false,
@@ -613,6 +627,7 @@ export async function syncSlackVault(options: SlackSyncOptions = {}) {
           maxConversationPages: opts.maxConversationPages,
           messageLimit: opts.messageLimit,
           forceFull: opts.forceFull,
+          continueBackfill: opts.continueBackfill,
         });
         messageResults.push(synced);
         if (!synced.ok && synced.retryAfter) break;
