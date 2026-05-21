@@ -49,6 +49,7 @@ const MODEL_COSTS: Record<string, { input: number; output: number }> = {
   "gpt-5.5": { input: 5.0, output: 30.0 },
   "gpt-image-2": { input: 0, output: 0 }, // image priced per-image, not per-token
   // Google Gemini
+  "gemini-3.5-flash": { input: 1.5, output: 9.0 },
   "gemini-3-pro": { input: 1.25, output: 5.0 },
   "gemini-3-pro-image-preview": { input: 0, output: 0 },
   "gemini-3-flash": { input: 0.075, output: 0.30 },

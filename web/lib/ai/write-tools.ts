@@ -97,6 +97,7 @@ export const READ_TOOLS = new Set([
   "notion_get_page",
 
   // Web search (read-only by nature)
+  "web_search",
   "gemini_search",
 
   // Memory / chat index read operations

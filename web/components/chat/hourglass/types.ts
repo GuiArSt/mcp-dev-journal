@@ -11,6 +11,12 @@ export interface Turn {
   startedAt: number;
   userText: string;
   assistantText: string;
+  toolCalls?: ToolCallSummary[];
+}
+
+export interface ToolCallSummary {
+  name: string;
+  status: "pending" | "done" | "error";
 }
 
 export type MoodTab = "mood" | "infographic" | "repo";

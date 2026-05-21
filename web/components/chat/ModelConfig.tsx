@@ -7,17 +7,15 @@ import { Switch } from "@/components/ui/switch";
 import { Cpu, Check, Brain, Zap } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { TARTARUS, popoverStyles, headerStyles } from "./config-styles";
+import {
+  CHAT_MODEL_CATALOG,
+  DEFAULT_CHAT_MODEL,
+  type ChatModelKey,
+} from "@/lib/ai/model-catalog";
 
-// Model selection type - matches route.ts ModelSelection
-export type ModelSelection =
-  | "gemini-3.1-pro"
-  | "gemini-3.1-flash-lite"
-  | "claude-sonnet-4.6"
-  | "claude-opus-4.6"
-  | "claude-opus-4.7"
-  | "gpt-5.5"
-  | "gpt-5.4"
-  | "gpt-5.3-instant";
+export { MODEL_CONTEXT_LIMITS } from "@/lib/ai/model-catalog";
+
+export type ModelSelection = ChatModelKey;
 
 // ModelConfigState - controls which model is used
 export interface ModelConfigState {
@@ -31,24 +29,33 @@ interface ModelConfigProps {
 }
 
 const DEFAULT_CONFIG: ModelConfigState = {
-  model: "gemini-3.1-pro", // Default: Gemini 3.1 Pro for best reasoning
+  model: DEFAULT_CHAT_MODEL,
   reasoningEnabled: true, // Reasoning on by default
 };
 
-// Context limits per model
-export const MODEL_CONTEXT_LIMITS: Record<ModelSelection, number> = {
-  "gemini-3.1-pro": 1000000,
-  "gemini-3.1-flash-lite": 1000000,
-  "claude-sonnet-4.6": 1000000,
-  "claude-opus-4.6": 1000000,
-  "claude-opus-4.7": 1000000,
-  "gpt-5.5": 1000000,
-  "gpt-5.4": 1000000,
-  "gpt-5.3-instant": 200000,
-};
-
 // Model metadata with provider grouping
-const MODELS: Record<
+const providerColor = {
+  google: TARTARUS.google,
+  anthropic: TARTARUS.anthropic,
+  openai: TARTARUS.openai,
+  deepseek: TARTARUS.teal,
+  nebius: TARTARUS.purple,
+} as const;
+
+const MODELS = Object.fromEntries(
+  CHAT_MODEL_CATALOG.map((model) => [
+    model.key,
+    {
+      name: model.label,
+      shortName: model.shortLabel,
+      description: model.description,
+      context: model.contextWindow >= 1_000_000 ? "1M" : `${Math.round(model.contextWindow / 1000)}K`,
+      color: providerColor[model.provider],
+      hasThinking: model.hasThinking,
+      provider: model.providerLabel,
+    },
+  ]),
+) as Record<
   ModelSelection,
   {
     name: string;
@@ -59,80 +66,7 @@ const MODELS: Record<
     hasThinking: boolean;
     provider: string;
   }
-> = {
-  "gemini-3.1-pro": {
-    name: "Gemini 3.1 Pro",
-    shortName: "3.1 Pro",
-    description: "Latest, most capable",
-    context: "1M",
-    color: TARTARUS.google,
-    hasThinking: true,
-    provider: "Google",
-  },
-  "gemini-3.1-flash-lite": {
-    name: "Gemini 3.1 Flash-Lite",
-    shortName: "Flash-Lite",
-    description: "Ultra-fast, cheapest",
-    context: "1M",
-    color: TARTARUS.google,
-    hasThinking: false,
-    provider: "Google",
-  },
-  "claude-sonnet-4.6": {
-    name: "Claude Sonnet 4.6",
-    shortName: "Sonnet 4.6",
-    description: "Best value, near-Opus",
-    context: "1M",
-    color: TARTARUS.anthropic,
-    hasThinking: true,
-    provider: "Anthropic",
-  },
-  "claude-opus-4.6": {
-    name: "Claude Opus 4.6",
-    shortName: "Opus 4.6",
-    description: "Stable flagship",
-    context: "1M",
-    color: TARTARUS.anthropic,
-    hasThinking: true,
-    provider: "Anthropic",
-  },
-  "claude-opus-4.7": {
-    name: "Claude Opus 4.7",
-    shortName: "Opus 4.7",
-    description: "Latest Opus, adaptive thinking",
-    context: "1M",
-    color: TARTARUS.anthropic,
-    hasThinking: true,
-    provider: "Anthropic",
-  },
-  "gpt-5.5": {
-    name: "GPT-5.5",
-    shortName: "GPT-5.5",
-    description: "OpenAI latest lane (safe fallback)",
-    context: "1M",
-    color: TARTARUS.openai,
-    hasThinking: true,
-    provider: "OpenAI",
-  },
-  "gpt-5.4": {
-    name: "GPT-5.4",
-    shortName: "GPT-5.4",
-    description: "Flagship, extreme reasoning",
-    context: "1M",
-    color: TARTARUS.openai,
-    hasThinking: true,
-    provider: "OpenAI",
-  },
-  "gpt-5.3-instant": {
-    name: "GPT-5.3 Instant",
-    shortName: "5.3 Instant",
-    description: "Fast chat, low hallucination",
-    context: "200K",
-    color: TARTARUS.openai,
-    hasThinking: false,
-    provider: "OpenAI",
-  },
-};
+>;
 
 export function ModelConfig({ config, onChange }: ModelConfigProps) {
   const [open, setOpen] = useState(false);

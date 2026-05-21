@@ -2,11 +2,13 @@ import { NextRequest, NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { google } from "@ai-sdk/google";
 import { generateText } from "ai";
+import { DEFAULT_CHAT_MODEL, getChatModelEntry, resolveChatModelId } from "@/lib/ai/model-catalog";
 
 /**
  * Gemini Search Grounding API route
  *
- * Uses Gemini Flash as a search intermediary with Google Search grounding.
+ * Uses the configured Google Flash model as a search intermediary with Google
+ * Search grounding.
  * Returns synthesized answer + structured sources with citations.
  *
  * This is a dedicated route because google_search cannot be mixed
@@ -50,9 +52,12 @@ export async function POST(req: NextRequest) {
     console.log(
       `[Gemini Search] Query: "${query.substring(0, 80)}..."`
     );
+    const searchModelId =
+      process.env.GOOGLE_SEARCH_MODEL_ID ||
+      resolveChatModelId(getChatModelEntry(DEFAULT_CHAT_MODEL), process.env);
 
     const { text, sources, providerMetadata } = await generateText({
-      model: google("gemini-3-flash-preview"),
+      model: google(searchModelId),
       tools: {
         google_search: google.tools.googleSearch({}) as any,
       },

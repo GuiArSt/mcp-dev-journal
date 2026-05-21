@@ -3,8 +3,10 @@
 import { forwardRef, memo, useRef, useImperativeHandle, useEffect, useMemo, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import remarkBreaks from "remark-breaks";
+import { MermaidPreview } from "@/components/multimedia/MermaidPreview";
 import { HourglassSpinner } from "./icons";
-import type { Turn } from "./types";
+import type { ToolCallSummary, Turn } from "./types";
 
 const INITIAL_RENDERED_TURNS = 24;
 const LOAD_EARLIER_STEP = 24;
@@ -19,6 +21,7 @@ interface HeroProps {
   turns: Turn[];
   streamingAssistantText?: string;
   pendingUserText?: string;
+  activeToolCalls?: ToolCallSummary[];
   isThinking: boolean;
   isStreaming: boolean;
   onRegen?: (turnIndex: number) => void;
@@ -39,7 +42,7 @@ function formatTime(ts: number) {
 }
 
 export const Hero = forwardRef<HeroHandle, HeroProps>(function Hero(
-  { turns, streamingAssistantText, pendingUserText, isThinking, isStreaming, onRegen, onCopy, onEdit, onScrollTurnChange, recentConversations, onLoadConversation },
+  { turns, streamingAssistantText, pendingUserText, activeToolCalls = [], isThinking, isStreaming, onRegen, onCopy, onEdit, onScrollTurnChange, recentConversations, onLoadConversation },
   ref,
 ) {
   const heroRef = useRef<HTMLElement | null>(null);
@@ -155,14 +158,16 @@ export const Hero = forwardRef<HeroHandle, HeroProps>(function Hero(
         {visibleTurns.map((t) => {
           const isLastCompletedTurn = t.index === currentTurn;
           const isCurrent = isLastCompletedTurn && !pendingUserText;
+          const isLiveTurn = isCurrent && (isThinking || isStreaming);
           return (
             <TurnBlock
               key={t.id}
               turn={t}
               isCurrent={isCurrent}
-              overrideAssistantText={undefined}
-              isThinking={false}
-              isStreaming={false}
+              overrideAssistantText={isLiveTurn ? streamingAssistantText : undefined}
+              overrideToolCalls={isLiveTurn ? activeToolCalls : undefined}
+              isThinking={isLiveTurn && isThinking && !(streamingAssistantText ?? "").trim()}
+              isStreaming={isLiveTurn && isStreaming}
               onRegen={isCurrent && onRegen ? () => onRegen(t.index) : undefined}
               onCopy={isCurrent && onCopy ? () => onCopy(t.assistantText) : undefined}
               onEdit={isCurrent && onEdit ? () => onEdit(t.index) : undefined}
@@ -182,9 +187,11 @@ export const Hero = forwardRef<HeroHandle, HeroProps>(function Hero(
               startedAt: Date.now(),
               userText: pendingUserText,
               assistantText: streamingAssistantText ?? "",
+              toolCalls: activeToolCalls,
             }}
             isCurrent
             overrideAssistantText={streamingAssistantText}
+            overrideToolCalls={activeToolCalls}
             isThinking={isThinking || (isStreaming && !(streamingAssistantText ?? "").trim())}
             isStreaming={isStreaming && Boolean((streamingAssistantText ?? "").trim())}
             onRegen={undefined}
@@ -201,6 +208,7 @@ interface TurnBlockProps {
   turn: Turn;
   isCurrent: boolean;
   overrideAssistantText?: string;
+  overrideToolCalls?: ToolCallSummary[];
   isThinking: boolean;
   isStreaming: boolean;
   onRegen?: () => void;
@@ -208,8 +216,9 @@ interface TurnBlockProps {
   onEdit?: () => void;
 }
 
-const TurnBlock = memo(function TurnBlock({ turn, isCurrent, overrideAssistantText, isThinking, isStreaming, onRegen, onCopy, onEdit }: TurnBlockProps) {
+const TurnBlock = memo(function TurnBlock({ turn, isCurrent, overrideAssistantText, overrideToolCalls, isThinking, isStreaming, onRegen, onCopy, onEdit }: TurnBlockProps) {
   const displayedText = overrideAssistantText ?? turn.assistantText;
+  const toolCalls = overrideToolCalls ?? turn.toolCalls ?? [];
 
   return (
     <div className={`hg-turn-block${isCurrent ? " hg-current" : ""}`} data-turn={turn.index}>
@@ -237,10 +246,12 @@ const TurnBlock = memo(function TurnBlock({ turn, isCurrent, overrideAssistantTe
                 <HourglassSpinner />
               </div>
               <div className="hg-thinking-label">
-                Thinking<span className="hg-dots" />
+                {toolCalls.length > 0 ? "Using tools" : "Thinking"}<span className="hg-dots" />
               </div>
             </div>
           )}
+
+          {toolCalls.length > 0 && <ToolActivity calls={toolCalls} live={isCurrent && (isThinking || isStreaming)} />}
 
           {(displayedText || !isThinking) && <div className="hg-kronos-name">Kronos</div>}
 
@@ -261,6 +272,33 @@ const TurnBlock = memo(function TurnBlock({ turn, isCurrent, overrideAssistantTe
   );
 });
 
+function ToolActivity({ calls, live }: { calls: ToolCallSummary[]; live: boolean }) {
+  return (
+    <div className="hg-tool-activity" role={live ? "status" : undefined} aria-live={live ? "polite" : undefined}>
+      <span className="hg-tool-activity-label">tools</span>
+      <div className="hg-tool-activity-list">
+        {calls.map((call, index) => (
+          <span key={`${call.name}-${index}`} className={`hg-tool-status hg-tool-status-${call.status}`}>
+            <span className="hg-tool-status-dot" aria-hidden />
+            <span className="hg-tool-status-name">{formatToolName(call.name)}</span>
+            <span className="hg-tool-status-state">{formatToolStatus(call.status)}</span>
+          </span>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function formatToolName(name: string) {
+  return name.replace(/^tool-/, "").replace(/_/g, " ");
+}
+
+function formatToolStatus(status: ToolCallSummary["status"]) {
+  if (status === "done") return "done";
+  if (status === "error") return "failed";
+  return "running";
+}
+
 interface DocBodyProps {
   markdown: string;
   streaming: boolean;
@@ -268,11 +306,12 @@ interface DocBodyProps {
 
 function DocBody({ markdown, streaming }: DocBodyProps) {
   if (streaming) return <StreamingDocBody text={markdown} />;
+  const normalized = normalizeAssistantMarkdown(markdown);
 
   return (
     <div className="hg-doc-body">
       <ReactMarkdown
-        remarkPlugins={[remarkGfm]}
+        remarkPlugins={[remarkGfm, remarkBreaks]}
         components={{
           p: ({ children }) => {
             const text = childrenToText(children);
@@ -283,8 +322,37 @@ function DocBody({ markdown, streaming }: DocBodyProps) {
             return <p>{children}</p>;
           },
           blockquote: (p) => <blockquote>{p.children}</blockquote>,
-          code: (p) => <code>{p.children}</code>,
-          pre: (p) => <pre>{p.children}</pre>,
+          code: (p) => <code className={p.className}>{p.children}</code>,
+          pre: (p) => {
+            const child = Array.isArray(p.children) ? p.children[0] : p.children;
+            const props = child && typeof child === "object" && "props" in child
+              ? (child as { props?: { className?: string; children?: React.ReactNode } }).props
+              : undefined;
+            const raw = childrenToText(props?.children).replace(/\n$/, "");
+            const lang = /language-(\w+)/.exec(props?.className ?? "")?.[1]?.toLowerCase();
+            if (lang === "mermaid" || isLikelyMermaid(raw)) {
+              return <MermaidPreview code={raw} className="hg-chat-mermaid" theme="base" />;
+            }
+            if (isLikelyAsciiDiagram(raw)) {
+              return (
+                <pre className="hg-ascii-diagram">
+                  <code>{raw}</code>
+                </pre>
+              );
+            }
+            return <pre>{p.children}</pre>;
+          },
+          table: (p) => (
+            <div className="hg-table-wrap">
+              <table>{p.children}</table>
+            </div>
+          ),
+          thead: (p) => <thead>{p.children}</thead>,
+          tbody: (p) => <tbody>{p.children}</tbody>,
+          tr: (p) => <tr>{p.children}</tr>,
+          th: (p) => <th>{p.children}</th>,
+          td: (p) => <td>{p.children}</td>,
+          br: () => <br />,
           a: (p) => (
             <a href={p.href} target="_blank" rel="noreferrer">
               {p.children}
@@ -292,10 +360,31 @@ function DocBody({ markdown, streaming }: DocBodyProps) {
           ),
         }}
       >
-        {markdown}
+        {normalized}
       </ReactMarkdown>
     </div>
   );
+}
+
+function normalizeAssistantMarkdown(markdown: string): string {
+  return markdown
+    .replace(/&lt;br\s*\/?&gt;|<br\s*\/?>/gi, "; ")
+    .replace(/```(?:mermaid|mmd)\s*\n([\s\S]*?)```/gi, (_, code: string) => {
+      return `\`\`\`mermaid\n${code.trim()}\n\`\`\``;
+    });
+}
+
+function isLikelyMermaid(code: string): boolean {
+  return /^\s*(graph|flowchart|sequenceDiagram|classDiagram|stateDiagram|erDiagram|journey|gantt|pie|mindmap|timeline)\b/i.test(code);
+}
+
+function isLikelyAsciiDiagram(code: string): boolean {
+  const lines = code.split("\n").filter((line) => line.trim());
+  if (lines.length < 4) return false;
+  const arrows = (code.match(/-->|->|=>|→|←|↑|↓|▼|▶/g) ?? []).length;
+  const boxChars = (code.match(/[|+\-=_\[\]┌┐└┘─│┬┴┼═║╔╗╚╝]/g) ?? []).length;
+  const bracketLabels = (code.match(/\[[^\]\n]{2,80}\]/g) ?? []).length;
+  return arrows >= 2 || boxChars >= 18 || bracketLabels >= 3;
 }
 
 function StreamingDocBody({ text }: { text: string }) {

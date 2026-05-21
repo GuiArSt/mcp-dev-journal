@@ -419,10 +419,22 @@ export const toolSpecs = {
     }),
   },
 
-  // ===== Gemini Search Grounding =====
+  // ===== Web Search Grounding =====
+  web_search: {
+    description:
+      "Search the web using the configured hosted search provider. Returns a synthesized answer with cited sources and confidence signals. Use this for current events, real-time data, factual lookups, or any query requiring up-to-date web information.",
+    inputSchema: z.object({
+      query: z
+        .string()
+        .min(1)
+        .describe("Search query - be specific for better grounded results"),
+    }),
+  },
+
+  // Backward-compatible alias for older tool history and saved chats.
   gemini_search: {
     description:
-      "Search the web using Google Search grounding via Gemini. Returns a synthesized answer with cited sources and confidence scores. Use this for current events, real-time data, factual lookups, or any query requiring up-to-date web information.",
+      "Legacy alias for web_search. Search the web using Google Search grounding via Gemini.",
     inputSchema: z.object({
       query: z
         .string()
@@ -1319,7 +1331,7 @@ export const toolCategories: Record<string, ToolName[]> = {
     "link_artifact",
   ],
   webSearch: [
-    "gemini_search",
+    "web_search",
   ],
   memory: [
     "memory_list_chat_index",

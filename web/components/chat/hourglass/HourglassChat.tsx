@@ -11,49 +11,33 @@ import { Rail } from "./Rail";
 import { Hero, type HeroHandle } from "./Hero";
 import { MoodPanel, type MuseThought } from "./MoodPanel";
 import { Composer } from "./Composer";
-import { useMuse, useMuseObserver } from "./useMuse";
+import { useMuse, useMuseEdit, useMuseObserver } from "./useMuse";
 import type { MuseProposeResponse, MuseGenerateResponse, MuseShelfRef } from "./useMuse";
+import { MuseEditPopover } from "./MuseEditPopover";
 import { ArtifactAddSheet } from "./artifacts/ArtifactAddSheet";
 import { SkillsPopover, type SkillOption } from "./SkillsPopover";
 import { ConfigPopover } from "./ConfigPopover";
-import type { ComposerMode, MoodTab, RailView, Turn } from "./types";
+import type { ComposerMode, MoodTab, RailView, ToolCallSummary, Turn } from "./types";
 import type { Artifact, ArtifactBody, ArtifactRef } from "./artifacts/types";
 import type { ChatMessage } from "@/lib/db-conversations";
 import { appendEntry, extractMuseThoughtsFromChatLog, type ChatLogEntry } from "@/lib/chat-log";
 import type { PendingApproval, PendingApprovalAlternative } from "./ApprovalCard";
 import type { SoulConfigState } from "@/components/chat/SoulConfig";
 import type { ToolsConfigState } from "@/components/chat/ToolsConfig";
-
-// Chat-model catalog — mirrors MODEL_CONFIG in /api/chat/route.ts.
-// The string values here are the *selection keys* the server expects.
-export type ChatModelKey =
-  | "claude-opus-4.7"
-  | "claude-opus-4.6"
-  | "claude-sonnet-4.6"
-  | "gemini-3.1-pro"
-  | "gemini-3.1-flash-lite"
-  | "gpt-5.5"
-  | "gpt-5.4"
-  | "gpt-5.3-instant";
-
-export const CHAT_MODELS: Array<{ key: ChatModelKey; label: string; provider: "anthropic" | "google" | "openai"; }> = [
-  { key: "claude-opus-4.7", label: "Claude Opus 4.7", provider: "anthropic" },
-  { key: "claude-opus-4.6", label: "Claude Opus 4.6", provider: "anthropic" },
-  { key: "claude-sonnet-4.6", label: "Claude Sonnet 4.6", provider: "anthropic" },
-  { key: "gemini-3.1-pro", label: "Gemini 3.1 Pro", provider: "google" },
-  { key: "gemini-3.1-flash-lite", label: "Gemini 3.1 Flash-Lite", provider: "google" },
-  { key: "gpt-5.5", label: "GPT-5.5", provider: "openai" },
-  { key: "gpt-5.4", label: "GPT-5.4", provider: "openai" },
-  { key: "gpt-5.3-instant", label: "GPT-5.3 Instant", provider: "openai" },
-];
-
-const DEFAULT_CHAT_MODEL: ChatModelKey = "claude-opus-4.7";
-// Default chat model when "Images in chat" is toggled on. User can override.
-const DEFAULT_IMAGES_MODEL: ChatModelKey = "gemini-3.1-pro";
-const DEFAULT_IMAGES_MODEL_GPT: ChatModelKey = "gpt-5.5";
+import { compressImage, fileToDataUrl } from "@/lib/image-compression";
+import {
+  CHAT_MODELS,
+  DEFAULT_CHAT_MODEL,
+  DEFAULT_IMAGE_CHAT_MODEL,
+  DEFAULT_OPENAI_IMAGE_CHAT_MODEL,
+  isChatModelKey,
+  type ChatModelKey,
+} from "@/lib/ai/model-catalog";
 
 // The muse ticks every N completed turns. First image earliest = turn 2.
 const MUSE_TICK_EVERY = 3;
+const MUSE_VISION_MAX_EDGE = 1024;
+const MUSE_VISION_MAX_BYTES = 350 * 1024;
 
 type MuseVisualChoiceLog = {
   source: "single" | "alternatives" | "direct";
@@ -144,7 +128,7 @@ function parseHourglassSessionConfig(raw: string | null | undefined): HourglassS
     const parsed = JSON.parse(raw) as Partial<HourglassSessionConfig>;
     if (parsed?.surface && parsed.surface !== "hourglass") return null;
     const model = parsed.modelConfig?.model;
-    const validModel = CHAT_MODELS.some((m) => m.key === model) ? model : DEFAULT_CHAT_MODEL;
+    const validModel = isChatModelKey(model) ? model : DEFAULT_CHAT_MODEL;
     return {
       v: 1,
       surface: "hourglass",
@@ -162,8 +146,8 @@ function parseHourglassSessionConfig(raw: string | null | undefined): HourglassS
   }
 }
 
-function messageToolCalls(m: UIMessage): Array<{ name: string; status: "pending" | "done" | "error" }> {
-  const calls: Array<{ name: string; status: "pending" | "done" | "error" }> = [];
+function messageToolCalls(m: UIMessage): ToolCallSummary[] {
+  const calls: ToolCallSummary[] = [];
   if (!m.parts) return calls;
   for (const part of m.parts) {
     if (part.type?.startsWith("tool-")) {
@@ -174,6 +158,14 @@ function messageToolCalls(m: UIMessage): Array<{ name: string; status: "pending"
     }
   }
   return calls;
+}
+
+function asksForVisualTool(text: string): boolean {
+  const normalized = text.toLowerCase();
+  if (/\binfographic(s)?\b/.test(normalized)) return true;
+  const visualNoun = /\b(muse|visual|image|picture|diagram|poster|comic|illustration|rendering|artwork|shelf)\b/.test(normalized);
+  const actionVerb = /\b(ask|wake|request|create|make|generate|paint|draw|render|produce|offer|show)\b/.test(normalized);
+  return visualNoun && actionVerb;
 }
 
 function countEnabledMerged(base: object, implied: object): number {
@@ -236,7 +228,7 @@ export function HourglassChat() {
         setChatModel((cur) => {
           const provider = CHAT_MODELS.find((m) => m.key === cur)?.provider;
           if (provider === "anthropic") {
-            return imagesProvider === "google" ? DEFAULT_IMAGES_MODEL : DEFAULT_IMAGES_MODEL_GPT;
+            return imagesProvider === "google" ? DEFAULT_IMAGE_CHAT_MODEL : DEFAULT_OPENAI_IMAGE_CHAT_MODEL;
           }
           return cur;
         });
@@ -250,7 +242,7 @@ export function HourglassChat() {
     // If images is already on, swap model accordingly.
     setChatModel((cur) => {
       if (!imagesEnabled) return cur;
-      return p === "google" ? DEFAULT_IMAGES_MODEL : DEFAULT_IMAGES_MODEL_GPT;
+      return p === "google" ? DEFAULT_IMAGE_CHAT_MODEL : DEFAULT_OPENAI_IMAGE_CHAT_MODEL;
     });
   }, [imagesEnabled]);
 
@@ -320,6 +312,7 @@ export function HourglassChat() {
   const setPendingApprovalRef = useRef<(p: PendingApprovalShape | null) => void>(() => {});
   const paintProposalRef = useRef<(prompt: string, renderMode: "mood" | "infographic", turnIndex: number, targetUuid?: string) => Promise<void>>(async () => {});
   const setMuseThoughtsRef = useRef<Dispatch<SetStateAction<MuseThought[]>> | null>(null);
+  const setMusePaintingRef = useRef<Dispatch<SetStateAction<boolean>> | null>(null);
   const applyMuseTitleRef = useRef<(title: string | null | undefined, reason?: string | null, turnIndex?: number) => void>(() => {});
 
   const { messages, sendMessage, status, stop, setMessages, addToolResult } = useChat({
@@ -341,6 +334,7 @@ export function HourglassChat() {
         const alternatives = Math.max(1, Math.min(4, Number(args.alternatives ?? 1)));
         // Note: legacy `auto` arg is ignored — Kronus tools never paint
         // without user confirmation. Every paint goes through ApprovalCard.
+        setMusePaintingRef.current?.(true);
         try {
           const displayedImageDataUrl = await loadDisplayedImageDataUrlRef.current();
           // Build a synthetic turn so the muse has the intent in context
@@ -434,6 +428,8 @@ export function HourglassChat() {
           const msg = err instanceof Error ? err.message : "Unknown error";
           addToolResult({ tool: toolName, toolCallId, output: `Error waking muse: ${msg}` });
           logEventRef.current({ kind: "tool_result", name: toolName, ok: false, preview: msg.slice(0, 200), ts: Date.now() });
+        } finally {
+          setMusePaintingRef.current?.(false);
         }
         return;
       }
@@ -524,6 +520,8 @@ export function HourglassChat() {
 
   const isStreaming = status === "streaming";
   const isThinking = status === "submitted";
+  const messagesRef = useRef<UIMessage[]>([]);
+  useEffect(() => { messagesRef.current = messages; }, [messages]);
 
   // Reconstruct turns from messages
   const turns = useMemo<Turn[]>(() => {
@@ -545,6 +543,7 @@ export function HourglassChat() {
           startedAt: (m as unknown as { createdAt?: Date }).createdAt?.getTime?.() ?? Date.now(),
           userText,
           assistantText,
+          toolCalls: messageToolCalls(m),
         });
         pendingUser = null;
       }
@@ -576,6 +575,7 @@ export function HourglassChat() {
   // call is refused while `musePainting` is true so we never double-invoke
   // the painter and never duplicate turns' artifacts.
   const [musePainting, setMusePainting] = useState(false);
+  useEffect(() => { setMusePaintingRef.current = setMusePainting; }, []);
 
   // Pending image approval — UNIFIED across all three sources:
   //   • muse auto-tick → mode: "single"
@@ -583,6 +583,13 @@ export function HourglassChat() {
   //   • Kronus generate_image → mode: "direct"
   // No paint runs without explicit user accept/pick. See ApprovalCard.tsx.
   const [pendingApproval, setPendingApproval] = useState<PendingApproval | null>(null);
+
+  // Image edit popover — anchored over the displayed image. The muse
+  // receives the current image + the prompt and produces a mutation via
+  // /muse/edit. The resulting artifact is pushed to the shelf alongside
+  // the original (tagged `muse-edited`, so history is preserved).
+  const [editPopoverOpen, setEditPopoverOpen] = useState(false);
+  const [editPopoverError, setEditPopoverError] = useState<string | null>(null);
 
   // ─── Chat log ──────────────────────────────────────────────────────────
   // Append-only event stream the muse and Kronus both read. See
@@ -645,43 +652,49 @@ export function HourglassChat() {
 
   // ─── Conversation persistence ────────────────────────────────────────────
 
+  const saveConversationNow = useCallback(async (msgs: UIMessage[], currentShelf: ArtifactRef[]) => {
+    if (msgs.length === 0) return;
+    const title = conversationTitleRef.current || "untitled conversation";
+    const body = {
+      title,
+      messages: msgs.filter((m) => m.role === "user" || m.role === "assistant").map(uiToChat),
+      sessionConfig: sessionConfigRef.current,
+      artifactRefs: currentShelf,
+      chatLog: chatLogRef.current,
+    };
+    const cid = conversationIdRef.current;
+    try {
+      if (cid === null) {
+        const res = await fetch("/api/conversations", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+        });
+        if (res.ok) {
+          const json = await res.json() as { id: number };
+          conversationIdRef.current = json.id;
+          setConversationId(json.id);
+        }
+      } else {
+        await fetch(`/api/conversations/${cid}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+        });
+      }
+    } catch (err) {
+      console.warn("[hourglass] conversation save failed:", err);
+    }
+  }, []);
+
   /** Upsert the conversation to the API (debounced, 1 s). */
   const scheduleSave = useCallback((msgs: UIMessage[], currentShelf: ArtifactRef[]) => {
     if (msgs.length === 0) return;
     if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
-    saveTimeoutRef.current = setTimeout(async () => {
-      const title = conversationTitleRef.current || "untitled conversation";
-      const body = {
-        title,
-        messages: msgs.filter((m) => m.role === "user" || m.role === "assistant").map(uiToChat),
-        sessionConfig: sessionConfigRef.current,
-        artifactRefs: currentShelf,
-        chatLog: chatLogRef.current,
-      };
-      const cid = conversationIdRef.current;
-      try {
-        if (cid === null) {
-          const res = await fetch("/api/conversations", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(body),
-          });
-          if (res.ok) {
-            const json = await res.json() as { id: number };
-            setConversationId(json.id);
-          }
-        } else {
-          await fetch(`/api/conversations/${cid}`, {
-            method: "PATCH",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(body),
-          });
-        }
-      } catch (err) {
-        console.warn("[hourglass] conversation save failed:", err);
-      }
+    saveTimeoutRef.current = setTimeout(() => {
+      void saveConversationNow(msgs, currentShelf);
     }, 1000);
-  }, []);
+  }, [saveConversationNow]);
 
   const applyMuseTitle = useCallback((suggestedTitle: string | null | undefined, reason?: string | null, turnIndex?: number) => {
     const next = normalizeMuseTitle(suggestedTitle);
@@ -786,19 +799,24 @@ export function HourglassChat() {
 
   const pendingUserText = useMemo(() => {
     if (!isStreaming && !isThinking) return undefined;
-    // Find the last user message. If it has no assistant reply yet, return it.
+    // Find the last user message. Only synthesize a pending turn while no
+    // assistant message exists yet; once streaming creates an assistant
+    // message, that real turn should stream in place instead of duplicating.
     for (let i = messages.length - 1; i >= 0; i--) {
       if (messages[i].role === "user") {
-        // Is there a later assistant message with text?
         const laterAssistant = messages.slice(i + 1).some((m) => m.role === "assistant");
-        if (!laterAssistant || messages[messages.length - 1].role === "user") {
-          return messageToText(messages[i]);
-        }
-        // Assistant exists; streaming means "current" is pending — still show user message
-        return messageToText(messages[i]);
+        return laterAssistant ? undefined : messageToText(messages[i]);
       }
     }
     return undefined;
+  }, [messages, isStreaming, isThinking]);
+
+  const activeToolCalls = useMemo<ToolCallSummary[]>(() => {
+    if (!isStreaming && !isThinking) return [];
+    for (let i = messages.length - 1; i >= 0; i--) {
+      if (messages[i].role === "assistant") return messageToolCalls(messages[i]);
+    }
+    return [];
   }, [messages, isStreaming, isThinking]);
 
   // Title — neutral until the Muse has enough context to name the exchange.
@@ -833,6 +851,7 @@ export function HourglassChat() {
   const observeMuse = useMuseObserver();
   const lastObservedTurn = useRef<number>(0);
   const callMuse = useMuse();
+  const callMuseEdit = useMuseEdit();
   const lastMuseTickAt = useRef<number>(0);
   /** Baseline `turns.length` after the first time we see real turns this session. Stays null until then so async restore does not snapshot 0. */
   const mountedTurnsRef = useRef<number | null>(null);
@@ -895,9 +914,9 @@ export function HourglassChat() {
     }));
   }, [viewingUuid]);
 
-  /** Fetch the currently-displayed image as a base64 data URL so the muse
-   *  can SEE it in her multimodal call. Returns undefined when there's no
-   *  displayed image (e.g. a document is on screen). */
+  /** Fetch the currently-displayed image as a reduced base64 data URL so the
+   *  muse can SEE it in her multimodal call without sending full shelf images
+   *  into vision context. Returns undefined when there's no displayed image. */
   const loadDisplayedImageDataUrl = useCallback(async (): Promise<string | undefined> => {
     const ref = shelfRef.current.find((r) => r.uuid === viewingUuid);
     if (!ref || !ref.thumbUrl) return undefined;
@@ -905,12 +924,17 @@ export function HourglassChat() {
       const res = await fetch(ref.thumbUrl);
       if (!res.ok) return undefined;
       const blob = await res.blob();
-      return await new Promise<string>((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onloadend = () => resolve(reader.result as string);
-        reader.onerror = () => reject(reader.error);
-        reader.readAsDataURL(blob);
+      const source = new File([blob], ref.title || "shelf-image", {
+        type: blob.type || "image/png",
       });
+      const reduced = await compressImage(source, {
+        maxDimension: MUSE_VISION_MAX_EDGE,
+        maxSizeBytes: MUSE_VISION_MAX_BYTES,
+        initialQuality: 0.78,
+        minQuality: 0.52,
+        qualityStep: 0.08,
+      });
+      return await fileToDataUrl(reduced.blob);
     } catch {
       return undefined;
     }
@@ -1087,7 +1111,7 @@ export function HourglassChat() {
     const modelConfigForSend =
       hasFiles && activeModel?.provider === "anthropic"
         ? {
-            model: imagesProvider === "openai" ? DEFAULT_IMAGES_MODEL_GPT : DEFAULT_IMAGES_MODEL,
+            model: imagesProvider === "openai" ? DEFAULT_OPENAI_IMAGE_CHAT_MODEL : DEFAULT_IMAGE_CHAT_MODEL,
             reasoningEnabled: false,
           }
         : modelConfig;
@@ -1095,12 +1119,17 @@ export function HourglassChat() {
       setChatModel(modelConfigForSend.model);
       setImagesEnabled(true);
     }
+    const visualIntent = asksForVisualTool(text);
+    const toolsConfigForSend = visualIntent
+      ? { ...toolsConfig, imageGeneration: true }
+      : toolsConfig;
+    if (visualIntent && !imagesEnabled) setImagesEnabled(true);
     sendMessage(
       { text, files },
       {
         body: {
           soulConfig,
-          toolsConfig,
+          toolsConfig: toolsConfigForSend,
           modelConfig: modelConfigForSend,
           activeSkillSlugs,
           displayedArtifactUuid: viewingUuid,
@@ -1112,7 +1141,7 @@ export function HourglassChat() {
         },
       },
     );
-  }, [daimonActive, messages, sendMessage, soulConfig, toolsConfig, modelConfig, imagesProvider, activeSkillSlugs, shelf, viewingUuid]);
+  }, [daimonActive, messages, sendMessage, soulConfig, toolsConfig, modelConfig, imagesProvider, activeSkillSlugs, shelf, viewingUuid, imagesEnabled]);
 
   const handleNewChat = useCallback(() => {
     if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
@@ -1340,7 +1369,13 @@ export function HourglassChat() {
         conversationId: conversationIdRef.current ?? undefined,
       } as Parameters<typeof callMuse>[0])) as MuseGenerateResponse;
       if (res.artifactRef) {
-        pushArtifact({ ...res.artifactRef, turnIndex });
+        const artifactRef = { ...res.artifactRef, turnIndex };
+        const nextShelf = shelfRef.current.some((r) => r.uuid === artifactRef.uuid)
+          ? shelfRef.current
+          : [...shelfRef.current, artifactRef];
+        shelfRef.current = nextShelf;
+        pushArtifact(artifactRef);
+        void saveConversationNow(messagesRef.current, nextShelf);
         logEvent({ kind: "muse_paint", uuid: res.artifactRef.uuid, renderMode, ts: Date.now() });
         if (choiceLog) {
           logEvent({
@@ -1371,6 +1406,68 @@ export function HourglassChat() {
 
   // Sync paintProposal into the ref bridge so wake_muse(auto:true) can call it.
   useEffect(() => { paintProposalRef.current = paintProposal; }, [paintProposal]);
+
+  /** Image-to-image mutation via /muse/edit. Mirrors paintProposal but
+   *  sends the currently-displayed image as the source. The new artifact
+   *  lands on the shelf as a separate entry (kind=muse-image, source=
+   *  muse-edited), so the original stays intact. v1 is single-shot — no
+   *  alternatives, no approval card. */
+  const paintEdit = useCallback(async (prompt: string) => {
+    if (musePainting) return;
+    const ref = shelfRef.current.find((r) => r.uuid === viewingUuid);
+    if (!ref) {
+      setEditPopoverError("no image selected");
+      return;
+    }
+    setEditPopoverError(null);
+    setMusePainting(true);
+    try {
+      const sourceImageDataUrl = await loadDisplayedImageDataUrl();
+      if (!sourceImageDataUrl) {
+        setEditPopoverError("could not load the current image");
+        return;
+      }
+      const res = await callMuseEdit({
+        sourceImageDataUrl,
+        prompt,
+        renderMode: ref.renderMode,
+        styleHint: ref.styleHint,
+        provider: imagesProvider,
+        source_artifact_uuid: ref.uuid,
+        conversationId: conversationIdRef.current ?? undefined,
+      });
+      if (res.artifactRef) {
+        const turnIndex = ref.turnIndex ?? turns.length;
+        const artifactRef = { ...res.artifactRef, turnIndex };
+        const nextShelf = shelfRef.current.some((r) => r.uuid === artifactRef.uuid)
+          ? shelfRef.current
+          : [...shelfRef.current, artifactRef];
+        shelfRef.current = nextShelf;
+        pushArtifact(artifactRef);
+        void saveConversationNow(messagesRef.current, nextShelf);
+        logEvent({ kind: "muse_paint", uuid: res.artifactRef.uuid, renderMode: ref.renderMode ?? "mood", ts: Date.now() });
+        logEvent({
+          timestamp: new Date().toISOString(),
+          actor: "user",
+          eventType: "artifact",
+          text: `Muse mutated image via edit popover`,
+          params: {
+            kind: "muse_edit",
+            source_uuid: ref.uuid,
+            result_uuid: res.artifactRef.uuid,
+            prompt,
+          },
+        });
+        setEditPopoverOpen(false);
+      } else {
+        setEditPopoverError(res.error ?? "muse could not render");
+      }
+    } catch (err) {
+      setEditPopoverError(`muse failed: ${err instanceof Error ? err.message : String(err)}`);
+    } finally {
+      setMusePainting(false);
+    }
+  }, [musePainting, viewingUuid, loadDisplayedImageDataUrl, callMuseEdit, imagesProvider, pushArtifact, saveConversationNow, logEvent, turns.length]);
 
   /** Accept a single OR direct-mode pending approval. Routes through the
    *  same paintProposal helper, forwarding any linkage Kronus stashed for
@@ -1534,6 +1631,7 @@ export function HourglassChat() {
         conversationTitle={conversationTitle}
         conversationStartedAt={conversationStartedAt}
         modelLabel={chatModelLabel}
+        currentConversationId={conversationId}
       />
 
       <Hero
@@ -1541,6 +1639,7 @@ export function HourglassChat() {
         turns={turns}
         streamingAssistantText={streamingAssistantText}
         pendingUserText={pendingUserText}
+        activeToolCalls={activeToolCalls}
         isThinking={isThinking}
         isStreaming={isStreaming}
         onRegen={() => handleRegen()}
@@ -1569,6 +1668,21 @@ export function HourglassChat() {
         onAcceptApproval={handleAcceptProposal}
         onPickAlternative={handlePickAlternative}
         onSkipApproval={handleSkipProposal}
+        onEditImage={
+          hydratedArtifact && (hydratedArtifact.body.kind === "muse-image" || hydratedArtifact.body.kind === "media")
+            ? () => { setEditPopoverError(null); setEditPopoverOpen(true); }
+            : undefined
+        }
+        editPopover={
+          <MuseEditPopover
+            open={editPopoverOpen}
+            busy={musePainting}
+            onClose={() => setEditPopoverOpen(false)}
+            onSubmit={(p) => { void paintEdit(p); }}
+            sourceTitle={hydratedArtifact?.title}
+            error={editPopoverError}
+          />
+        }
       />
 
       <Composer

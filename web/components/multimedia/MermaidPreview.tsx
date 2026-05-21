@@ -6,9 +6,10 @@ import mermaid from "mermaid";
 interface MermaidPreviewProps {
   code: string;
   className?: string;
+  theme?: "dark" | "default" | "base" | "forest" | "neutral";
 }
 
-export function MermaidPreview({ code, className = "" }: MermaidPreviewProps) {
+export function MermaidPreview({ code, className = "", theme = "dark" }: MermaidPreviewProps) {
   const [error, setError] = useState<string | null>(null);
   const previewRef = useRef<HTMLDivElement>(null);
 
@@ -38,7 +39,25 @@ export function MermaidPreview({ code, className = "" }: MermaidPreviewProps) {
   useEffect(() => {
     mermaid.initialize({
       startOnLoad: false,
-      theme: "dark",
+      theme,
+      themeVariables: theme === "base"
+        ? {
+            background: "#f8f2e4",
+            mainBkg: "#fffaf0",
+            secondBkg: "#efe2c8",
+            tertiaryBkg: "#f5ead5",
+            primaryColor: "#fffaf0",
+            primaryTextColor: "#2f2922",
+            primaryBorderColor: "#b45a43",
+            lineColor: "#8f3f2e",
+            textColor: "#2f2922",
+            fontFamily: "ui-serif, Georgia, serif",
+            nodeBorder: "#b45a43",
+            clusterBkg: "#efe2c8",
+            clusterBorder: "#c59b71",
+            edgeLabelBackground: "#fffaf0",
+          }
+        : undefined,
       securityLevel: "loose",
     });
     renderDiagram();

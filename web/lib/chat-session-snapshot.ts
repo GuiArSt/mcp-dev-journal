@@ -13,17 +13,7 @@ import type { ModelConfigState, ModelSelection } from "@/components/chat/ModelCo
 import { DEFAULT_CONFIG as DEFAULT_MODEL_CONFIG } from "@/components/chat/ModelConfig";
 import type { FormatConfigState } from "@/components/chat/FormatConfig";
 import { DEFAULT_FORMAT_CONFIG } from "@/components/chat/FormatConfig";
-
-const MODEL_SELECTIONS: ModelSelection[] = [
-  "gemini-3.1-pro",
-  "gemini-3.1-flash-lite",
-  "claude-sonnet-4.6",
-  "claude-opus-4.6",
-  "claude-opus-4.7",
-  "gpt-5.5",
-  "gpt-5.4",
-  "gpt-5.3-instant",
-];
+import { isChatModelKey } from "@/lib/ai/model-catalog";
 
 export const CHAT_SESSION_SNAPSHOT_VERSION = 1 as const;
 
@@ -55,7 +45,7 @@ function mergeTools(partial: unknown): ToolsConfigState {
 function mergeModel(partial: unknown): ModelConfigState {
   if (!isPlainObject(partial)) return { ...DEFAULT_MODEL_CONFIG };
   const model =
-    typeof partial.model === "string" && MODEL_SELECTIONS.includes(partial.model as ModelSelection)
+    isChatModelKey(partial.model)
       ? (partial.model as ModelSelection)
       : DEFAULT_MODEL_CONFIG.model;
   const reasoningEnabled =

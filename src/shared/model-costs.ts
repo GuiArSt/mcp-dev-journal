@@ -18,6 +18,7 @@ export const MODEL_COSTS: Record<string, { input: number; output: number }> = {
   "claude-sonnet-4-5": { input: 3.0, output: 15.0 },
   "claude-opus-4-5": { input: 15.0, output: 75.0 },
   // Google Gemini models
+  "gemini-3.5-flash": { input: 1.5, output: 9.0 },
   "gemini-3.1-pro": { input: 2.5, output: 15.0 },
   "gemini-3.1-pro-preview": { input: 2.5, output: 15.0 },
   "gemini-3-flash": { input: 0.5, output: 3.0 },

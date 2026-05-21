@@ -16,6 +16,14 @@ import { mergeSkillConfigs } from "@/lib/ai/skills";
 import { toolSpecs, toolCategories, type ToolName } from "@/lib/ai/tools";
 import { getDatabase } from "@/lib/db";
 import { lookupByUUID } from "@/lib/object-registry";
+import {
+  DEFAULT_CHAT_MODEL,
+  DEFAULT_GOOGLE_FALLBACK_MODEL,
+  getChatModelEntry,
+  isChatModelKey,
+  resolveChatModelId,
+  type ChatModelKey,
+} from "@/lib/ai/model-catalog";
 
 /**
  * Compact ref the Hourglass client sends with every message. Denormalized
@@ -378,132 +386,47 @@ export const DEFAULT_TOOLS_CONFIG: ToolsConfig = {
   aiIntegrations: false, // Off by default - Library agent index tools
 };
 
-/**
- * Available model selections - each has a provider and model ID
- * Models with reasoning support will have thinking enabled automatically
- */
-export type ModelSelection =
-  | "gemini-3.1-pro" // Google - latest, most capable reasoning
-  | "gemini-3.1-flash-lite" // Google - ultra-fast, cheapest, high concurrency
-  | "claude-sonnet-4.6" // Anthropic - best value, matches Opus performance
-  | "claude-opus-4.6" // Anthropic - Opus 4.6, 1M context
-  | "claude-opus-4.7" // Anthropic - Opus 4.7 (API: claude-opus-4-7; adaptive thinking only)
-  | "gpt-5.5" // OpenAI - GPT-5.5 lane (maps to API-safe model id below)
-  | "gpt-5.4" // OpenAI - flagship, 1M context, extreme reasoning
-  | "gpt-5.3-instant"; // OpenAI - fast everyday chat, low hallucination
+export type ModelSelection = ChatModelKey;
 
-/**
- * Model configuration - maps selection to provider and model ID
- */
-const MODEL_CONFIG: Record<
-  ModelSelection,
-  {
-    provider: "google" | "anthropic" | "openai";
-    modelId: string;
-    hasThinking: boolean;
-  }
-> = {
-  "gemini-3.1-pro": {
-    provider: "google",
-    modelId: "gemini-3.1-pro-preview",
-    hasThinking: true,
-  },
-  "gemini-3.1-flash-lite": {
-    provider: "google",
-    modelId: "gemini-3.1-flash-lite-preview",
-    hasThinking: false,
-  },
-  "claude-sonnet-4.6": {
-    provider: "anthropic",
-    modelId: "claude-sonnet-4-6",
-    hasThinking: true,
-  },
-  "claude-opus-4.6": {
-    provider: "anthropic",
-    modelId: "claude-opus-4-6",
-    hasThinking: true,
-  },
-  "claude-opus-4.7": {
-    provider: "anthropic",
-    modelId: "claude-opus-4-7",
-    hasThinking: true,
-  },
-  "gpt-5.5": {
-    provider: "openai",
-    // GPT-5.5 is not consistently exposed as a direct API model id yet.
-    // Allow an override for early-access accounts and otherwise fall back.
-    modelId: process.env.OPENAI_GPT55_MODEL_ID || "gpt-5.4",
-    hasThinking: true,
-  },
-  "gpt-5.4": {
-    provider: "openai",
-    modelId: "gpt-5.4",
-    hasThinking: true,
-  },
-  "gpt-5.3-instant": {
-    provider: "openai",
-    modelId: "gpt-5.3-instant",
-    hasThinking: false,
-  },
-};
-
-/**
- * Get the AI model based on selected model
- *
- * Models:
- * - gemini-3.1-pro: Gemini 3.1 Pro (1M context, most capable reasoning)
- * - gemini-3.1-flash-lite: Gemini 3.1 Flash-Lite (1M context, ultra-fast, cheapest)
- * - claude-sonnet-4.6: Claude Sonnet 4.6 (1M context, best value)
- * - claude-opus-4.6: Claude Opus 4.6 (1M context)
- * - claude-opus-4.7: Claude Opus 4.7 (1M context; adaptive thinking)
- * - gpt-5.5: GPT-5.5 lane (uses OPENAI_GPT55_MODEL_ID override, defaults to gpt-5.4)
- * - gpt-5.4: GPT-5.4 (1M context, extreme reasoning, agentic)
- * - gpt-5.3-instant: GPT-5.3 Instant (200K context, fast chat)
- */
-function getModel(selectedModel?: ModelSelection) {
-  const defaultModel: ModelSelection = "gemini-3.1-pro";
-  const modelKey = selectedModel || defaultModel;
-  const config = MODEL_CONFIG[modelKey];
-
-  if (!config) {
-    console.warn(`Unknown model: ${modelKey}, falling back to ${defaultModel}`);
-    return getModel(defaultModel);
-  }
+function getModel(selectedModel?: ChatModelKey) {
+  const modelKey = isChatModelKey(selectedModel) ? selectedModel : DEFAULT_CHAT_MODEL;
+  const entry = getChatModelEntry(modelKey);
+  const modelId = resolveChatModelId(entry, process.env);
 
   // Check if the required API key is available
-  switch (config.provider) {
+  switch (entry.provider) {
     case "google":
       if (process.env.GOOGLE_GENERATIVE_AI_API_KEY || process.env.GOOGLE_API_KEY) {
-        console.log(`Using Google model: ${config.modelId}`);
+        console.log(`Using Google model: ${modelId}`);
         return {
-          model: google(config.modelId),
-          provider: config.provider,
-          hasThinking: config.hasThinking,
-          modelId: config.modelId,
+          model: google(modelId),
+          provider: entry.provider,
+          hasThinking: entry.hasThinking,
+          modelId,
         };
       }
       console.warn("Google API key not configured");
       break;
     case "anthropic":
       if (process.env.ANTHROPIC_API_KEY) {
-        console.log(`Using Anthropic model: ${config.modelId}`);
+        console.log(`Using Anthropic model: ${modelId}`);
         return {
-          model: anthropic(config.modelId),
-          provider: config.provider,
-          hasThinking: config.hasThinking,
-          modelId: config.modelId,
+          model: anthropic(modelId),
+          provider: entry.provider,
+          hasThinking: entry.hasThinking,
+          modelId,
         };
       }
       console.warn("Anthropic API key not configured");
       break;
     case "openai":
       if (process.env.OPENAI_API_KEY) {
-        console.log(`Using OpenAI model: ${config.modelId}`);
+        console.log(`Using OpenAI model: ${modelId}`);
         return {
-          model: openai(config.modelId),
-          provider: config.provider,
-          hasThinking: config.hasThinking,
-          modelId: config.modelId,
+          model: openai(modelId),
+          provider: entry.provider,
+          hasThinking: entry.hasThinking,
+          modelId,
         };
       }
       console.warn("OpenAI API key not configured");
@@ -512,33 +435,36 @@ function getModel(selectedModel?: ModelSelection) {
 
   // Fallback: try any available provider
   if (process.env.GOOGLE_GENERATIVE_AI_API_KEY || process.env.GOOGLE_API_KEY) {
-    const fallback = MODEL_CONFIG["gemini-3.1-flash-lite"];
-    console.log(`Falling back to Google: ${fallback.modelId}`);
+    const fallback = getChatModelEntry(DEFAULT_GOOGLE_FALLBACK_MODEL);
+    const fallbackModelId = resolveChatModelId(fallback, process.env);
+    console.log(`Falling back to Google: ${fallbackModelId}`);
     return {
-      model: google(fallback.modelId),
+      model: google(fallbackModelId),
       provider: "google" as const,
       hasThinking: fallback.hasThinking,
-      modelId: fallback.modelId,
+      modelId: fallbackModelId,
     };
   }
   if (process.env.ANTHROPIC_API_KEY) {
-    const fallback = MODEL_CONFIG["claude-sonnet-4.6"];
-    console.log(`Falling back to Anthropic: ${fallback.modelId}`);
+    const fallback = getChatModelEntry("claude-sonnet-4.6");
+    const fallbackModelId = resolveChatModelId(fallback, process.env);
+    console.log(`Falling back to Anthropic: ${fallbackModelId}`);
     return {
-      model: anthropic(fallback.modelId),
+      model: anthropic(fallbackModelId),
       provider: "anthropic" as const,
       hasThinking: fallback.hasThinking,
-      modelId: fallback.modelId,
+      modelId: fallbackModelId,
     };
   }
   if (process.env.OPENAI_API_KEY) {
-    const fallback = MODEL_CONFIG["gpt-5.3-instant"];
-    console.log(`Falling back to OpenAI: ${fallback.modelId}`);
+    const fallback = getChatModelEntry("gpt-5.3-instant");
+    const fallbackModelId = resolveChatModelId(fallback, process.env);
+    console.log(`Falling back to OpenAI: ${fallbackModelId}`);
     return {
-      model: openai(fallback.modelId),
+      model: openai(fallbackModelId),
       provider: "openai" as const,
       hasThinking: fallback.hasThinking,
-      modelId: fallback.modelId,
+      modelId: fallbackModelId,
     };
   }
 
