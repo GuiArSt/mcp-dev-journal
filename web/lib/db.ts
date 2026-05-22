@@ -7,6 +7,7 @@ import Database from "better-sqlite3";
 import path from "path";
 import os from "os";
 import fs from "fs";
+import { initRepositorySchema } from "./db-schema";
 
 let db: Database.Database | null = null;
 
@@ -70,7 +71,6 @@ export function getDatabase(): Database.Database {
 
   // Initialize Repository schema immediately after database connection
   try {
-    const { initRepositorySchema } = require("./db-schema");
     initRepositorySchema();
   } catch (error) {
     // Schema initialization is optional, don't fail if module doesn't exist yet
@@ -162,6 +162,10 @@ export function migrateMonorepoRepositoryNames(database: Database.Database): voi
  */
 export function migrateJournalEntriesSchema(): void {
   const database = getDatabase();
+  const table = database
+    .prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'journal_entries' LIMIT 1")
+    .get();
+  if (!table) return;
 
   try {
     // Add code_author column (author of the code being reviewed)
