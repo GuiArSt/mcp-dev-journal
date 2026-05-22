@@ -68,13 +68,33 @@ function summarizeStatus(status) {
 
 function summarizeBackfill(status) {
   const b = status?.stats?.backfill ?? {};
+  const eligible = Number(b.eligible ?? 0);
+  const touched = Number(b.touched ?? 0);
+  const exhausted = Number(b.exhausted ?? 0);
+  const pendingCursors = Number(b.pendingCursors ?? 0);
+  const untouched = Math.max(0, eligible - touched);
+  const phase = untouched > 0
+    ? `first-pass (${untouched} untouched)`
+    : pendingCursors > 0
+      ? `deepening (${pendingCursors} cursors)`
+      : "complete";
   return [
-    `eligible=${b.eligible ?? 0}`,
-    `touched=${b.touched ?? 0} (${b.touchedPercent ?? 0}%)`,
-    `exhausted=${b.exhausted ?? 0} (${b.exhaustedPercent ?? 0}%)`,
-    `pendingCursors=${b.pendingCursors ?? 0}`,
+    `phase=${phase}`,
+    `eligible=${eligible}`,
+    `touched=${touched} (${b.touchedPercent ?? 0}%)`,
+    `exhausted=${exhausted} (${b.exhaustedPercent ?? 0}%)`,
+    `pendingCursors=${pendingCursors}`,
     `withMessages=${b.withMessages ?? 0}`,
   ].join(" ");
+}
+
+function backfillCounters(status) {
+  const b = status?.stats?.backfill ?? {};
+  const eligible = Number(b.eligible ?? 0);
+  const touched = Number(b.touched ?? 0);
+  const pendingCursors = Number(b.pendingCursors ?? 0);
+  const untouched = Math.max(0, eligible - touched);
+  return { eligible, touched, pendingCursors, untouched };
 }
 
 function summarizeMessages(messages) {
@@ -91,6 +111,10 @@ console.log(`[${now()}] iterations=${iterations} pauseMs=${pauseMs} discover=${d
 
 const startingCache = await getJson("/api/integrations/slack/cache?limit=1");
 console.log(`[${now()}] Current vault: ${summarizeStatus(startingCache.status)} | ${summarizeBackfill(startingCache.status)}`);
+const startingCounters = backfillCounters(startingCache.status);
+console.log(
+  `[${now()}] Resume note: local slice numbers restart, DB progress resumes from touched=${startingCounters.touched}/${startingCounters.eligible}.`,
+);
 
 if (statusOnly) {
   console.log(`[${now()}] Status-only mode complete.`);
@@ -107,13 +131,22 @@ if (discover) {
     maxRateLimitWaitMs: 70_000,
   });
   console.log(`[${now()}] Discover complete: ${summarizeStatus(discovered.status)} | ${summarizeBackfill(discovered.status)}`);
+  const discoveredCounters = backfillCounters(discovered.status);
+  console.log(
+    `[${now()}] Resume baseline after discovery: touched=${discoveredCounters.touched}/${discoveredCounters.eligible}, untouched=${discoveredCounters.untouched}, pendingCursors=${discoveredCounters.pendingCursors}.`,
+  );
   console.log(`[${now()}] Waiting before history calls to avoid Slack method limits...`);
   await sleep(pauseMs);
 }
 
 for (let i = 1; i <= iterations; i += 1) {
   try {
-    console.log(`[${now()}] Slice ${i}/${iterations}: syncing one cached conversation history page.`);
+    const before = await getJson("/api/integrations/slack/cache?limit=1");
+    const beforeCounters = backfillCounters(before.status);
+    const estimatedGlobal = Math.min(beforeCounters.touched + 1, beforeCounters.eligible || beforeCounters.touched + 1);
+    console.log(
+      `[${now()}] Slice ${i}/${iterations} (global ${estimatedGlobal}/${beforeCounters.eligible || "?"}): syncing one cached conversation history page. ${summarizeBackfill(before.status)}`,
+    );
     const result = await postJson("/api/integrations/slack/sync", {
       syncUsers: false,
       syncConversations: false,
@@ -128,7 +161,10 @@ for (let i = 1; i <= iterations; i += 1) {
       maxRateLimitWaitMs: 70_000,
     });
 
-    console.log(`[${now()}] Slice ${i}/${iterations} complete: ${summarizeMessages(result.messages)} | ${summarizeStatus(result.status)} | ${summarizeBackfill(result.status)}`);
+    const afterCounters = backfillCounters(result.status);
+    console.log(
+      `[${now()}] Slice ${i}/${iterations} complete: ${summarizeMessages(result.messages)} | ${summarizeStatus(result.status)} | ${summarizeBackfill(result.status)} | global=${afterCounters.touched}/${afterCounters.eligible}`,
+    );
   } catch (error) {
     console.error(`[${now()}] Slice ${i}/${iterations} failed: ${error instanceof Error ? error.message : String(error)}`);
   }
