@@ -12,6 +12,7 @@ const baseUrl = args.get("base-url") ?? process.env.TARTARUS_URL ?? "http://loca
 const iterations = Number(args.get("iterations") ?? process.env.SLACK_BACKFILL_ITERATIONS ?? 100);
 const pauseMs = Number(args.get("pause-ms") ?? process.env.SLACK_BACKFILL_PAUSE_MS ?? 70_000);
 const discover = args.get("discover") !== "false";
+const statusOnly = args.get("status-only") === "true";
 
 function now() {
   return new Date().toISOString();
@@ -65,6 +66,17 @@ function summarizeStatus(status) {
   return `users=${status?.stats?.users ?? 0} conversations=${conversations} messages=${status?.stats?.messages ?? 0}`;
 }
 
+function summarizeBackfill(status) {
+  const b = status?.stats?.backfill ?? {};
+  return [
+    `eligible=${b.eligible ?? 0}`,
+    `touched=${b.touched ?? 0} (${b.touchedPercent ?? 0}%)`,
+    `exhausted=${b.exhausted ?? 0} (${b.exhaustedPercent ?? 0}%)`,
+    `pendingCursors=${b.pendingCursors ?? 0}`,
+    `withMessages=${b.withMessages ?? 0}`,
+  ].join(" ");
+}
+
 function summarizeMessages(messages) {
   if (!Array.isArray(messages)) return "messages=0";
   const ok = messages.filter((item) => item?.ok).length;
@@ -77,6 +89,14 @@ function summarizeMessages(messages) {
 console.log(`[${now()}] Slack backfill starting against ${baseUrl}`);
 console.log(`[${now()}] iterations=${iterations} pauseMs=${pauseMs} discover=${discover}`);
 
+const startingCache = await getJson("/api/integrations/slack/cache?limit=1");
+console.log(`[${now()}] Current vault: ${summarizeStatus(startingCache.status)} | ${summarizeBackfill(startingCache.status)}`);
+
+if (statusOnly) {
+  console.log(`[${now()}] Status-only mode complete.`);
+  process.exit(0);
+}
+
 if (discover) {
   console.log(`[${now()}] Discovering users/conversations. This calls users.list and conversations.list.`);
   const discovered = await postJson("/api/integrations/slack/sync", {
@@ -86,7 +106,7 @@ if (discover) {
     syncThreads: false,
     maxRateLimitWaitMs: 70_000,
   });
-  console.log(`[${now()}] Discover complete: ${summarizeStatus(discovered.status)}`);
+  console.log(`[${now()}] Discover complete: ${summarizeStatus(discovered.status)} | ${summarizeBackfill(discovered.status)}`);
   console.log(`[${now()}] Waiting before history calls to avoid Slack method limits...`);
   await sleep(pauseMs);
 }
@@ -108,7 +128,7 @@ for (let i = 1; i <= iterations; i += 1) {
       maxRateLimitWaitMs: 70_000,
     });
 
-    console.log(`[${now()}] Slice ${i}/${iterations} complete: ${summarizeMessages(result.messages)} | ${summarizeStatus(result.status)}`);
+    console.log(`[${now()}] Slice ${i}/${iterations} complete: ${summarizeMessages(result.messages)} | ${summarizeStatus(result.status)} | ${summarizeBackfill(result.status)}`);
   } catch (error) {
     console.error(`[${now()}] Slice ${i}/${iterations} failed: ${error instanceof Error ? error.message : String(error)}`);
   }
@@ -120,4 +140,4 @@ for (let i = 1; i <= iterations; i += 1) {
 }
 
 const finalCache = await getJson("/api/integrations/slack/cache?limit=1");
-console.log(`[${now()}] Slack backfill finished: ${summarizeStatus(finalCache.status)}`);
+console.log(`[${now()}] Slack backfill finished: ${summarizeStatus(finalCache.status)} | ${summarizeBackfill(finalCache.status)}`);

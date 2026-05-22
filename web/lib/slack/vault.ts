@@ -398,6 +398,53 @@ export function getSlackVaultStatus() {
     LIMIT 1
   `).get() as { stats_json?: string | null } | undefined;
   const auth = authRow?.stats_json ? JSON.parse(authRow.stats_json) : null;
+  const backfill = db.prepare(`
+    WITH eligible AS (
+      SELECT c.id
+      FROM slack_conversations c
+      WHERE c.is_archived = 0
+        AND (
+          c.is_im = 1
+          OR c.is_mpim = 1
+          OR c.is_private = 1
+          OR c.type = 'private_channel'
+          OR c.is_member = 1
+        )
+    ),
+    states AS (
+      SELECT
+        replace(scope, 'conversation:', '') as conversation_id,
+        cursor,
+        stats_json,
+        updated_at
+      FROM slack_sync_state
+      WHERE scope LIKE 'conversation:%'
+        AND json_extract(stats_json, '$.backfill') = 1
+    )
+    SELECT
+      (SELECT COUNT(*) FROM slack_conversations) as discovered,
+      (SELECT COUNT(*) FROM eligible) as eligible,
+      (SELECT COUNT(*) FROM eligible e WHERE EXISTS (SELECT 1 FROM slack_messages m WHERE m.conversation_id = e.id)) as withMessages,
+      (SELECT COUNT(*) FROM eligible e JOIN states s ON s.conversation_id = e.id) as touched,
+      (SELECT COUNT(*) FROM eligible e JOIN states s ON s.conversation_id = e.id WHERE s.cursor IS NOT NULL AND s.cursor != '') as pendingCursors,
+      (SELECT COUNT(*) FROM eligible e JOIN states s ON s.conversation_id = e.id WHERE s.cursor IS NULL OR s.cursor = '') as exhausted,
+      (SELECT MAX(updated_at) FROM states) as lastBackfillAt
+  `).get() as {
+    discovered: number;
+    eligible: number;
+    withMessages: number;
+    touched: number;
+    pendingCursors: number;
+    exhausted: number;
+    lastBackfillAt: string | null;
+  };
+  const eligible = backfill.eligible || 0;
+  const backfillProgress = {
+    ...backfill,
+    touchedPercent: eligible > 0 ? Math.round((backfill.touched / eligible) * 1000) / 10 : 0,
+    exhaustedPercent: eligible > 0 ? Math.round((backfill.exhausted / eligible) * 1000) / 10 : 0,
+    note: "Slack does not expose total historical message count cheaply; progress is tracked by eligible conversation history exhaustion.",
+  };
 
   return {
     configured: !!token,
@@ -411,6 +458,7 @@ export function getSlackVaultStatus() {
         acc[row.vaultType] = row.count;
         return acc;
       }, {}),
+      backfill: backfillProgress,
     },
     lastSync: lastSync?.updated_at ?? null,
     lastError: lastSync?.last_error ?? null,
@@ -515,7 +563,7 @@ async function syncMessagesForConversation(token: string, conversation: SlackCon
     }, token);
     pages += 1;
     if (!res.ok) {
-      saveSyncState(`conversation:${conversation.id}`, { stats: { pages, messages: count }, error: res.error ?? "unknown" });
+      saveSyncState(`conversation:${conversation.id}`, { stats: { pages, messages: count, backfill: opts.forceFull || opts.continueBackfill }, error: res.error ?? "unknown" });
       return { conversationId: conversation.id, ok: false, error: res.error, pages, messages: count, retryAfter: res.retry_after };
     }
     const messages = (res.messages as SlackMessage[] | undefined) ?? [];
@@ -540,7 +588,7 @@ async function syncMessagesForConversation(token: string, conversation: SlackCon
     `).run(newestTs, newestTs, conversation.id);
   }
 
-  saveSyncState(`conversation:${conversation.id}`, { cursor: cursor || null, lastSyncedTs: newestTs ?? null, stats: { pages, messages: count }, error: null });
+  saveSyncState(`conversation:${conversation.id}`, { cursor: cursor || null, lastSyncedTs: newestTs ?? null, stats: { pages, messages: count, backfill: opts.forceFull || opts.continueBackfill }, error: null });
   return { conversationId: conversation.id, ok: true, pages, messages: count, cursor: cursor || null };
 }
 
