@@ -4,13 +4,22 @@ import { dirname, join } from 'path';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
+const locale = process.argv[2] === 'fr' ? 'fr' : 'de';
+const htmlFile = locale === 'fr' ? 'cv-fr.html' : 'cv.html';
+const pdfFile =
+  locale === 'fr'
+    ? 'Guillermo_Arce_Stumpf_CV_FR.pdf'
+    : 'Guillermo_Arce_Stumpf_CV.pdf';
+
 const browser = await puppeteer.launch({ headless: true });
 const page = await browser.newPage();
 
-await page.goto(`file://${join(__dirname, 'cv.html')}`, { waitUntil: 'networkidle0' });
+await page.goto(`file://${join(__dirname, htmlFile)}`, {
+  waitUntil: 'networkidle0',
+});
 
 await page.pdf({
-  path: join(__dirname, 'Guillermo_Arce_Stumpf_CV.pdf'),
+  path: join(__dirname, pdfFile),
   format: 'A4',
   printBackground: true,
   preferCSSPageSize: true,
@@ -18,4 +27,4 @@ await page.pdf({
 });
 
 await browser.close();
-console.log('PDF generated: cv/Guillermo_Arce_Stumpf_CV.pdf');
+console.log(`PDF generated: cv/${pdfFile}`);

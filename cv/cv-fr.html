@@ -1,0 +1,562 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Guillermo Ernesto Arce Stumpf — CV</title>
+<style>
+  @page {
+    size: A4;
+    margin: 10mm 12mm;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: Arial, Helvetica, sans-serif;
+    font-size: 8.75pt;
+    line-height: 1.35;
+    color: #111;
+    background: #fff;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  .cv {
+    max-width: 210mm;
+    margin: 0 auto;
+  }
+
+  @media screen {
+    .cv {
+      margin: 20px auto 40px;
+      box-shadow: 0 0 0 1px #ddd;
+    }
+  }
+
+  .banner {
+    padding: 10pt 13pt 9pt;
+    border-bottom: 2pt solid #1e3a5f;
+    background: #fff;
+  }
+
+  .banner h1 {
+    font-size: 17pt;
+    font-weight: 700;
+    color: #1e3a5f;
+    letter-spacing: 0.01em;
+    margin-bottom: 3pt;
+  }
+
+  .banner .tagline {
+    font-size: 9.5pt;
+    font-weight: 600;
+    color: #333;
+    margin-bottom: 5pt;
+  }
+
+  .contact-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4pt 14pt;
+    font-size: 8.5pt;
+    color: #222;
+  }
+
+  .contact-row a {
+    color: #111;
+    text-decoration: none;
+  }
+
+  .contact-row a:hover { text-decoration: underline; }
+
+  .flag { margin-right: 2pt; }
+
+  .layout {
+    display: grid;
+    grid-template-columns: 58mm 1fr;
+  }
+
+  .sidebar {
+    background: #f4f5f8;
+    padding: 9pt 9pt 10pt 13pt;
+    border-right: 1pt solid #dde0e8;
+  }
+
+  .main {
+    padding: 9pt 13pt 10pt 11pt;
+  }
+
+  .block {
+    margin-bottom: 7pt;
+  }
+
+  .block:last-child { margin-bottom: 0; }
+
+  h2 {
+    font-size: 8pt;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: #1e3a5f;
+    margin-bottom: 5pt;
+    padding-bottom: 2pt;
+    border-bottom: 0.75pt solid #c5cad6;
+  }
+
+  .sidebar h2 {
+    font-size: 7.5pt;
+    margin-bottom: 4pt;
+  }
+
+  .profile p {
+    font-size: 9pt;
+    line-height: 1.42;
+    color: #222;
+  }
+
+  .skill-line {
+    margin-bottom: 4pt;
+    font-size: 8pt;
+    line-height: 1.35;
+  }
+
+  .skill-line strong {
+    display: block;
+    font-size: 7.5pt;
+    font-weight: 700;
+    color: #1e3a5f;
+    margin-bottom: 0.5pt;
+  }
+
+  .skill-line span { color: #333; }
+
+  .lang-list {
+    list-style: none;
+    font-size: 8pt;
+  }
+
+  .lang-list li {
+    margin-bottom: 2pt;
+    color: #222;
+  }
+
+  .lang-level {
+    color: #555;
+    font-size: 7.5pt;
+  }
+
+  .edu-item {
+    margin-bottom: 5pt;
+    font-size: 8pt;
+  }
+
+  .edu-item:last-child { margin-bottom: 0; }
+
+  .edu-item .degree {
+    font-weight: 700;
+    line-height: 1.3;
+  }
+
+  .edu-item .school {
+    color: #444;
+    font-size: 7.5pt;
+  }
+
+  .edu-item .dates {
+    color: #666;
+    font-size: 7.5pt;
+  }
+
+  .tech-group {
+    margin-bottom: 3pt;
+    font-size: 7.5pt;
+    line-height: 1.35;
+    color: #333;
+  }
+
+  .tech-group strong {
+    color: #1e3a5f;
+    font-size: 7pt;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+
+  .job {
+    margin-bottom: 7pt;
+    page-break-inside: avoid;
+  }
+
+  .job.earlier-role {
+    margin-bottom: 5pt;
+  }
+
+  .job.earlier-role ul.compact li {
+    font-size: 8pt;
+    margin-bottom: 1pt;
+  }
+
+  .job-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 8pt;
+    margin-bottom: 1pt;
+  }
+
+  .job-header h3 {
+    font-size: 9.5pt;
+    font-weight: 700;
+    color: #111;
+  }
+
+  .job-dates {
+    font-size: 8pt;
+    color: #555;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+
+  .job-company {
+    font-size: 8.5pt;
+    font-weight: 600;
+    color: #1e3a5f;
+    margin-bottom: 3pt;
+  }
+
+  .job-company .note {
+    font-weight: 400;
+    color: #666;
+    font-style: italic;
+  }
+
+  ul.compact {
+    padding-left: 11pt;
+    margin: 0;
+  }
+
+  ul.compact li {
+    font-size: 8.5pt;
+    margin-bottom: 1.5pt;
+    color: #222;
+    line-height: 1.36;
+  }
+
+  .page-two {
+    page-break-before: always;
+    padding: 0 13pt 10pt;
+  }
+
+  .page-two h2 {
+    font-size: 9pt;
+    margin-bottom: 8pt;
+    padding-top: 2pt;
+  }
+
+  .project-detail {
+    margin-bottom: 7pt;
+    page-break-inside: avoid;
+  }
+
+  .project-detail h3 {
+    font-size: 9.5pt;
+    font-weight: 700;
+    color: #1e3a5f;
+    margin-bottom: 2pt;
+  }
+
+  .project-detail .intro {
+    font-size: 8pt;
+    color: #222;
+    margin-bottom: 3pt;
+    line-height: 1.36;
+  }
+
+  .project-detail .subhead {
+    font-size: 8pt;
+    font-weight: 700;
+    margin-bottom: 2pt;
+    color: #111;
+  }
+
+  .project-detail ul {
+    padding-left: 11pt;
+    margin-bottom: 3pt;
+  }
+
+  .project-detail li {
+    font-size: 8pt;
+    margin-bottom: 1pt;
+    line-height: 1.34;
+    color: #222;
+  }
+
+  .project-detail .tech-line {
+    font-size: 8pt;
+    color: #444;
+    line-height: 1.35;
+  }
+
+  .project-detail .tech-line strong {
+    color: #111;
+  }
+</style>
+</head>
+<body>
+<div class="cv">
+
+  <header class="banner">
+    <h1>Guillermo Ernesto Arce Stumpf</h1>
+    <div class="tagline">Architecte systèmes IA · Artiste digital</div>
+    <div class="contact-row">
+      <span><span class="flag" aria-hidden="true">🇩🇪</span> Bonn, Allemagne</span>
+      <span><a href="mailto:ge.arcestumpf94@gmail.com">ge.arcestumpf94@gmail.com</a></span>
+      <span><a href="tel:+4917663184588">+49 176 63184588</a></span>
+      <span><a href="https://www.linkedin.com/in/guillermo-arce-stumpf/">linkedin.com/in/guillermo-arce-stumpf</a></span>
+    </div>
+  </header>
+
+  <div class="layout">
+    <aside class="sidebar">
+
+      <section class="block" aria-labelledby="skills-heading">
+        <h2 id="skills-heading">Compétences clés</h2>
+        <div class="skill-line">
+          <strong>IA &amp; agents</strong>
+          <span>Workflows agentiques, utilisation d'outils, RAG, intégration multi-fournisseurs LLM, architecture orchestrateur</span>
+        </div>
+        <div class="skill-line">
+          <strong>LLMOps</strong>
+          <span>Langfuse, LLM-as-Judge, jeux de référence, méthodes d'évaluation, tests de régression</span>
+        </div>
+        <div class="skill-line">
+          <strong>Context Engineering</strong>
+          <span>Structuration XML, atomisation du contexte, sécurité des prompts</span>
+        </div>
+        <div class="skill-line">
+          <strong>Développement</strong>
+          <span>TypeScript, Node.js, Hono, Next.js, Laravel, Python, Zod, Vercel AI SDK</span>
+        </div>
+        <div class="skill-line">
+          <strong>Données &amp; BI</strong>
+          <span>Python, SQL, SQLite, PostgreSQL, frameworks ISCO/NACE/NUTS, ETL</span>
+        </div>
+        <div class="skill-line">
+          <strong>Produit</strong>
+          <span>Équipes engineering agiles, roadmap &amp; gestion des parties prenantes, PM de la conception à l'évaluation</span>
+        </div>
+      </section>
+
+      <section class="block" aria-labelledby="lang-heading">
+        <h2 id="lang-heading">Langues</h2>
+        <ul class="lang-list">
+          <li><span class="flag" aria-hidden="true">🇪🇸</span> Espagnol <span class="lang-level">C2 · langue maternelle</span></li>
+          <li><span class="flag" aria-hidden="true">🇩🇪</span> Allemand <span class="lang-level">C2</span></li>
+          <li><span class="flag" aria-hidden="true">🇬🇧</span> Anglais <span class="lang-level">C2</span></li>
+          <li><span class="flag" aria-hidden="true">🇫🇷</span> Français <span class="lang-level">B1</span></li>
+          <li><span class="flag" aria-hidden="true">🇷🇺</span> Russe <span class="lang-level">A2 · lecture cyrillique</span></li>
+          <li><span class="flag" aria-hidden="true">🇵🇹</span> Portugais <span class="lang-level">A2 · passif via l'espagnol</span></li>
+        </ul>
+      </section>
+
+      <section class="block" aria-labelledby="edu-heading">
+        <h2 id="edu-heading">Formation</h2>
+        <div class="edu-item">
+          <div class="degree">Licence — Relations internationales et management</div>
+          <div class="school">OTH Regensburg</div>
+          <div class="dates">10/2016 – 02/2023</div>
+        </div>
+        <div class="edu-item">
+          <div class="degree">Diplôme — Marketing digital &amp; médias</div>
+          <div class="school">International School of Business</div>
+          <div class="dates">08/2018 – 01/2019</div>
+        </div>
+        <div class="edu-item">
+          <div class="degree">Apprentissage dual — Commerce extérieur</div>
+          <div class="school">Bayer Boliviana / programme allemand</div>
+          <div class="dates">01/2014 – 11/2015</div>
+        </div>
+      </section>
+
+      <section class="block" aria-labelledby="tech-heading">
+        <h2 id="tech-heading">Technologies</h2>
+        <div class="tech-group"><strong>LLM / LLMOps</strong> OpenAI, Claude, Gemini, Langfuse, LLM-as-Judge, ETL, LLM Batch API</div>
+        <div class="tech-group"><strong>Stack / Données</strong> TypeScript, Hono, Laravel, PostgreSQL, Python, Metabase, HubSpot</div>
+        <div class="tech-group"><strong>Outils / Créatif</strong> Git, VS Code, JetBrains, Cursor, Midjourney, Runway, HeyGen</div>
+      </section>
+
+    </aside>
+
+    <main class="main">
+
+      <section class="block profile" aria-labelledby="profil-heading">
+        <h2 id="profil-heading">Profil</h2>
+        <p>Architecte systèmes IA : conception de systèmes GenAI en production, agents IA, évaluations LLM et infrastructures de prompts. Je traduis les exigences métier en systèmes IA scalables et en gestion de projet continue — avec vision produit, architecture technique et communication claire avec les parties prenantes.</p>
+      </section>
+
+      <section class="block" aria-labelledby="exp-heading">
+        <h2 id="exp-heading">Expérience professionnelle</h2>
+
+        <article class="job">
+          <div class="job-header">
+            <h3>AI Solutions Engineer</h3>
+            <span class="job-dates">04/2025 – aujourd'hui</span>
+          </div>
+          <div class="job-company">Jobilla DACH · AIR — AI Recruiter (SaaS principal)</div>
+          <ul class="compact">
+            <li>Responsabilité principale du développement et de la maintenance de l'AIR AI Agent basé sur le chat — il orchestre le workflow central des campagnes sur la plateforme</li>
+            <li>R&amp;D IA et prototypage : exploration et validation de nouvelles solutions du concept au proof-of-concept proche de la production — selon des objectifs métier concrets</li>
+            <li>Pipelines de données et business insights à la demande pour Product, Sales, Consulting et Operations</li>
+            <li>Responsabilité full-stack : maintenance logicielle, correction de bugs DB et gestion des intégrations</li>
+            <li>Priorisation de la roadmap IA ; coordination entre engineering, produit et métiers</li>
+          </ul>
+        </article>
+
+        <article class="job">
+          <div class="job-header">
+            <h3>Gen AI &amp; Content Specialist</h3>
+            <span class="job-dates">08/2023 – 04/2025</span>
+          </div>
+          <div class="job-company">Jobilla DACH</div>
+          <ul class="compact">
+            <li>Systèmes de prompts et workflows IA pour campagnes de recrutement multilingues (annonces, pages, formulaires, images)</li>
+            <li>Passage de processus de contenu manuels à des pipelines IA structurés ; réduction du travail de production manuel</li>
+            <li>Taxonomie pilotée par les données (ISCO/NACE &amp; NUTS), enrichissement de données ; lien contenu, marketing, produit et ingénierie</li>
+            <li>Collaboration avec les équipes DACH, Benelux et pays nordiques</li>
+          </ul>
+        </article>
+
+        <article class="job">
+          <div class="job-header">
+            <h3>Consultant IA &amp; artisan numérique</h3>
+            <span class="job-dates">01/2020 – aujourd'hui</span>
+          </div>
+          <div class="job-company">Ouroboros Creative Collective <span class="note">· annexe</span></div>
+          <ul class="compact">
+            <li>Sites web, projets de copywriting et conseil IA — conseil sans déploiement ni implémentation</li>
+          </ul>
+        </article>
+
+        <article class="job">
+          <div class="job-header">
+            <h3>Chef du service</h3>
+            <span class="job-dates">07/2017 – 04/2023</span>
+          </div>
+          <div class="job-company">Guacamole GmbH</div>
+          <ul class="compact">
+            <li>Management d'équipe, communication client et organisation opérationnelle sous forte pression temporelle</li>
+          </ul>
+        </article>
+
+        <article class="job earlier-role">
+          <div class="job-header">
+            <h3>Graphiste</h3>
+            <span class="job-dates">02–09/2022</span>
+          </div>
+          <div class="job-company">AMZ-Marketing.de Amazon Agency</div>
+          <ul class="compact">
+            <li>Visuels publicitaires et pipelines de contenu pour le marketing Amazon</li>
+          </ul>
+        </article>
+
+        <article class="job earlier-role">
+          <div class="job-header">
+            <h3>Alternant RH international</h3>
+            <span class="job-dates">02/2020 – 04/2021</span>
+          </div>
+          <div class="job-company">Maschinenfabrik Reinhausen GmbH</div>
+          <ul class="compact">
+            <li>Processus RH internationaux, systèmes proches ERP et données d'entreprise structurées</li>
+          </ul>
+        </article>
+
+        <article class="job earlier-role">
+          <div class="job-header">
+            <h3>Stagiaire développement commercial</h3>
+            <span class="job-dates">03–08/2018</span>
+          </div>
+          <div class="job-company">eDreams ODIGEO</div>
+          <ul class="compact">
+            <li>Analyses marché et partenaires, reporting et évaluation commerciale</li>
+          </ul>
+        </article>
+      </section>
+
+    </main>
+  </div>
+
+  <section class="page-two" aria-labelledby="proj-heading">
+    <h2 id="proj-heading">Projets sélectionnés</h2>
+
+    <article class="project-detail">
+      <h3>AIR AI Agent &amp; Campaign Workflow System</h3>
+      <p class="intro">Agent central basé sur le chat sur AIR : prend en entrée des pages carrière ou des informations de poste et accompagne de la création de campagne à la publication Meta.</p>
+      <p class="subhead">Contributions</p>
+      <ul>
+        <li>Orchestration globale du système ; mainteneur principal en phase cœur (en équipe)</li>
+        <li>Workflows de chat outillés ; modes création/édition pour formulaires, pages d'atterrissage, textes pub et images</li>
+        <li>Pipeline de scraping redondante (Firecrawl, URLBox, Jina.ai) pour extraire les informations de poste</li>
+        <li>Endpoints LLM pour structurer et fiabiliser les données brutes avant génération de contenu</li>
+        <li>Génération à partir de données structurées ; validation silencieuse en arrière-plan et QA active</li>
+        <li>Prototypes d'enrichissement : web search et raisonnement étendu sur profils candidats</li>
+        <li>Logique multilingue, AI-Pristine-Provenance, validation et gouvernance des prompts</li>
+      </ul>
+      <p class="tech-line"><strong>Technologies :</strong> TypeScript, Hono, Vercel AI SDK, Zod, PHP, Laravel, PostgreSQL, Langfuse, Firecrawl, URLBox, Jina.ai</p>
+    </article>
+
+    <article class="project-detail">
+      <h3>AI Evaluation Framework</h3>
+      <p class="intro">Système d'évaluation et d'amélioration pour contenus de campagne générés par IA — feedback entrant, prompt amélioré sortant.</p>
+      <p class="subhead">Contributions</p>
+      <ul>
+        <li>Taxonomie de la qualité subjective du contenu — base d'un scoring fiable</li>
+        <li>Objectif central : amélioration automatisée des prompts — méthodes d'évaluation comme mécanisme de confiance</li>
+        <li>Orchestrateur exploitant les résultats d'évaluation pour optimiser les prompts de façon data-driven</li>
+        <li>Évaluateurs LLM-as-Judge, jeux de référence JSONL ; critères juridiques, qualitatifs et techniques</li>
+        <li>Tests de régression CI et scoring Langfuse</li>
+      </ul>
+      <p class="tech-line"><strong>Technologies :</strong> TypeScript, Langfuse, Zod, Hono, Vercel AI SDK, OpenAI, Gemini, Anthropic</p>
+    </article>
+
+    <article class="project-detail">
+      <h3>Langfuse Prompt Management Infrastructure</h3>
+      <p class="intro">Backbone d'observabilité et de pilotage pour endpoints GenAI en production — pas seulement le versioning.</p>
+      <p class="subhead">Contributions</p>
+      <ul>
+        <li>Traçabilité, signalement de bugs et résolution systématique des problèmes en production</li>
+        <li>Versioning des prompts, labels et récupération à l'exécution sans déploiement</li>
+        <li>Interface centrale pour intégrer les méthodes d'évaluation dans l'exploitation courante</li>
+        <li>Migration des prompts de production ; débogage et traçabilité améliorés</li>
+      </ul>
+      <p class="tech-line"><strong>Technologies :</strong> TypeScript, Langfuse, Next.js, OpenTelemetry, Vercel AI SDK</p>
+    </article>
+
+    <article class="project-detail">
+      <h3>Hades Data Enrichment Pipeline</h3>
+      <p class="intro">Plateforme de données réutilisable — de sources hétérogènes héritées à une base d'analyse fiable pour prévisions et insights métier.</p>
+      <p class="subhead">Contributions</p>
+      <ul>
+        <li>Consolidation depuis bases legacy, sauvegardes, Excel, rapports HubSpot et données Meta sur 17 comptes</li>
+        <li>Nettoyage, structuration et classification (ISCO/NACE/NUTS) via LLM Batch API</li>
+        <li>Enrichissement avec données de performance Meta ; base SQL idempotente et traçable en sortie</li>
+        <li>Pas de scripts ad hoc — services modulaires réutilisables (nom : Hades)</li>
+      </ul>
+      <p class="tech-line"><strong>Technologies :</strong> Python, SQLite, LLM Batch API, Meta Marketing API, ISCO-08, NACE Rev. 2, NUTS</p>
+    </article>
+
+    <article class="project-detail">
+      <h3>Tartarus AI Operating Substrate</h3>
+      <p class="intro">Journal de développeur personnel et bibliothèque de connaissances connectable — né de la nécessité, étendu par passion.</p>
+      <p class="subhead">Contributions</p>
+      <ul>
+        <li>Suivi du travail personnel et du contexte pertinent pour chaque tâche</li>
+        <li>Bibliothèque privée connectable à tout système (MCP) ; structures agents, outils et mémoire</li>
+        <li>Indépendance des modèles, contrôle des coûts et workflows IA portables</li>
+      </ul>
+      <p class="tech-line"><strong>Technologies :</strong> Next.js, TypeScript, SQLite, MCP, Zod, Vercel AI SDK, Langfuse</p>
+    </article>
+  </section>
+
+</div>
+</body>
+</html>

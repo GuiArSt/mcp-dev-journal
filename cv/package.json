@@ -4,6 +4,8 @@
   "description": "",
   "main": "index.js",
   "scripts": {
+    "pdf": "node generate-pdf.mjs",
+    "pdf:fr": "node generate-pdf.mjs fr",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
