@@ -14,9 +14,22 @@ Tartarus MCP server runs as stdio across AI CLI agents. For **vocabulary** (Libr
 | Claude Code | `~/.claude.json` | `mcpServers.tartarus` |
 | Codex | `~/.codex/config.toml` | `[mcp_servers.tartarus]` |
 | Gemini | `~/.gemini/settings.json` | `mcpServers.tartarus` |
-| Cursor IDE | `~/.cursor/mcp.json` (and Cursor Settings UI) | MCP server entry for Tartarus |
+| Cursor IDE | `~/.cursor/mcp.json` | `mcpServers.tartarus` |
 
-Binary: `/Users/guillermo.as/Documents/Software/Laboratory/tartarus/dist/index.js` (adjust if your clone path differs).
+**MCP command:** pin **Node 22** in config (not bare `node` — shell may be Node 25;
+`better-sqlite3` must match the runtime ABI):
+
+```json
+"tartarus": {
+  "command": "/opt/homebrew/opt/node@22/bin/node",
+  "args": ["/Users/guillermo.as/Documents/Software/Laboratory/tartarus/dist/index.js"]
+}
+```
+
+## Node 22 pin
+
+- `.nvmrc` → `22`
+- After install / Node change: `npm run rebuild:native` (puts node@22 first on PATH for npm rebuild)
 
 ## Optional: `TARTARUS_AGENT_SOURCES` (JSON)
 
@@ -36,23 +49,27 @@ This indexes Codex / Claude / Gemini / Cursor configs and recent sessions into S
 
 ## Status Check
 
-1. Read all agent configs above, verify `node …/dist/index.js` path exists.
+1. Read all agent configs above — server must be named **`tartarus`**, command must be **node@22** + `dist/index.js`.
 2. Smoke test handshake:
 
 ```bash
-echo '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"test","version":"0.1"}}}' | node /Users/guillermo.as/Documents/Software/Laboratory/tartarus/dist/index.js 2>/tmp/tartarus-mcp-test.log &
+echo '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"test","version":"0.1"}}}' \
+  | /opt/homebrew/opt/node@22/bin/node /Users/guillermo.as/Documents/Software/Laboratory/tartarus/dist/index.js 2>/tmp/tartarus-mcp-test.log &
 PID=$!; sleep 3; kill $PID 2>/dev/null; cat /tmp/tartarus-mcp-test.log
 ```
 
 ## Rebuild
 
 ```bash
-cd /Users/guillermo.as/Documents/Software/Laboratory/tartarus && npm run build
+cd /Users/guillermo.as/Documents/Software/Laboratory/tartarus
+npm run rebuild:native
+npm run build
 ```
 
 ## Troubleshoot -32000
 
-Server died before handshake. Check: wrong path, missing node_modules, `npm rebuild better-sqlite3`, startup throw (run smoke test above and read stderr).
+Server died before handshake. Check: wrong path, bare `node` instead of
+`node@22`, missing `node_modules`, `npm run rebuild:native`, startup throw.
 
 ## Environment
 

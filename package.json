@@ -4,16 +4,17 @@
   "description": "Tartarus MCP server with Kronus AI agent",
   "type": "module",
   "main": "dist/index.js",
-  "bin": {
-    "tartarus": "dist/index.js"
+  "engines": {
+    "node": ">=22 <23"
   },
   "scripts": {
-    "build": "esbuild src/index.ts --bundle --platform=node --target=node18 --format=esm --outfile=dist/index.js --external:better-sqlite3 --external:@ai-sdk/anthropic --external:@ai-sdk/openai --external:@ai-sdk/google --external:ai --external:@modelcontextprotocol/sdk --external:@modelcontextprotocol/ext-apps --external:chalk --external:zod && chmod +x dist/index.js",
+    "build": "esbuild src/index.ts --bundle --platform=node --target=node22 --format=esm --outfile=dist/index.js --external:better-sqlite3 --external:@ai-sdk/anthropic --external:@ai-sdk/openai --external:@ai-sdk/google --external:ai --external:@modelcontextprotocol/sdk --external:@modelcontextprotocol/ext-apps --external:chalk --external:zod && chmod +x dist/index.js",
     "build:tsc": "tsc && chmod +x dist/index.js",
     "build:apps": "vite build --config vite.config.apps.ts",
     "dev": "tsc --watch",
     "dev:apps": "vite build --config vite.config.apps.ts --watch",
     "start": "node dist/index.js",
+    "rebuild:native": "bash scripts/rebuild-native.sh",
     "test": "npx tsx tests/object-registry.test.ts && npx tsx tests/mcp-integration.test.ts",
     "test:registry": "npx tsx tests/object-registry.test.ts",
     "test:mcp": "npx tsx tests/mcp-integration.test.ts"
