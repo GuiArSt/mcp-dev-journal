@@ -2147,6 +2147,254 @@ Returns projects with titles, categories, technologies, and metrics.`,
     },
   );
 
+  // Tool 20: artemis_list_applications
+  server.registerTool(
+    "artemis_list_applications",
+    {
+      title: "List Artemis Applications",
+      description: `List job applications tracked in Artemis, the Tartarus job-hunting module.
+
+Returns applications with company and position summary fields, status, dates, artifact counts, communication counts, and open task counts. This is a read-only query tool.`,
+      inputSchema: {
+        status: z
+          .enum([
+            "saved",
+            "drafting",
+            "applied",
+            "screening",
+            "interviewing",
+            "take_home",
+            "offer",
+            "rejected",
+            "withdrawn",
+            "archived",
+          ])
+          .optional()
+          .describe("Filter by application status"),
+        search: z
+          .string()
+          .optional()
+          .describe("Search company names, role titles, notes, and posting text"),
+        limit: z
+          .number()
+          .optional()
+          .default(50)
+          .describe("Maximum number of applications to return (default 50, max 100)"),
+        offset: z
+          .number()
+          .optional()
+          .default(0)
+          .describe("Number of applications to skip for pagination"),
+      },
+    },
+    async ({ status, search, limit = 50, offset = 0 }) => {
+      try {
+        const safeLimit = Math.min(limit, 100);
+        const params = new URLSearchParams();
+        if (status) params.set("status", status);
+        if (search) params.set("search", search);
+        params.set("limit", String(safeLimit));
+        params.set("offset", String(offset));
+
+        const response = await fetchTartarus<{
+          applications: any[];
+          total: number;
+          has_more: boolean;
+        }>(`/api/artemis/applications?${params.toString()}`);
+
+        const formatted = response.applications.map((app) => ({
+          id: app.id,
+          status: app.status,
+          priority: app.priority,
+          fit_score: app.fit_score,
+          company: app.company?.name,
+          company_id: app.company?.id,
+          position: app.position?.title,
+          position_id: app.position?.id,
+          location: app.position?.location || app.company?.location,
+          work_mode: app.position?.work_mode,
+          applied_at: app.applied_at,
+          follow_up_at: app.follow_up_at,
+          artifacts: app.artifact_count,
+          communications: app.communication_count,
+          open_tasks: app.open_task_count,
+          notes: app.notes,
+        }));
+
+        const text = `🏹 Artemis Applications (${response.total} total)\n\n${JSON.stringify(
+          {
+            showing: `${offset} to ${offset + formatted.length}`,
+            has_more: response.has_more,
+            applications: formatted,
+          },
+          null,
+          2,
+        )}`;
+
+        return {
+          content: [{ type: "text" as const, text: truncateOutput(text) }],
+        };
+      } catch (error) {
+        throw toMcpError(error);
+      }
+    },
+  );
+
+  // Tool 21: artemis_get_application
+  server.registerTool(
+    "artemis_get_application",
+    {
+      title: "Get Artemis Application",
+      description: `Get a full Artemis job application detail by ID, including company, position, artifacts, communications, and tasks. This is read-only.`,
+      inputSchema: {
+        id: z.number().describe("Artemis application ID"),
+      },
+    },
+    async ({ id }) => {
+      try {
+        const detail = await fetchTartarus<any>(`/api/artemis/applications/${id}`);
+
+        const text = `🏹 Artemis Application #${id}\n\n${JSON.stringify(detail, null, 2)}`;
+
+        return {
+          content: [{ type: "text" as const, text: truncateOutput(text) }],
+        };
+      } catch (error) {
+        throw toMcpError(error);
+      }
+    },
+  );
+
+  // Tool 22: artemis_list_due_followups
+  server.registerTool(
+    "artemis_list_due_followups",
+    {
+      title: "List Artemis Due Follow-ups",
+      description: `List Artemis applications with follow-up dates due within a configurable number of days. Rejected, withdrawn, and archived applications are excluded. This is read-only.`,
+      inputSchema: {
+        days_ahead: z
+          .number()
+          .optional()
+          .default(7)
+          .describe("Include follow-ups due from today through this many days ahead"),
+      },
+    },
+    async ({ days_ahead = 7 }) => {
+      try {
+        const response = await fetchTartarus<{
+          applications: any[];
+          total: number;
+        }>("/api/artemis/applications?limit=100&offset=0");
+
+        const now = new Date();
+        const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        const cutoff = new Date(today);
+        cutoff.setDate(cutoff.getDate() + days_ahead);
+        const inactive = new Set(["rejected", "withdrawn", "archived"]);
+
+        const due = response.applications
+          .filter((app) => {
+            if (!app.follow_up_at || inactive.has(app.status)) return false;
+            const dueDate = new Date(app.follow_up_at);
+            return !Number.isNaN(dueDate.getTime()) && dueDate <= cutoff;
+          })
+          .map((app) => ({
+            id: app.id,
+            status: app.status,
+            company: app.company?.name,
+            position: app.position?.title,
+            follow_up_at: app.follow_up_at,
+            contact: app.contact_name || app.contact_email,
+            open_tasks: app.open_task_count,
+            notes: app.notes,
+          }));
+
+        const text = `🏹 Artemis Due Follow-ups (${due.length} due)\n\n${JSON.stringify(
+          due,
+          null,
+          2,
+        )}`;
+
+        return {
+          content: [{ type: "text" as const, text: truncateOutput(text) }],
+        };
+      } catch (error) {
+        throw toMcpError(error);
+      }
+    },
+  );
+
+  // Tool 23: artemis_search_companies
+  server.registerTool(
+    "artemis_search_companies",
+    {
+      title: "Search Artemis Companies",
+      description: `Search companies represented in Artemis applications and return their related positions/application counts. This is read-only.`,
+      inputSchema: {
+        query: z.string().min(1).describe("Company search query"),
+        limit: z
+          .number()
+          .optional()
+          .default(25)
+          .describe("Maximum number of company matches to return"),
+      },
+    },
+    async ({ query, limit = 25 }) => {
+      try {
+        const params = new URLSearchParams();
+        params.set("search", query);
+        params.set("limit", "100");
+        params.set("offset", "0");
+        const response = await fetchTartarus<{ applications: any[] }>(
+          `/api/artemis/applications?${params.toString()}`,
+        );
+
+        const companies = new Map<number, any>();
+        for (const app of response.applications) {
+          const company = app.company;
+          if (!company?.id) continue;
+          const existing = companies.get(company.id) || {
+            id: company.id,
+            name: company.name,
+            industry: company.industry,
+            location: company.location,
+            applications: 0,
+            positions: new Set<string>(),
+            active_statuses: new Set<string>(),
+          };
+          existing.applications += 1;
+          if (app.position?.title) existing.positions.add(app.position.title);
+          if (app.status) existing.active_statuses.add(app.status);
+          companies.set(company.id, existing);
+        }
+
+        const formatted = Array.from(companies.values())
+          .slice(0, limit)
+          .map((company) => ({
+            id: company.id,
+            name: company.name,
+            industry: company.industry,
+            location: company.location,
+            applications: company.applications,
+            positions: Array.from(company.positions),
+            statuses: Array.from(company.active_statuses),
+          }));
+
+        const text = `🏹 Artemis Companies (${formatted.length} found)\n\n${JSON.stringify(
+          formatted,
+          null,
+          2,
+        )}`;
+
+        return {
+          content: [{ type: "text" as const, text: truncateOutput(text) }],
+        };
+      } catch (error) {
+        throw toMcpError(error);
+      }
+    },
+  );
+
   // Repository write tools - agents can create notes/prompts and update documents.
   // Linear sync tools removed from MCP - those are Tartarus-exclusive.
 

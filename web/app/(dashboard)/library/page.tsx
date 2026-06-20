@@ -27,6 +27,7 @@ import {
   Image,
   MessageSquare,
   Bot,
+  Hash,
 } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import type {
@@ -48,6 +49,7 @@ import { PortfolioTab } from "@/components/repository/tabs/PortfolioTab";
 import { LinearTab } from "@/components/repository/tabs/LinearTab";
 import { SliteTab } from "@/components/repository/tabs/SliteTab";
 import { NotionTab } from "@/components/repository/tabs/NotionTab";
+import { SlackTab } from "@/components/repository/tabs/SlackTab";
 import { MediaTab } from "@/components/repository/tabs/MediaTab";
 import { ChatsTab } from "@/components/repository/tabs/ChatsTab";
 import { AiIntegrationsTab } from "@/components/repository/tabs/AiIntegrationsTab";
@@ -108,6 +110,11 @@ export default function LibraryPage() {
     notionLastSync,
     notionSyncing,
     syncNotionData,
+    slackConversations,
+    slackMessages,
+    slackStatus,
+    slackSyncing,
+    syncSlackData,
   } = useRepositoryData(activeTab);
 
   // Category management hook
@@ -461,6 +468,10 @@ export default function LibraryPage() {
               <FileText className="mr-2 h-4 w-4" />
               Notion
             </TabsTrigger>
+            <TabsTrigger value="slack">
+              <Hash className="mr-2 h-4 w-4" />
+              Slack
+            </TabsTrigger>
             <TabsTrigger value="cv">
               <Briefcase className="mr-2 h-4 w-4" />
               CV
@@ -676,6 +687,17 @@ export default function LibraryPage() {
                 notionLastSync={notionLastSync}
                 notionSyncing={notionSyncing}
                 syncNotionData={syncNotionData}
+              />
+            </TabsContent>
+
+            <TabsContent value="slack" className="mt-0">
+              <SlackTab
+                loading={loading}
+                conversations={slackConversations}
+                messages={slackMessages}
+                status={slackStatus}
+                syncing={slackSyncing}
+                syncSlackData={syncSlackData}
               />
             </TabsContent>
 

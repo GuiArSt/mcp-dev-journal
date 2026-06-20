@@ -18,12 +18,17 @@ import { getDatabase } from "@/lib/db";
 import { lookupByUUID } from "@/lib/object-registry";
 import {
   DEFAULT_CHAT_MODEL,
-  DEFAULT_GOOGLE_FALLBACK_MODEL,
+  normalizeChatModelKey,
   getChatModelEntry,
-  isChatModelKey,
   resolveChatModelId,
   type ChatModelKey,
 } from "@/lib/ai/model-catalog";
+import {
+  normalizeUiMessageParts,
+  prepareUiMessagesForInference,
+  repairModelMessages,
+  repairPartsForModel,
+} from "@/lib/chat-message-repair";
 
 /**
  * Compact ref the Hourglass client sends with every message. Denormalized
@@ -389,7 +394,7 @@ export const DEFAULT_TOOLS_CONFIG: ToolsConfig = {
 export type ModelSelection = ChatModelKey;
 
 function getModel(selectedModel?: ChatModelKey) {
-  const modelKey = isChatModelKey(selectedModel) ? selectedModel : DEFAULT_CHAT_MODEL;
+  const modelKey = normalizeChatModelKey(selectedModel);
   const entry = getChatModelEntry(modelKey);
   const modelId = resolveChatModelId(entry, process.env);
 
@@ -433,9 +438,9 @@ function getModel(selectedModel?: ChatModelKey) {
       break;
   }
 
-  // Fallback: try any available provider
+  // Fallback: try any available provider (latest lane per vendor)
   if (process.env.GOOGLE_GENERATIVE_AI_API_KEY || process.env.GOOGLE_API_KEY) {
-    const fallback = getChatModelEntry(DEFAULT_GOOGLE_FALLBACK_MODEL);
+    const fallback = getChatModelEntry("gemini-3.5-flash");
     const fallbackModelId = resolveChatModelId(fallback, process.env);
     console.log(`Falling back to Google: ${fallbackModelId}`);
     return {
@@ -446,7 +451,7 @@ function getModel(selectedModel?: ChatModelKey) {
     };
   }
   if (process.env.ANTHROPIC_API_KEY) {
-    const fallback = getChatModelEntry("claude-sonnet-4.6");
+    const fallback = getChatModelEntry("claude-opus-4.7");
     const fallbackModelId = resolveChatModelId(fallback, process.env);
     console.log(`Falling back to Anthropic: ${fallbackModelId}`);
     return {
@@ -457,7 +462,7 @@ function getModel(selectedModel?: ChatModelKey) {
     };
   }
   if (process.env.OPENAI_API_KEY) {
-    const fallback = getChatModelEntry("gpt-5.3-instant");
+    const fallback = getChatModelEntry("gpt-5.5");
     const fallbackModelId = resolveChatModelId(fallback, process.env);
     console.log(`Falling back to OpenAI: ${fallbackModelId}`);
     return {
@@ -722,7 +727,7 @@ export async function POST(req: Request) {
       if (setArtifactSpec) enabledTools.set_artifact = setArtifactSpec;
     }
 
-    const messagesForModel =
+    let messagesForModel =
       actualProvider === "google"
         ? (() => {
             const repaired = repairUnsignedGeminiToolHistory(messages as any[]);
@@ -735,29 +740,69 @@ export async function POST(req: Request) {
           })()
         : messages;
 
+    const inferencePrep = prepareUiMessagesForInference(messagesForModel as any[], actualProvider);
+    if (inferencePrep.strippedReasoning > 0) {
+      console.warn(
+        `[${actualProvider}] Stripped ${inferencePrep.strippedReasoning} cross-provider reasoning part(s) from history`
+      );
+    }
+    messagesForModel = inferencePrep.messages;
+
     // Sanitize messages - remove control characters that can cause issues
     // (e.g., <ctrl46> from Delete key, other non-printable characters)
     // Also filter out messages with empty content (can happen when switching models,
     // e.g., Gemini thinking-only messages don't have content that Claude accepts)
     const sanitizedMessages = messagesForModel
       .map((msg: any) => {
-        if (typeof msg.content === "string") {
-          // Remove control character tags like <ctrl46>, <ctrl0>, etc.
-          // and actual control characters (ASCII 0-31 except newline/tab)
-          const sanitized = msg.content
-            .replace(/<ctrl\d+>/gi, "") // Remove <ctrlNN> tags
-            .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, ""); // Remove control chars except \n \t \r
-          return { ...msg, content: sanitized };
+        const normalized = normalizeUiMessageParts(msg);
+        const sanitizeText = (text: string) =>
+          text
+            .replace(/<ctrl\d+>/gi, "")
+            .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, "");
+
+        if (typeof normalized.content === "string") {
+          return { ...normalized, content: sanitizeText(normalized.content) };
         }
-        return msg;
+        if (Array.isArray(normalized.parts)) {
+          const sanitizedParts = normalized.parts.map((part: any) => {
+            if (part?.type === "text" && typeof part.text === "string") {
+              return { ...part, text: sanitizeText(part.text) };
+            }
+            if (part?.type === "reasoning" && typeof part.text === "string") {
+              return { ...part, text: sanitizeText(part.text) };
+            }
+            return part;
+          });
+          const repairedParts = repairPartsForModel(sanitizedParts);
+          return { ...normalized, parts: repairedParts, content: undefined };
+        }
+        return normalized;
       })
       .filter((msg: any) => {
-        // Filter out messages with empty content (except final assistant message which is allowed)
-        // This prevents "all messages must have non-empty content" errors when switching providers
+        // UI messages use `parts`; legacy paths may still use `content`
+        if (Array.isArray(msg.parts) && msg.parts.length > 0) {
+          return msg.parts.some((part: any) => {
+            if (part.type === "text") return part.text?.trim().length > 0;
+            if (part.type === "reasoning") return part.text?.trim().length > 0;
+            if (part.type === "tool-call" || part.type === "tool-result") return true;
+            if (part.type === "dynamic-tool" || (typeof part.type === "string" && part.type.startsWith("tool-"))) {
+              return true;
+            }
+            if (part.type === "image") {
+              const url = typeof part.url === "string" ? part.url : "";
+              const image = typeof part.image === "string" ? part.image : "";
+              return (image.length > 0 && !image.startsWith("blob:")) || (url.length > 0 && !url.startsWith("blob:"));
+            }
+            if (part.type === "file") {
+              const url = typeof part.url === "string" ? part.url : "";
+              return (url.length > 0 && !url.startsWith("blob:")) || part.data != null;
+            }
+            return false;
+          });
+        }
         if (typeof msg.content === "string") {
           return msg.content.trim().length > 0;
         }
-        // For array content (multipart messages), check if there's meaningful content
         if (Array.isArray(msg.content)) {
           return msg.content.length > 0 && msg.content.some((part: any) => {
             if (part.type === "text") return part.text?.trim().length > 0;
@@ -770,10 +815,12 @@ export async function POST(req: Request) {
       });
 
     // Convert UI messages to model format for proper streaming (async in AI SDK 6)
-    let modelMessages = await convertToModelMessages(sanitizedMessages);
+    let modelMessages = repairModelMessages(await convertToModelMessages(sanitizedMessages));
 
-    const isOpus47 = activeModelId === "claude-opus-4-7" && actualProvider === "anthropic";
-    if (isOpus47) {
+    const isAnthropicAdaptive =
+      (activeModelId === "claude-opus-4-7" || activeModelId === "claude-fable-5") &&
+      actualProvider === "anthropic";
+    if (isAnthropicAdaptive) {
       modelMessages = stripLeadingAssistantMessages(modelMessages);
     }
 
@@ -818,9 +865,8 @@ export async function POST(req: Request) {
     const providerOptions: Record<string, any> = {};
     if (hasThinking) {
       if (actualProvider === "anthropic") {
-        // Opus 4.7: adaptive thinking only (budget_tokens rejected by API)
-        if (activeModelId === "claude-opus-4-7") {
-          // Opus 4.7: adaptive thinking + effort (SDK maps effort → output_config)
+        // Opus 4.7 / Fable 5: adaptive thinking only (budget_tokens rejected by API)
+        if (activeModelId === "claude-opus-4-7" || activeModelId === "claude-fable-5") {
           providerOptions.anthropic = {
             thinking: { type: "adaptive", display: "summarized" },
             effort: "xhigh",
@@ -839,10 +885,12 @@ export async function POST(req: Request) {
           },
         } satisfies GoogleGenerativeAIProviderOptions;
       } else if (actualProvider === "openai") {
-        // Enable reasoning for GPT-5.2 with medium effort budget
+        // GPT-5.x Responses API: reasoning + message must be replayed as pairs.
+        // Request encrypted_content so multi-turn history works when store=false.
         providerOptions.openai = {
           reasoningEffort: "medium",
           reasoningSummary: "detailed",
+          include: ["reasoning.encrypted_content"],
         };
       }
     }
@@ -859,7 +907,7 @@ export async function POST(req: Request) {
     const chatLogBlock = buildChatLogBlock(chatLog);
 
     const effectiveSystemPrompt =
-      isOpus47
+      isAnthropicAdaptive
         ? `${systemPrompt}${shelfBlock}${chatLogBlock}\n${CLAUDE_OPUS_47_SYSTEM_SUFFIX}`
         : `${systemPrompt}${shelfBlock}${chatLogBlock}`;
 
@@ -886,7 +934,7 @@ export async function POST(req: Request) {
       providerOptions,
       // Opus 4.7: omit non-default sampling params (handled by SDK for this model).
       // Higher output cap recommended at xhigh effort (Anthropic migration guide).
-      ...(isOpus47 ? { maxOutputTokens: 64_000 } : {}),
+      ...(isAnthropicAdaptive ? { maxOutputTokens: 64_000 } : {}),
       onError: (event) => {
         // Log streaming errors with full details
         console.error("[Chat Stream Error]", {

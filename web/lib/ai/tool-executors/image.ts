@@ -1,19 +1,27 @@
 import type { ToolExecutor } from "./types";
+import { normalizePaintModel } from "@/lib/ai/muse-provider";
 
 /**
  * `generate_image` — single image-generation tool for the chat.
  *
  * Routes to the Muse service (/api/chat-hourglass/muse) in "force" mode.
- * The Muse paints with Google Gemini (Nano Banana family) by default.
- * When `provider: "openai"` is requested AND the mode is `infographic`,
- * the Muse routes to OpenAI GPT Image 2 for its superior text rendering.
+ * Default painter: OpenAI GPT Image 2. provider=gemini uses Nano Banana 2
+ * (gemini-3.1-flash-image-preview) via the Muse paint pipeline.
  */
 export const imageExecutors: Record<string, ToolExecutor> = {
   generate_image: async (args) => {
     // Tool exposes provider as "gemini" | "openai" (user-friendly); muse
     // endpoint accepts "google" | "openai". Default: openai (GPT Image 2).
-    const toolProvider = (args.provider as "gemini" | "openai" | undefined) ?? "openai";
-    const museProvider: "google" | "openai" = toolProvider === "gemini" ? "google" : "openai";
+    const painter = normalizePaintModel(args.model as string | undefined);
+    const toolProvider = (args.provider as "gemini" | "openai" | undefined) ?? undefined;
+    const museProvider: "google" | "openai" =
+      toolProvider === "gemini"
+        ? "google"
+        : toolProvider === "openai"
+          ? "openai"
+          : painter === "gpt-image-2"
+            ? "openai"
+            : "google";
     const renderMode = ((args.mode as "mood" | "infographic" | undefined) ?? "mood");
     const size = args.size as "512" | "1K" | "2K" | "4K" | undefined;
     const quality = args.quality as "low" | "medium" | "high" | undefined;
@@ -33,6 +41,7 @@ export const imageExecutors: Record<string, ToolExecutor> = {
         size,
         quality,
         provider: museProvider,
+        painterModel: painter,
         styleHint,
         commit_hash: commitHash,
         document_id: documentId,

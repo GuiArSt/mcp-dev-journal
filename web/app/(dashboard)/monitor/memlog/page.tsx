@@ -1,7 +1,8 @@
 "use client";
 
+import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Activity, AlertTriangle, RefreshCw, Trash2 } from "lucide-react";
+import { Activity, AlertTriangle, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 
@@ -126,6 +127,12 @@ export default function MemlogPage() {
         <div className="flex items-center justify-between gap-4">
           <div>
             <div className="flex items-center gap-3">
+              <Link
+                href="/monitor"
+                className="text-sm text-[var(--tartarus-ivory-muted)] hover:text-[var(--tartarus-teal)]"
+              >
+                ← Control panel
+              </Link>
               <Activity className="h-5 w-5 text-[var(--tartarus-teal)]" />
               <h1 className="text-2xl font-semibold tracking-tight">Memory Breaches</h1>
               <Badge variant="outline" className="border-[var(--tartarus-gold-dim)] text-[var(--tartarus-gold)]">
@@ -134,8 +141,11 @@ export default function MemlogPage() {
             </div>
             <p className="mt-2 max-w-3xl text-sm text-[var(--tartarus-ivory-muted)]">
               Heap and DOM-node samples beaconed from <code className="text-xs">web/lib/dev-memlog.ts</code> when
-              the client crosses warn ({"≥"}500MB), alert ({"≥"}1GB), or +100MB delta thresholds. Includes the
-              last ring-tail captured on tab unload after a breach.
+              the client crosses warn ({"≥"}500MB), alert ({"≥"}1GB), or +100MB growth in 3s. Includes the
+              last ring-tail captured on tab unload after a breach.{" "}
+              <Link href="/monitor/crashes" className="text-[var(--tartarus-teal)] hover:underline">
+                Client errors →
+              </Link>
             </p>
           </div>
           <div className="flex gap-2">
@@ -256,7 +266,18 @@ export default function MemlogPage() {
                   </div>
                   <div>
                     <div className="text-[var(--tartarus-ivory-muted)]">Conversation</div>
-                    <div>{detail.conversationId ?? "—"}</div>
+                    <div>
+                      {detail.conversationId != null ? (
+                        <Link
+                          href={`/chat?conversation=${detail.conversationId}`}
+                          className="text-[var(--tartarus-teal)] hover:underline"
+                        >
+                          #{detail.conversationId}
+                        </Link>
+                      ) : (
+                        "—"
+                      )}
+                    </div>
                   </div>
                 </div>
 

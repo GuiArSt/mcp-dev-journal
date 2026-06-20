@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Switch } from "@/components/ui/switch";
@@ -10,6 +10,7 @@ import { TARTARUS, popoverStyles, headerStyles } from "./config-styles";
 import {
   CHAT_MODEL_CATALOG,
   DEFAULT_CHAT_MODEL,
+  normalizeChatModelKey,
   type ChatModelKey,
 } from "@/lib/ai/model-catalog";
 
@@ -70,6 +71,13 @@ const MODELS = Object.fromEntries(
 
 export function ModelConfig({ config, onChange }: ModelConfigProps) {
   const [open, setOpen] = useState(false);
+  const activeModelKey = normalizeChatModelKey(config.model);
+  const resolvedConfig =
+    activeModelKey === config.model ? config : { ...config, model: activeModelKey };
+
+  useEffect(() => {
+    if (activeModelKey !== config.model) onChange(resolvedConfig);
+  }, [activeModelKey, config.model, onChange, resolvedConfig]);
 
   const selectModel = (model: ModelSelection) => {
     onChange({ ...config, model });
@@ -80,7 +88,7 @@ export function ModelConfig({ config, onChange }: ModelConfigProps) {
     onChange({ ...config, reasoningEnabled: !config.reasoningEnabled });
   };
 
-  const currentModel = MODELS[config.model];
+  const currentModel = MODELS[resolvedConfig.model];
   const supportsReasoning = currentModel.hasThinking;
 
   return (
@@ -116,7 +124,7 @@ export function ModelConfig({ config, onChange }: ModelConfigProps) {
           <div className="space-y-1.5 px-4 py-3">
             {(Object.keys(MODELS) as ModelSelection[]).map((key) => {
               const model = MODELS[key];
-              const isSelected = config.model === key;
+              const isSelected = resolvedConfig.model === key;
 
               return (
                 <button
@@ -192,7 +200,7 @@ export function ModelConfig({ config, onChange }: ModelConfigProps) {
                 onClick={toggleReasoning}
               >
                 <Switch
-                  checked={config.reasoningEnabled}
+                  checked={resolvedConfig.reasoningEnabled}
                   onCheckedChange={toggleReasoning}
                   className="data-[state=checked]:bg-[var(--tartarus-purple)] data-[state=unchecked]:bg-[var(--tartarus-surface)]"
                   onClick={(e) => e.stopPropagation()}

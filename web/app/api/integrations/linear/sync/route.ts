@@ -90,6 +90,9 @@ export async function POST(request: NextRequest) {
 
     console.log(`[Linear Sync] Completed:`, syncResult);
 
+    const { markContextMetricsStale } = await import("@/lib/mark-context-metrics-stale");
+    markContextMetricsStale();
+
     return NextResponse.json({
       success: true,
       message: `Synced ${syncResult.projects.created + syncResult.projects.updated} projects and ${syncResult.issues.created + syncResult.issues.updated} issues`,

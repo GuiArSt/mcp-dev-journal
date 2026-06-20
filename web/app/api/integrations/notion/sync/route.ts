@@ -64,6 +64,9 @@ export async function POST() {
 
     console.log(`[Notion Sync] Completed:`, syncResult);
 
+    const { markContextMetricsStale } = await import("@/lib/mark-context-metrics-stale");
+    markContextMetricsStale();
+
     return NextResponse.json({
       success: true,
       message: `Synced ${syncResult.pages.total} pages (${syncResult.pages.created} new, ${syncResult.pages.updated} updated)`,

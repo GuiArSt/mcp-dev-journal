@@ -5,6 +5,8 @@ import { z } from "zod";
 import { getDatabase } from "@/lib/db";
 import { traceAI } from "@/lib/observability";
 import { DEFAULT_CHAT_MODEL, getChatModelEntry, resolveChatModelId } from "@/lib/ai/model-catalog";
+import { getPrompt } from "@/lib/ai/prompt-store";
+import { TARTARUS_MASTER_SUMMARY_DEFAULT } from "@/lib/ai/prompt-defaults";
 
 export const runtime = "nodejs";
 export const maxDuration = 120;
@@ -112,13 +114,12 @@ async function summarizeConversation(candidate: SlackConversationCandidate, maxM
       generateText({
         model: google(SLACK_SUMMARY_MODEL_ID),
         output: Output.object({ schema: SummaryOutputSchema }),
-        system: `You summarize Slack conversations for Tartarus, a personal data vault.
-Write exactly 3 dense sentences for retrieval.
-Sentence 1: what this conversation/channel is about.
-Sentence 2: important people, topics, decisions, links, tasks, or recurring themes.
-Sentence 3: why it may matter later for the user's memory/work context.
-Do not invent missing facts. Preserve names, tools, projects, and concrete nouns when present.`,
-        prompt: `Slack conversation metadata:
+        system: getPrompt("tartarus-master-summary", TARTARUS_MASTER_SUMMARY_DEFAULT),
+        prompt: `Generate a 3-sentence retrieval summary.
+
+SUMMARY_MODE: slack_conversation
+
+Slack conversation metadata:
 ID: ${candidate.id}
 Title: ${candidate.title}
 Vault type: ${candidate.vaultType}

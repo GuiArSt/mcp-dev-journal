@@ -16,6 +16,7 @@ import { z } from "zod";
 import { getPrompt, getMuseConfig } from "@/lib/ai/prompt-store";
 import { MUSE_OBSERVE_DEFAULT } from "@/lib/ai/prompt-defaults";
 import { traceAI } from "@/lib/observability";
+import { driverModelForProvider } from "@/lib/ai/muse-provider";
 
 export const runtime = "nodejs";
 export const maxDuration = 30;
@@ -51,7 +52,7 @@ export async function POST(req: NextRequest) {
   try {
     const cfg = getMuseConfig();
     const observePrompt = getPrompt("muse-observe", MUSE_OBSERVE_DEFAULT);
-    const modelId = cfg.observeModel || "gemini-2.5-flash";
+    const modelId = driverModelForProvider("google", cfg.observeModel || "gemini-2.5-flash");
     // Trace the observe call so its (tiny) cost shows up in the per-chat
     // cost meter alongside everything else this conversation triggers.
     const convId = typeof body.conversationId === "number" ? body.conversationId : undefined;

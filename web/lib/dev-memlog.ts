@@ -182,7 +182,8 @@ function tick() {
   };
 
   const shouldAlert = heap >= ALERT_HEAP_MB;
-  const shouldWarn = heap >= WARN_HEAP_MB || Math.abs(delta) >= WARN_DELTA_MB;
+  // Only warn on heap growth spikes — large negative deltas are usually GC, not crashes.
+  const shouldWarn = heap >= WARN_HEAP_MB || delta >= WARN_DELTA_MB;
 
   if (shouldAlert) {
     console.error(tag, "HEAP CRITICAL", compact);

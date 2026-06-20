@@ -13,9 +13,56 @@ const iterations = Number(args.get("iterations") ?? process.env.SLACK_BACKFILL_I
 const pauseMs = Number(args.get("pause-ms") ?? process.env.SLACK_BACKFILL_PAUSE_MS ?? 70_000);
 const discover = args.get("discover") !== "false";
 const statusOnly = args.get("status-only") === "true";
+const timeZone = args.get("time-zone") ?? process.env.SLACK_BACKFILL_TIME_ZONE ?? "Europe/Berlin";
+const cutoffDate = args.get("cutoff-date") ?? process.env.SLACK_BACKFILL_CUTOFF_DATE ?? "";
+const latestTs = args.get("latest-ts") ?? process.env.SLACK_BACKFILL_LATEST_TS ?? (cutoffDate ? cutoffDateToSlackTs(cutoffDate, timeZone) : "");
+
+const localTimeFormatter = new Intl.DateTimeFormat("en-GB", {
+  timeZone,
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit",
+  hour: "2-digit",
+  minute: "2-digit",
+  second: "2-digit",
+  hour12: false,
+  timeZoneName: "short",
+});
+
+function formatLocalTime(date = new Date()) {
+  return localTimeFormatter.format(date);
+}
 
 function now() {
-  return new Date().toISOString();
+  return formatLocalTime();
+}
+
+function getTimeZoneOffsetMs(date, zone) {
+  const part = new Intl.DateTimeFormat("en-US", {
+    timeZone: zone,
+    timeZoneName: "shortOffset",
+    hour: "2-digit",
+  }).formatToParts(date).find((item) => item.type === "timeZoneName")?.value ?? "GMT";
+  const match = part.match(/^GMT(?:(?<sign>[+-])(?<hours>\d{1,2})(?::(?<minutes>\d{2}))?)?$/);
+  if (!match?.groups?.sign) return 0;
+  const sign = match.groups.sign === "-" ? -1 : 1;
+  const hours = Number(match.groups.hours ?? 0);
+  const minutes = Number(match.groups.minutes ?? 0);
+  return sign * ((hours * 60 + minutes) * 60 * 1000);
+}
+
+function cutoffDateToSlackTs(dateString, zone) {
+  const match = dateString.match(/^(?<year>\d{4})-(?<month>\d{2})-(?<day>\d{2})$/);
+  if (!match?.groups) {
+    throw new Error(`Invalid --cutoff-date=${dateString}. Use YYYY-MM-DD, for example --cutoff-date=2026-05-25.`);
+  }
+  const year = Number(match.groups.year);
+  const month = Number(match.groups.month);
+  const day = Number(match.groups.day);
+  const localEndOfDayGuess = new Date(Date.UTC(year, month - 1, day, 23, 59, 59, 999));
+  const offsetMs = getTimeZoneOffsetMs(localEndOfDayGuess, zone);
+  const utcInstant = new Date(Date.UTC(year, month - 1, day, 23, 59, 59, 999) - offsetMs);
+  return (utcInstant.getTime() / 1000).toFixed(6);
 }
 
 async function postJson(path, body) {
@@ -107,7 +154,7 @@ function summarizeMessages(messages) {
 }
 
 console.log(`[${now()}] Slack backfill starting against ${baseUrl}`);
-console.log(`[${now()}] iterations=${iterations} pauseMs=${pauseMs} discover=${discover}`);
+console.log(`[${now()}] iterations=${iterations} pauseMs=${pauseMs} discover=${discover} timeZone=${timeZone} cutoffDate=${cutoffDate || "none"} latestTs=${latestTs || "none"}`);
 
 const startingCache = await getJson("/api/integrations/slack/cache?limit=1");
 console.log(`[${now()}] Current vault: ${summarizeStatus(startingCache.status)} | ${summarizeBackfill(startingCache.status)}`);
@@ -159,6 +206,7 @@ for (let i = 1; i <= iterations; i += 1) {
       forceFull: true,
       includeNonMemberPublic: false,
       maxRateLimitWaitMs: 70_000,
+      latestTs: latestTs || undefined,
     });
 
     const afterCounters = backfillCounters(result.status);
@@ -170,7 +218,7 @@ for (let i = 1; i <= iterations; i += 1) {
   }
 
   if (i < iterations) {
-    console.log(`[${now()}] Sleeping ${Math.round(pauseMs / 1000)}s for Slack rate limits...`);
+    console.log(`[${now()}] Sleeping ${Math.round(pauseMs / 1000)}s for Slack rate limits. Next slice around ${formatLocalTime(new Date(Date.now() + pauseMs))}...`);
     await sleep(pauseMs);
   }
 }

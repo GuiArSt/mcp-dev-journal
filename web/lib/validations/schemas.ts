@@ -203,6 +203,238 @@ export const createMediaSchema = z.object({
 export type CreateMedia = z.infer<typeof createMediaSchema>;
 
 // ============================================================================
+// ARTEMIS JOB HUNTER SCHEMAS
+// ============================================================================
+
+export const artemisApplicationStatusSchema = z.enum([
+  "saved",
+  "drafting",
+  "applied",
+  "screening",
+  "interviewing",
+  "take_home",
+  "offer",
+  "rejected",
+  "withdrawn",
+  "archived",
+]);
+
+export const artemisPrioritySchema = z.enum(["low", "medium", "high"]);
+export const artemisWorkModeSchema = z.enum(["remote", "hybrid", "onsite", "unknown"]);
+export const artemisArtifactTypeSchema = z.enum([
+  "cv",
+  "cover_letter",
+  "portfolio",
+  "case_study",
+  "certificate",
+  "other",
+]);
+export const artemisCommunicationChannelSchema = z.enum([
+  "email",
+  "linkedin",
+  "phone",
+  "sms",
+  "video_call",
+  "in_person",
+  "note",
+  "other",
+]);
+export const artemisCommunicationDirectionSchema = z.enum([
+  "inbound",
+  "outbound",
+  "internal_note",
+]);
+
+export const artemisApplicationQuerySchema = paginationSchema.extend({
+  status: artemisApplicationStatusSchema.optional(),
+  company_id: z.coerce.number().int().positive().optional(),
+  search: z.string().optional(),
+});
+
+export type ArtemisApplicationQuery = z.infer<typeof artemisApplicationQuerySchema>;
+
+export const artemisCompanyInputSchema = z.object({
+  id: z.number().int().positive().optional(),
+  name: z.string().min(1, "Company name is required"),
+  website: z.string().optional().nullable(),
+  industry: z.string().optional().nullable(),
+  size: z.string().optional().nullable(),
+  headquarters: z.string().optional().nullable(),
+  location: z.string().optional().nullable(),
+  linkedin_url: z.string().optional().nullable(),
+  description: z.string().optional().nullable(),
+  notes: z.string().optional().nullable(),
+  tags: z.array(z.string()).default([]),
+});
+
+export type ArtemisCompanyInput = z.infer<typeof artemisCompanyInputSchema>;
+
+export const artemisPositionInputSchema = z.object({
+  id: z.number().int().positive().optional(),
+  title: z.string().min(1, "Position title is required"),
+  department: z.string().optional().nullable(),
+  employment_type: z.string().optional().nullable(),
+  seniority: z.string().optional().nullable(),
+  location: z.string().optional().nullable(),
+  work_mode: artemisWorkModeSchema.default("unknown"),
+  source_url: z.string().optional().nullable(),
+  source_platform: z.string().optional().nullable(),
+  salary_min: z.number().int().optional().nullable(),
+  salary_max: z.number().int().optional().nullable(),
+  salary_currency: z.string().optional().nullable(),
+  benefits: z.array(z.string()).default([]),
+  responsibilities: z.array(z.string()).default([]),
+  requirements: z.array(z.string()).default([]),
+  nice_to_have: z.array(z.string()).default([]),
+  raw_posting_text: z.string().optional().nullable(),
+  extracted_data: z.record(z.string(), z.unknown()).default({}),
+});
+
+export type ArtemisPositionInput = z.infer<typeof artemisPositionInputSchema>;
+
+export const createArtemisApplicationSchema = z.object({
+  company_id: z.number().int().positive().optional(),
+  company: artemisCompanyInputSchema.optional(),
+  position_id: z.number().int().positive().optional(),
+  position: artemisPositionInputSchema.optional(),
+  status: artemisApplicationStatusSchema.default("saved"),
+  priority: artemisPrioritySchema.default("medium"),
+  fit_score: z.number().int().min(0).max(100).optional().nullable(),
+  applied_at: z.string().optional().nullable(),
+  deadline_at: z.string().optional().nullable(),
+  follow_up_at: z.string().optional().nullable(),
+  source: z.string().optional().nullable(),
+  contact_name: z.string().optional().nullable(),
+  contact_email: z.string().optional().nullable(),
+  notes: z.string().optional().nullable(),
+});
+
+export type CreateArtemisApplication = z.infer<typeof createArtemisApplicationSchema>;
+
+export const updateArtemisApplicationSchema = z.object({
+  status: artemisApplicationStatusSchema.optional(),
+  priority: artemisPrioritySchema.optional(),
+  fit_score: z.number().int().min(0).max(100).optional().nullable(),
+  applied_at: z.string().optional().nullable(),
+  deadline_at: z.string().optional().nullable(),
+  follow_up_at: z.string().optional().nullable(),
+  source: z.string().optional().nullable(),
+  contact_name: z.string().optional().nullable(),
+  contact_email: z.string().optional().nullable(),
+  notes: z.string().optional().nullable(),
+});
+
+export type UpdateArtemisApplication = z.infer<typeof updateArtemisApplicationSchema>;
+
+export const createArtemisArtifactSchema = z.object({
+  artifact_type: artemisArtifactTypeSchema,
+  document_id: z.number().int().positive().optional().nullable(),
+  media_asset_id: z.number().int().positive().optional().nullable(),
+  label: z.string().optional().nullable(),
+  sent_at: z.string().optional().nullable(),
+  notes: z.string().optional().nullable(),
+});
+
+export type CreateArtemisArtifact = z.infer<typeof createArtemisArtifactSchema>;
+
+export const createArtemisCommunicationSchema = z.object({
+  company_id: z.number().int().positive().optional().nullable(),
+  position_id: z.number().int().positive().optional().nullable(),
+  channel: artemisCommunicationChannelSchema.default("note"),
+  direction: artemisCommunicationDirectionSchema.default("internal_note"),
+  contact_name: z.string().optional().nullable(),
+  contact_email: z.string().optional().nullable(),
+  subject: z.string().optional().nullable(),
+  raw_text: z.string().optional().nullable(),
+  summary: z.string().optional().nullable(),
+  occurred_at: z.string().optional().nullable(),
+  next_action: z.string().optional().nullable(),
+  next_action_due_at: z.string().optional().nullable(),
+});
+
+export type CreateArtemisCommunication = z.infer<typeof createArtemisCommunicationSchema>;
+
+export const artemisExtractJobPostingSchema = z.object({
+  text: z.string().min(20, "Paste the job post text to extract"),
+  source_url: z.string().optional().nullable(),
+});
+
+export const artemisExtractCommunicationSchema = z.object({
+  text: z.string().min(5, "Paste the communication text to extract"),
+  channel: artemisCommunicationChannelSchema.optional(),
+});
+
+export const artemisCompanyPatchSchema = z.object({
+  name: z.string().min(1).optional(),
+  website: z.string().optional().nullable(),
+  industry: z.string().optional().nullable(),
+  size: z.string().optional().nullable(),
+  headquarters: z.string().optional().nullable(),
+  location: z.string().optional().nullable(),
+  linkedin_url: z.string().optional().nullable(),
+  description: z.string().optional().nullable(),
+  notes: z.string().optional().nullable(),
+  tags: z.array(z.string()).optional(),
+});
+
+export const artemisPositionPatchSchema = z.object({
+  title: z.string().min(1).optional(),
+  department: z.string().optional().nullable(),
+  employment_type: z.string().optional().nullable(),
+  seniority: z.string().optional().nullable(),
+  location: z.string().optional().nullable(),
+  work_mode: artemisWorkModeSchema.optional(),
+  source_url: z.string().optional().nullable(),
+  source_platform: z.string().optional().nullable(),
+  salary_min: z.number().int().optional().nullable(),
+  salary_max: z.number().int().optional().nullable(),
+  salary_currency: z.string().optional().nullable(),
+  benefits: z.array(z.string()).optional(),
+  responsibilities: z.array(z.string()).optional(),
+  requirements: z.array(z.string()).optional(),
+  nice_to_have: z.array(z.string()).optional(),
+  raw_posting_text: z.string().optional().nullable(),
+  extracted_data: z.record(z.string(), z.unknown()).optional(),
+});
+
+export const artemisTaskDraftSchema = z.object({
+  title: z.string().min(1),
+  description: z.string().optional().nullable(),
+  due_at: z.string().optional().nullable(),
+});
+
+export const artemisArtifactSearchDraftSchema = z.object({
+  artifact_type: artemisArtifactTypeSchema,
+  query: z.string().min(1),
+  reason: z.string().optional().nullable(),
+});
+
+export const artemisChatProposalSchema = z.object({
+  summary: z.string().optional().nullable(),
+  application_patch: updateArtemisApplicationSchema.optional().nullable(),
+  company_patch: artemisCompanyPatchSchema.optional().nullable(),
+  position_patch: artemisPositionPatchSchema.optional().nullable(),
+  communication: createArtemisCommunicationSchema.optional().nullable(),
+  task: artemisTaskDraftSchema.optional().nullable(),
+  new_application: createArtemisApplicationSchema.optional().nullable(),
+  artifact_searches: z.array(artemisArtifactSearchDraftSchema).default([]),
+  questions: z.array(z.string()).default([]),
+});
+
+export type ArtemisChatProposal = z.infer<typeof artemisChatProposalSchema>;
+
+export const artemisChatSchema = z.object({
+  message: z.string().min(1, "Tell Artemis what changed"),
+  application_id: z.number().int().positive().optional().nullable(),
+});
+
+export const applyArtemisChatProposalSchema = artemisChatProposalSchema.omit({
+  new_application: true,
+  artifact_searches: true,
+  questions: true,
+});
+
+// ============================================================================
 // CHAT COMPRESSION SCHEMAS
 // ============================================================================
 

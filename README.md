@@ -245,10 +245,10 @@ Skills stack additively — activating multiple merges their context via OR logi
 
 | Skill | Soul Context | Tools | Use Case |
 |-------|-------------|-------|----------|
-| **Developer** | Journal, Linear | Linear, Git, Web Search | Coding sessions |
+| **Developer** | Journal | Git, Web Search | Coding sessions |
 | **Writer** | Writings | Journal, Repo, Media, Image Gen, Web Search | Creative work |
-| **Job Hunter** | CV, Portfolio, Journal, Linear | Journal, Repo, Linear, Media, Web Search | Job applications |
-| **Almighty** | Everything | Everything | Full access |
+| **Job Hunter** | CV, Portfolio, Journal | Journal, Repo, Media, Web Search | Job applications |
+| **Almighty** | All core context | All core tools | Full access (integrations toggled manually) |
 
 New skills can be added to the database — Kronus discovers them dynamically at runtime.
 

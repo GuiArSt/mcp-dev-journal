@@ -201,6 +201,10 @@ export const PUT = withErrorHandler<{ slug: string }>(async (request: NextReques
 
   if (summary !== undefined) {
     updates.summary = summary;
+    if (summary) {
+      const { summaryUpdatedAtNow } = await import("@/lib/summary-stamp");
+      updates.summaryUpdatedAt = summaryUpdatedAtNow();
+    }
   }
 
   updates.updatedAt = sql`CURRENT_TIMESTAMP`;
@@ -256,9 +260,10 @@ export const PUT = withErrorHandler<{ slug: string }>(async (request: NextReques
             const summaryData = await summaryResponse.json();
             if (summaryData.summary) {
               // Update document with generated summary
+              const { summaryUpdatedAtNow } = await import("@/lib/summary-stamp");
               await db
                 .update(documents)
-                .set({ summary: summaryData.summary })
+                .set({ summary: summaryData.summary, summaryUpdatedAt: summaryUpdatedAtNow() })
                 .where(eq(documents.id, updated.id))
                 .run();
               parsedDoc.summary = summaryData.summary;
@@ -270,6 +275,9 @@ export const PUT = withErrorHandler<{ slug: string }>(async (request: NextReques
         console.warn("Failed to generate summary for updated document:", summaryError);
       }
     }
+
+    const { markContextMetricsStale } = await import("@/lib/mark-context-metrics-stale");
+    markContextMetricsStale();
 
     return NextResponse.json(toApiDocument(parsedDoc));
   } catch (error) {
@@ -310,6 +318,9 @@ export const DELETE = withErrorHandler<{ slug: string }>(async (request: NextReq
   if (!result?.changes) {
     throw new NotFoundError("Document not found");
   }
+
+  const { markContextMetricsStale } = await import("@/lib/mark-context-metrics-stale");
+  markContextMetricsStale();
 
   return NextResponse.json({ success: true });
 });

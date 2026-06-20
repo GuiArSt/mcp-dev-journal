@@ -6,6 +6,7 @@
 import { google } from "@ai-sdk/google";
 import { generateText } from "ai";
 import { traceAI } from "@/lib/observability";
+import { normalizePaintOutputToDataUrl } from "@/lib/media-image-url";
 import type { PaintModel } from "@/lib/ai/muse-provider";
 
 export type PaintSize = "512" | "1K" | "2K" | "4K";
@@ -15,7 +16,6 @@ export type PaintQuality = "low" | "medium" | "high";
 const GEMINI_MODEL_IDS: Record<Exclude<PaintModel, "gpt-image-2">, string> = {
   "nano-banana-pro": "gemini-3-pro-image-preview",
   "nano-banana-2": "gemini-3.1-flash-image-preview",
-  "nano-banana": "gemini-2.5-flash-image",
 };
 
 function moodRenderingInstruction(styleHint?: string | null): string {
@@ -87,7 +87,7 @@ export async function paintImage(
     const first = data.data?.[0];
     if (!first) return null;
     if (first.b64_json) return `data:image/png;base64,${first.b64_json}`;
-    if (first.url) return first.url;
+    if (first.url) return normalizePaintOutputToDataUrl(first.url, abortSignal);
     return null;
   }
 
@@ -187,7 +187,7 @@ export async function paintImageEdit(opts: {
     const first = data.data?.[0];
     if (!first) return null;
     if (first.b64_json) return `data:image/png;base64,${first.b64_json}`;
-    if (first.url) return first.url;
+    if (first.url) return normalizePaintOutputToDataUrl(first.url, abortSignal);
     return null;
   }
 

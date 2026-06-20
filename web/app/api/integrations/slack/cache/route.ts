@@ -12,7 +12,9 @@ export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const limit = Math.max(1, Math.min(Number(searchParams.get("limit") ?? 50), 200));
-    return NextResponse.json(listSlackVaultCache(limit));
+    const messageLimit = Math.max(1, Math.min(Number(searchParams.get("messageLimit") ?? limit), 1000));
+    const conversationId = searchParams.get("conversationId");
+    return NextResponse.json(listSlackVaultCache(limit, { conversationId, messageLimit }));
   } catch (error) {
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "Failed to read Slack vault cache" },

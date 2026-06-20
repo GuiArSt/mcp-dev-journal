@@ -5,6 +5,8 @@ import { withErrorHandler } from "@/lib/api-handler";
 import { requireParams, requireBody } from "@/lib/validations";
 import { stringIdParamSchema, updatePortfolioProjectSchema } from "@/lib/validations/schemas";
 import { NotFoundError } from "@/lib/errors";
+import { getDatabase } from "@/lib/db";
+import { normalizePortfolioImageInput, portfolioProjectImageForClient } from "@/lib/media-image-url";
 
 /**
  * Generate AI summary for portfolio project (async, non-blocking)
@@ -86,8 +88,10 @@ export const GET = withErrorHandler(
       throw new NotFoundError("Portfolio project", id);
     }
 
+    const sqlite = getDatabase();
     return NextResponse.json({
       ...project,
+      image: portfolioProjectImageForClient(project.image, sqlite),
       technologies: JSON.parse(project.technologies || "[]"),
       metrics: JSON.parse(project.metrics || "{}"),
       links: JSON.parse(project.links || "{}"),
@@ -126,7 +130,13 @@ export const PUT = withErrorHandler(
     if (body.dateCompleted !== undefined) updateData.dateCompleted = body.dateCompleted;
     if (body.status !== undefined) updateData.status = body.status;
     if (body.featured !== undefined) updateData.featured = body.featured;
-    if (body.image !== undefined) updateData.image = body.image;
+    if (body.image !== undefined) {
+      const sqlite = getDatabase();
+      updateData.image =
+        body.image == null || body.image === ""
+          ? body.image
+          : normalizePortfolioImageInput(body.image, sqlite);
+    }
     if (body.excerpt !== undefined) updateData.excerpt = body.excerpt;
     if (body.description !== undefined) updateData.description = body.description;
     if (body.role !== undefined) updateData.role = body.role;
@@ -164,8 +174,10 @@ export const PUT = withErrorHandler(
       generatePortfolioSummary(id, project).catch(console.error);
     }
 
+    const sqlite = getDatabase();
     return NextResponse.json({
       ...project,
+      image: project ? portfolioProjectImageForClient(project.image, sqlite) : null,
       technologies: JSON.parse(project?.technologies || "[]"),
       metrics: JSON.parse(project?.metrics || "{}"),
       links: JSON.parse(project?.links || "{}"),

@@ -85,6 +85,8 @@ export interface MuseProposeRequest {
   repositoryIndex?: string;
   currentTitle?: string;
   provider?: MuseProvider;
+  /** Override configured painter (gpt-image-2 | nano-banana-2 | nano-banana-pro). */
+  painterModel?: string;
   /** Tag every internal trace span with this chat's conversation_id so the
    *  per-chat cost meter sees the muse's work. */
   conversationId?: number;
@@ -99,6 +101,7 @@ export interface MuseGenerateProposalRequest {
   size?: PaintSize;
   quality?: PaintQuality;
   provider?: MuseProvider;
+  painterModel?: string;
   styleHint?: string;
   commit_hash?: string;
   document_id?: number;
@@ -116,6 +119,7 @@ export interface MuseGenerateDirectRequest {
   size?: PaintSize;
   quality?: PaintQuality;
   provider?: MuseProvider;
+  painterModel?: string;
   styleHint?: string;
   commit_hash?: string;
   document_id?: number;
@@ -136,6 +140,7 @@ export interface MuseEditRequest {
   size?: PaintSize;
   quality?: PaintQuality;
   provider?: MuseProvider;
+  painterModel?: string;
   styleHint?: string;
   commit_hash?: string;
   document_id?: number;

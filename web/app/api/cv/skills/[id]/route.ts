@@ -38,7 +38,7 @@ ${skill.lastUsed ? `Last used: ${skill.lastUsed}` : ""}
     if (response.ok) {
       const { summary } = await response.json();
       const db = getDatabase();
-      db.prepare("UPDATE skills SET summary = ? WHERE id = ?").run(summary, skillId);
+      db.prepare("UPDATE skills SET summary = ?, summary_updated_at = CURRENT_TIMESTAMP WHERE id = ?").run(summary, skillId);
     }
   } catch (error) {
     console.error("Failed to generate skill summary:", error);

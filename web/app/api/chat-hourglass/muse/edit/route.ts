@@ -9,7 +9,7 @@ import { withTrace, recordImageCost } from "@/lib/observability";
 import { getMuseConfig } from "@/lib/ai/prompt-store";
 import { persistMuseImage } from "@/lib/ai/muse-artifact";
 import { paintImageEdit, type PaintQuality, type PaintSize, type RenderMode } from "@/lib/ai/muse-paint";
-import { getProviderPair, type MuseProvider } from "@/lib/ai/muse-provider";
+import { getProviderPair, normalizePaintModel, type MuseProvider } from "@/lib/ai/muse-provider";
 
 export const runtime = "nodejs";
 export const maxDuration = 120;
@@ -46,11 +46,13 @@ export async function POST(req: NextRequest) {
   }
 
   const cfg = getMuseConfig();
-  const provider: MuseProvider = body.provider ?? "openai";
-  const resolvedProvider: MuseProvider = (cfg.provider as MuseProvider) ?? provider;
+  const painter = normalizePaintModel(body.painterModel ?? cfg.painterModel);
+  const resolvedProvider: MuseProvider =
+    body.provider ??
+    (painter === "gpt-image-2" ? "openai" : painter.startsWith("nano-banana") ? "google" : (cfg.provider as MuseProvider) ?? "openai");
   const pair = getProviderPair(resolvedProvider, {
     driverModel: cfg.driverModel,
-    painterModel: cfg.painterModel,
+    painterModel: painter,
   });
 
   const renderMode = body.renderMode ?? "mood";

@@ -183,6 +183,19 @@ export function persistMuseImage(opts: {
   }
 
   const thumbUrl = `/api/media/${id}/raw`;
+
+  if (opts.portfolioProjectId) {
+    try {
+      db.prepare(`UPDATE portfolio_projects SET image = ?, updated_at = ? WHERE id = ?`).run(
+        thumbUrl,
+        new Date().toISOString(),
+        opts.portfolioProjectId,
+      );
+    } catch {
+      /* non-critical — media linkage still valid */
+    }
+  }
+
   return {
     uuid,
     kind: "muse-image",

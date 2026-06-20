@@ -34,6 +34,7 @@ export const journalEntries = sqliteTable("journal_entries", {
   filesChanged: text("files_changed"),
   // AI-generated 3-sentence summary for Kronus indexing
   summary: text("summary"),
+  summaryUpdatedAt: text("summary_updated_at"),
 });
 
 /**
@@ -44,6 +45,7 @@ export const repositoryOverviews = sqliteTable("repository_overviews", {
   repository: text("repository").primaryKey(),
   gitUrl: text("git_url"),
   summary: text("summary"),
+  summaryUpdatedAt: text("summary_updated_at"),
   purpose: text("purpose"),
   architecture: text("architecture"),
   keyDecisions: text("key_decisions"),
@@ -104,6 +106,7 @@ export const documents = sqliteTable("documents", {
   language: text("language").default("en"),
   metadata: text("metadata").default("{}"),
   summary: text("summary"), // AI-generated 3-sentence summary for indexing
+  summaryUpdatedAt: text("summary_updated_at"),
   createdAt: text("created_at").default("CURRENT_TIMESTAMP"),
   updatedAt: text("updated_at").default("CURRENT_TIMESTAMP"),
 });
@@ -147,6 +150,7 @@ export const skills = sqliteTable("skills", {
   firstUsed: text("firstUsed"),
   lastUsed: text("lastUsed"),
   summary: text("summary"), // AI-generated 3-sentence summary for Kronus indexing
+  summaryUpdatedAt: text("summary_updated_at"),
 });
 
 /**
@@ -165,6 +169,7 @@ export const workExperience = sqliteTable("work_experience", {
   achievements: text("achievements").default("[]"),
   logo: text("logo"),
   summary: text("summary"), // AI-generated 3-sentence summary for Kronus indexing
+  summaryUpdatedAt: text("summary_updated_at"),
 });
 
 /**
@@ -184,6 +189,7 @@ export const education = sqliteTable("education", {
   achievements: text("achievements").default("[]"),
   logo: text("logo"),
   summary: text("summary"), // AI-generated 3-sentence summary for Kronus indexing
+  summaryUpdatedAt: text("summary_updated_at"),
 });
 
 // ============================================================================
@@ -233,6 +239,165 @@ export const mediaAssets = sqliteTable("media_assets", {
   width: integer("width"), // Image dimensions
   height: integer("height"),
   createdAt: text("created_at").default("CURRENT_TIMESTAMP"),
+  updatedAt: text("updated_at").default("CURRENT_TIMESTAMP"),
+});
+
+// ============================================================================
+// ARTEMIS JOB HUNTER SYSTEM
+// ============================================================================
+
+/**
+ * Artemis companies - organizations tracked during the job hunt.
+ */
+export const artemisCompanies = sqliteTable("artemis_companies", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  name: text("name").notNull(),
+  website: text("website"),
+  industry: text("industry"),
+  size: text("size"),
+  headquarters: text("headquarters"),
+  location: text("location"),
+  linkedinUrl: text("linkedin_url"),
+  description: text("description"),
+  notes: text("notes"),
+  tags: text("tags").default("[]"),
+  summary: text("summary"),
+  summaryUpdatedAt: text("summary_updated_at"),
+  createdAt: text("created_at").default("CURRENT_TIMESTAMP"),
+  updatedAt: text("updated_at").default("CURRENT_TIMESTAMP"),
+});
+
+/**
+ * Artemis job positions - role information, reusable across multiple applications.
+ */
+export const artemisJobPositions = sqliteTable("artemis_job_positions", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  companyId: integer("company_id")
+    .notNull()
+    .references(() => artemisCompanies.id, { onDelete: "cascade" }),
+  title: text("title").notNull(),
+  department: text("department"),
+  employmentType: text("employment_type"),
+  seniority: text("seniority"),
+  location: text("location"),
+  workMode: text("work_mode", { enum: ["remote", "hybrid", "onsite", "unknown"] }).default("unknown"),
+  sourceUrl: text("source_url"),
+  sourcePlatform: text("source_platform"),
+  salaryMin: integer("salary_min"),
+  salaryMax: integer("salary_max"),
+  salaryCurrency: text("salary_currency"),
+  benefits: text("benefits").default("[]"),
+  responsibilities: text("responsibilities").default("[]"),
+  requirements: text("requirements").default("[]"),
+  niceToHave: text("nice_to_have").default("[]"),
+  rawPostingText: text("raw_posting_text"),
+  extractedData: text("extracted_data").default("{}"),
+  summary: text("summary"),
+  summaryUpdatedAt: text("summary_updated_at"),
+  createdAt: text("created_at").default("CURRENT_TIMESTAMP"),
+  updatedAt: text("updated_at").default("CURRENT_TIMESTAMP"),
+});
+
+/**
+ * Artemis applications - a concrete application attempt for a job position.
+ */
+export const artemisApplications = sqliteTable("artemis_applications", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  positionId: integer("position_id")
+    .notNull()
+    .references(() => artemisJobPositions.id, { onDelete: "cascade" }),
+  status: text("status", {
+    enum: [
+      "saved",
+      "drafting",
+      "applied",
+      "screening",
+      "interviewing",
+      "take_home",
+      "offer",
+      "rejected",
+      "withdrawn",
+      "archived",
+    ],
+  })
+    .notNull()
+    .default("saved"),
+  priority: text("priority", { enum: ["low", "medium", "high"] }).default("medium"),
+  fitScore: integer("fit_score"),
+  appliedAt: text("applied_at"),
+  deadlineAt: text("deadline_at"),
+  followUpAt: text("follow_up_at"),
+  lastActivityAt: text("last_activity_at"),
+  source: text("source"),
+  contactName: text("contact_name"),
+  contactEmail: text("contact_email"),
+  notes: text("notes"),
+  createdAt: text("created_at").default("CURRENT_TIMESTAMP"),
+  updatedAt: text("updated_at").default("CURRENT_TIMESTAMP"),
+});
+
+/**
+ * Artemis application artifacts - CVs, letters, portfolio docs, and media sent.
+ */
+export const artemisApplicationArtifacts = sqliteTable("artemis_application_artifacts", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  applicationId: integer("application_id")
+    .notNull()
+    .references(() => artemisApplications.id, { onDelete: "cascade" }),
+  artifactType: text("artifact_type", {
+    enum: ["cv", "cover_letter", "portfolio", "case_study", "certificate", "other"],
+  }).notNull(),
+  documentId: integer("document_id").references(() => documents.id, { onDelete: "set null" }),
+  mediaAssetId: integer("media_asset_id").references(() => mediaAssets.id, { onDelete: "set null" }),
+  label: text("label"),
+  sentAt: text("sent_at"),
+  notes: text("notes"),
+  createdAt: text("created_at").default("CURRENT_TIMESTAMP"),
+  updatedAt: text("updated_at").default("CURRENT_TIMESTAMP"),
+});
+
+/**
+ * Artemis communications - pasted or manually entered recruiter/application timeline.
+ */
+export const artemisCommunications = sqliteTable("artemis_communications", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  applicationId: integer("application_id").references(() => artemisApplications.id, { onDelete: "set null" }),
+  companyId: integer("company_id").references(() => artemisCompanies.id, { onDelete: "set null" }),
+  positionId: integer("position_id").references(() => artemisJobPositions.id, { onDelete: "set null" }),
+  channel: text("channel", {
+    enum: ["email", "linkedin", "phone", "sms", "video_call", "in_person", "note", "other"],
+  })
+    .notNull()
+    .default("note"),
+  direction: text("direction", { enum: ["inbound", "outbound", "internal_note"] })
+    .notNull()
+    .default("internal_note"),
+  contactName: text("contact_name"),
+  contactEmail: text("contact_email"),
+  subject: text("subject"),
+  rawText: text("raw_text"),
+  summary: text("summary"),
+  occurredAt: text("occurred_at").notNull().default("CURRENT_TIMESTAMP"),
+  nextAction: text("next_action"),
+  nextActionDueAt: text("next_action_due_at"),
+  createdAt: text("created_at").default("CURRENT_TIMESTAMP"),
+  updatedAt: text("updated_at").default("CURRENT_TIMESTAMP"),
+});
+
+/**
+ * Artemis tasks - explicit follow-ups and application prep work.
+ */
+export const artemisTasks = sqliteTable("artemis_tasks", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  applicationId: integer("application_id").references(() => artemisApplications.id, { onDelete: "cascade" }),
+  title: text("title").notNull(),
+  description: text("description"),
+  dueAt: text("due_at"),
+  status: text("status", { enum: ["open", "done", "dismissed"] })
+    .notNull()
+    .default("open"),
+  createdAt: text("created_at").default("CURRENT_TIMESTAMP"),
+  completedAt: text("completed_at"),
   updatedAt: text("updated_at").default("CURRENT_TIMESTAMP"),
 });
 
@@ -461,6 +626,7 @@ export const portfolioProjects = sqliteTable("portfolio_projects", {
   tags: text("tags").default("[]"), // JSON array for filtering
   sortOrder: integer("sort_order").default(0), // Manual ordering
   summary: text("summary"), // AI-generated 3-sentence summary for Kronus indexing
+  summaryUpdatedAt: text("summary_updated_at"),
   createdAt: text("created_at").default("CURRENT_TIMESTAMP"),
   updatedAt: text("updated_at").default("CURRENT_TIMESTAMP"),
 });
@@ -488,6 +654,7 @@ export const linearProjects = sqliteTable("linear_projects", {
   teamIds: text("team_ids").default("[]"), // JSON array of team IDs
   memberIds: text("member_ids").default("[]"), // JSON array of member user IDs
   summary: text("summary"), // AI-generated 3-sentence summary for indexing
+  summaryUpdatedAt: text("summary_updated_at"),
   // Metadata
   syncedAt: text("synced_at").default("CURRENT_TIMESTAMP"), // Last sync time
   deletedAt: text("deleted_at"), // If deleted in Linear, when we detected it
@@ -518,6 +685,7 @@ export const linearIssues = sqliteTable("linear_issues", {
   projectName: text("project_name"), // Project name (cached for context)
   parentId: text("parent_id"), // Parent issue ID for sub-issues
   summary: text("summary"), // AI-generated 3-sentence summary for indexing
+  summaryUpdatedAt: text("summary_updated_at"),
   // Metadata
   syncedAt: text("synced_at").default("CURRENT_TIMESTAMP"), // Last sync time
   deletedAt: text("deleted_at"), // If deleted in Linear, when we detected it
@@ -564,6 +732,7 @@ export const sliteNotes = sqliteTable("slite_notes", {
   reviewState: text("review_state"), // "Verified" | "Outdated" | "VerificationRequested"
   noteType: text("note_type"), // "rich_text" | "discussion" | "collection"
   summary: text("summary"), // AI-generated 3-sentence summary
+  summaryUpdatedAt: text("summary_updated_at"),
   // Metadata
   syncedAt: text("synced_at").default("CURRENT_TIMESTAMP"),
   deletedAt: text("deleted_at"),
@@ -596,6 +765,7 @@ export const notionPages = sqliteTable("notion_pages", {
   coverUrl: text("cover_url"), // Cover image URL
   archived: integer("archived", { mode: "boolean" }).default(false),
   summary: text("summary"), // AI-generated 3-sentence summary
+  summaryUpdatedAt: text("summary_updated_at"),
   // Metadata
   syncedAt: text("synced_at").default("CURRENT_TIMESTAMP"),
   deletedAt: text("deleted_at"),
@@ -738,6 +908,24 @@ export type NewEducation = typeof education.$inferInsert;
 export type MediaAsset = typeof mediaAssets.$inferSelect;
 export type NewMediaAsset = typeof mediaAssets.$inferInsert;
 
+export type ArtemisCompany = typeof artemisCompanies.$inferSelect;
+export type NewArtemisCompany = typeof artemisCompanies.$inferInsert;
+
+export type ArtemisJobPosition = typeof artemisJobPositions.$inferSelect;
+export type NewArtemisJobPosition = typeof artemisJobPositions.$inferInsert;
+
+export type ArtemisApplication = typeof artemisApplications.$inferSelect;
+export type NewArtemisApplication = typeof artemisApplications.$inferInsert;
+
+export type ArtemisApplicationArtifact = typeof artemisApplicationArtifacts.$inferSelect;
+export type NewArtemisApplicationArtifact = typeof artemisApplicationArtifacts.$inferInsert;
+
+export type ArtemisCommunication = typeof artemisCommunications.$inferSelect;
+export type NewArtemisCommunication = typeof artemisCommunications.$inferInsert;
+
+export type ArtemisTask = typeof artemisTasks.$inferSelect;
+export type NewArtemisTask = typeof artemisTasks.$inferInsert;
+
 export type Conversation = typeof conversations.$inferSelect;
 export type NewConversation = typeof conversations.$inferInsert;
 
@@ -834,6 +1022,38 @@ export type NewTartarusObject = typeof tartarusObjects.$inferInsert;
 
 export type TartarusObjectHistoryEntry = typeof tartarusObjectHistory.$inferSelect;
 export type NewTartarusObjectHistoryEntry = typeof tartarusObjectHistory.$inferInsert;
+
+// ============================================================================
+// KRONUS CONTEXT METRICS (UI token estimates by soul section label)
+// ============================================================================
+
+export const kronusContextSections = sqliteTable("kronus_context_sections", {
+  sectionKey: text("section_key").primaryKey(),
+  label: text("label").notNull(),
+  category: text("category").notNull().default("soul"),
+  soulConfigKey: text("soul_config_key"),
+  sourceTables: text("source_tables").notNull().default("[]"),
+  sortOrder: integer("sort_order").notNull().default(0),
+});
+
+export const kronusContextSectionMetrics = sqliteTable("kronus_context_section_metrics", {
+  sectionKey: text("section_key")
+    .primaryKey()
+    .references(() => kronusContextSections.sectionKey),
+  itemCount: integer("item_count").notNull().default(0),
+  tokenEstimate: integer("token_estimate").notNull().default(0),
+  breakdownJson: text("breakdown_json").notNull().default("{}"),
+  computedAt: text("computed_at").notNull().default("CURRENT_TIMESTAMP"),
+});
+
+export const kronusContextMetricsMeta = sqliteTable("kronus_context_metrics_meta", {
+  id: integer("id").primaryKey(),
+  stale: integer("stale").notNull().default(1),
+  computedAt: text("computed_at"),
+});
+
+export type KronusContextSection = typeof kronusContextSections.$inferSelect;
+export type KronusContextSectionMetric = typeof kronusContextSectionMetrics.$inferSelect;
 
 // ============================================================================
 // AI INTEGRATION LIBRARY

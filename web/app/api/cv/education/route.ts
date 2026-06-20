@@ -46,7 +46,7 @@ ${achievements.length ? `Achievements:\n${achievements.map((a: string) => `- ${a
     if (response.ok) {
       const { summary } = await response.json();
       const db = getDatabase();
-      db.prepare("UPDATE education SET summary = ? WHERE id = ?").run(summary, eduId);
+      db.prepare("UPDATE education SET summary = ?, summary_updated_at = CURRENT_TIMESTAMP WHERE id = ?").run(summary, eduId);
     }
   } catch (error) {
     console.error("Failed to generate education summary:", error);
@@ -112,6 +112,9 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
     const { registerObject } = await import("@/lib/object-registry");
     registerObject({ type: 'education', sourceTable: 'education', sourceId: body.id, title: `${body.degree} in ${body.field}` });
   } catch { /* registry is non-critical */ }
+
+  const { markContextMetricsStale } = await import("@/lib/mark-context-metrics-stale");
+  markContextMetricsStale();
 
   return NextResponse.json({
     ...edu,

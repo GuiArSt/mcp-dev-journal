@@ -46,7 +46,7 @@ ${achievements.length ? `Achievements:\n${achievements.map((a: string) => `- ${a
     if (response.ok) {
       const { summary } = await response.json();
       const db = getDatabase();
-      db.prepare("UPDATE education SET summary = ? WHERE id = ?").run(summary, eduId);
+      db.prepare("UPDATE education SET summary = ?, summary_updated_at = CURRENT_TIMESTAMP WHERE id = ?").run(summary, eduId);
     }
   } catch (error) {
     console.error("Failed to generate education summary:", error);

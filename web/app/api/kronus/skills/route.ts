@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getDrizzleDb, documents } from "@/lib/db/drizzle";
 import { eq } from "drizzle-orm";
 import type { SkillInfo, SkillConfig } from "@/lib/ai/skills";
+import { estimateTokens } from "@/lib/chat-text-cleaner";
 
 /**
  * GET /api/kronus/skills
@@ -42,6 +43,7 @@ export async function GET() {
         color: config.color || "#00CED1",
         priority: config.priority ?? 50,
         config,
+        tokenEstimate: estimateTokens(d.content),
       };
     });
 

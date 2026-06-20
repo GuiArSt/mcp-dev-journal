@@ -50,6 +50,9 @@ interface MoodPanelProps {
   onAcceptApproval?: () => void;
   onPickAlternative?: (index: number) => void;
   onSkipApproval?: () => void;
+  // Click-to-edit on the displayed image — opens the muse edit popover.
+  onEditImage?: () => void;
+  editPopover?: React.ReactNode;
 }
 
 export function MoodPanel({
@@ -71,19 +74,14 @@ export function MoodPanel({
   onAcceptApproval,
   onPickAlternative,
   onSkipApproval,
+  onEditImage,
+  editPopover,
 }: MoodPanelProps) {
   const [historyOpen, setHistoryOpen] = useState(false);
 
   // Per-tab shelf — the navigation, dots, and viewing index all derive
   // from this filtered list, not the full shelf.
   const tabShelf = useMemo(() => filterShelfByTab(shelf, tab), [shelf, tab]);
-
-  // Counts for the tab labels — computed once per shelf change.
-  const counts = useMemo(() => ({
-    mood: filterShelfByTab(shelf, "mood").length,
-    infographic: filterShelfByTab(shelf, "infographic").length,
-    repo: filterShelfByTab(shelf, "repo").length,
-  }), [shelf]);
 
   // If the currently-viewed item isn't in the active tab, fall back to
   // the newest item in the tab so the panel always shows the right kind.
@@ -194,13 +192,15 @@ export function MoodPanel({
                       muse asset (not Kronus) since this is her surface. */}
                   <div className="hg-muse-oracle">
                     <div className={`hg-muse-portrait${musePainting ? " hg-muse-portrait-painting" : ""}`}>
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img
-                        src="/muse.png"
-                        alt="The Muse"
-                        className="hg-muse-portrait-img"
-                      />
-                      <div className="hg-muse-portrait-halo" aria-hidden />
+                      <div className="hg-muse-portrait-clip">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                          src="/muse.png"
+                          alt="The Muse"
+                          className="hg-muse-portrait-img"
+                        />
+                        <div className="hg-muse-portrait-halo" aria-hidden />
+                      </div>
                       {musePainting && (
                         <div className="hg-muse-portrait-badge">
                           <Loader2 className="animate-spin" size={12} /> rendering
@@ -208,14 +208,14 @@ export function MoodPanel({
                       )}
                     </div>
                     <div className="hg-muse-standby-title">
-                      {musePainting ? "she is rendering..." : "the muse watches"}
+                      {musePainting ? "The Muse Is Rendering..." : "The Muse Watches"}
                     </div>
                   </div>
                   {/* Lower section — thoughts + hint */}
                   <div className="hg-muse-lower">
                     {museThoughts.length === 0 && !musePainting && (
                       <div className="hg-muse-standby-hint">
-                        every few turns she&apos;ll offer a poem, a thought, or - when the moment earns it - visual art for you to confirm.
+                        Every few turns she&apos;ll offer a poem, a thought, or - when the moment earns it - visual art for you to confirm.
                       </div>
                     )}
                     {museThoughts.length > 0 && (
@@ -240,25 +240,32 @@ export function MoodPanel({
               {isEmpty && tab === "infographic" && (
                 <div className="hg-artifact-empty">
                   <div className="hg-artifact-empty-glyph">▤</div>
-                  <div className="hg-artifact-empty-text">no infographics yet — the muse will produce one when a diagram is earned</div>
+                  <div className="hg-artifact-empty-text">No infographics yet — the Muse will produce one when a diagram is earned</div>
                 </div>
               )}
 
               {isEmpty && tab === "repo" && (
                 <div className="hg-artifact-empty">
                   <div className="hg-artifact-empty-glyph">¶</div>
-                  <div className="hg-artifact-empty-text">nothing from the repo on the shelf — use + to add a document, entry, or media</div>
+                  <div className="hg-artifact-empty-text">Nothing from the repo on the shelf — use + to add a document, entry, or media</div>
                 </div>
               )}
 
               {!isEmpty && hydrating && !hydratedArtifact && (
                 <div className="hg-artifact-empty">
                   <div className="hg-artifact-empty-glyph">…</div>
-                  <div className="hg-artifact-empty-text">hydrating artifact</div>
+                  <div className="hg-artifact-empty-text">Hydrating artifact</div>
                 </div>
               )}
 
-              {hydratedArtifact && <ArtifactView artifact={hydratedArtifact} rendering={!!musePainting} />}
+              {hydratedArtifact && (
+                <ArtifactView
+                  artifact={hydratedArtifact}
+                  rendering={!!musePainting}
+                  onEditImage={onEditImage}
+                  editPopover={editPopover}
+                />
+              )}
 
               {musePainting && !hydratedArtifact && !isEmpty && (
                 <div className="hg-muse-rendering" role="status" aria-live="polite">

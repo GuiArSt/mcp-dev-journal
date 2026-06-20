@@ -188,6 +188,8 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
       const { registerObject } = await import("@/lib/object-registry");
       registerObject({ type, sourceTable: "documents", sourceId: slug, title });
     } catch { /* registry is non-critical */ }
+    const { markContextMetricsStale } = await import("@/lib/mark-context-metrics-stale");
+    markContextMetricsStale();
 
     return NextResponse.json(toApiDocument(parseDocumentMetadata(document)));
   } catch (error) {

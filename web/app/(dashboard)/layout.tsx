@@ -4,6 +4,7 @@ import { usePathname } from "next/navigation";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { ChatInterface } from "@/components/chat/ChatInterface";
+import { ClientTelemetry } from "@/components/dev/ClientTelemetry";
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -12,11 +13,17 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   // Hourglass route renders its own full-screen shell (rail, topbar, panels).
   if (isHourglassRoute) {
-    return <TooltipProvider>{children}</TooltipProvider>;
+    return (
+      <TooltipProvider>
+        <ClientTelemetry />
+        {children}
+      </TooltipProvider>
+    );
   }
 
   return (
     <TooltipProvider>
+      <ClientTelemetry />
       <div className="flex h-screen flex-col overflow-hidden bg-[var(--tartarus-deep)] md:flex-row">
         <Sidebar />
         <main className="relative flex-1 overflow-auto bg-[var(--tartarus-void)]">

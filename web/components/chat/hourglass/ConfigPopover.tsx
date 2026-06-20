@@ -1,11 +1,21 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState, type CSSProperties } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { createPortal } from "react-dom";
 import { RotateCcw } from "lucide-react";
 import type { SoulConfigState } from "@/components/chat/SoulConfig";
 import type { ToolsConfigState } from "@/components/chat/ToolsConfig";
 import { ALL_SOUL_CONFIG, ALL_TOOLS_CONFIG, LEAN_SOUL_CONFIG, LEAN_TOOLS_CONFIG } from "@/lib/ai/skills";
+import {
+  estimateSoulContextTokens,
+  formatTokenCount,
+  formatTokenLabel,
+  getSoulSectionCountAndTokens,
+  mergeEffectiveSoulConfig,
+  type KronusContextStats,
+  type SoulContextSectionKey,
+} from "@/lib/kronus-context-stats";
+import { getModelContextLimit, DEFAULT_CHAT_MODEL } from "@/lib/ai/model-catalog";
 
 interface Props {
   open: boolean;
@@ -17,9 +27,11 @@ interface Props {
   impliedToolsConfig?: Partial<ToolsConfigState>;
   onSoulConfigChange: (config: SoulConfigState) => void;
   onToolsConfigChange: (config: ToolsConfigState) => void;
+  contextStats?: KronusContextStats | null;
+  contextLimit?: number;
 }
 
-const SOUL_OPTIONS: Array<{ key: keyof SoulConfigState; label: string; hint: string }> = [
+const SOUL_OPTIONS: Array<{ key: SoulContextSectionKey; label: string; hint: string }> = [
   { key: "writings", label: "writings", hint: "essays, poems, notes" },
   { key: "portfolioProjects", label: "portfolio", hint: "case studies" },
   { key: "skills", label: "cv skills", hint: "capability index" },
@@ -49,10 +61,6 @@ const TOOL_OPTIONS: Array<{ key: keyof ToolsConfigState; label: string; hint: st
   { key: "aiIntegrations", label: "ai library", hint: "agent configs/logs" },
 ];
 
-function countEnabled(config: object): number {
-  return Object.values(config).filter(Boolean).length;
-}
-
 export function ConfigPopover({
   open,
   onOpenChange,
@@ -63,16 +71,51 @@ export function ConfigPopover({
   impliedToolsConfig,
   onSoulConfigChange,
   onToolsConfigChange,
+  contextStats,
+  contextLimit = getModelContextLimit(DEFAULT_CHAT_MODEL),
 }: Props) {
   const panelRef = useRef<HTMLDivElement | null>(null);
   const [position, setPosition] = useState<CSSProperties | null>(null);
+  const [localStats, setLocalStats] = useState<KronusContextStats | null>(null);
+
+  const stats = contextStats ?? localStats;
+
+  // Bootstrap stats once if parent has not loaded them yet.
+  useEffect(() => {
+    if (contextStats != null) return;
+    let cancelled = false;
+    fetch("/api/kronus/stats")
+      .then(async (res) => {
+        if (!res.ok || cancelled) return;
+        const data = (await res.json()) as KronusContextStats;
+        if (!cancelled && typeof data.writings === "number") setLocalStats(data);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [contextStats]);
+
+  const effectiveSoul = useMemo(
+    () => mergeEffectiveSoulConfig(soulConfig, impliedSoulConfig),
+    [soulConfig, impliedSoulConfig],
+  );
+
+  const selectedSoulTokens = useMemo(() => {
+    if (!stats) return null;
+    return estimateSoulContextTokens(soulConfig, stats, impliedSoulConfig);
+  }, [stats, soulConfig, impliedSoulConfig]);
+
+  const soulContextPercent = selectedSoulTokens != null
+    ? Math.min(99, Math.round((selectedSoulTokens / contextLimit) * 100))
+    : null;
 
   const updatePosition = useCallback(() => {
     if (!anchorRect || typeof window === "undefined") {
       setPosition(null);
       return;
     }
-    const panelWidth = 420;
+    const panelWidth = 480;
     const margin = 12;
     const left = Math.max(
       margin,
@@ -130,12 +173,15 @@ export function ConfigPopover({
     <div ref={panelRef} className="hg-config-popover" style={position ?? undefined}>
       <div className="hg-config-popover-head">
         <span>context + tools</span>
-        <span>{countEffective(soulConfig, impliedSoulConfig)} context · {countEffective(toolsConfig, impliedToolsConfig)} tools</span>
+        <span className="hg-config-head-meta">
+          {countEffective(soulConfig, impliedSoulConfig)} context · {countEffective(toolsConfig, impliedToolsConfig)} tools
+          {selectedSoulTokens != null ? <> · {formatTokenLabel(selectedSoulTokens)}</> : null}
+        </span>
       </div>
 
       <div className="hg-config-popover-actions">
         <button type="button" onClick={() => { onSoulConfigChange(LEAN_SOUL_CONFIG); onToolsConfigChange(LEAN_TOOLS_CONFIG); }}>
-          <RotateCcw size={12} /> lean
+          <RotateCcw size={12} /> lite
         </button>
         <button type="button" onClick={() => { onSoulConfigChange(ALL_SOUL_CONFIG); onToolsConfigChange(ALL_TOOLS_CONFIG); }}>
           full context
@@ -148,17 +194,38 @@ export function ConfigPopover({
           {SOUL_OPTIONS.map((option) => {
             const active = !!soulConfig[option.key];
             const skillActive = !active && !!impliedSoulConfig?.[option.key];
+            const effectiveOn = !!effectiveSoul[option.key];
+            const sectionStats = stats
+              ? getSoulSectionCountAndTokens(option.key, stats, effectiveSoul)
+              : null;
+
             return (
               <button
                 key={option.key}
                 type="button"
                 className={`hg-config-row${active ? " hg-on" : ""}${skillActive ? " hg-skill-on" : ""}`}
                 onClick={() => toggleSoul(option.key)}
+                title={
+                  sectionStats
+                    ? `${formatTokenCount(sectionStats.tokens)} tokens if included (${sectionStats.count} items)`
+                    : undefined
+                }
               >
                 <span className="hg-config-check">{active ? "✓" : skillActive ? "@" : ""}</span>
-                <span>
+                <span className="hg-config-row-body">
                   <strong>{option.label}</strong>
-                  <em>{skillActive ? `${option.hint} · active via skill` : option.hint}</em>
+                  {sectionStats && (
+                    <span className="hg-config-row-stats">
+                      {sectionStats.count} · {formatTokenLabel(sectionStats.tokens)}
+                    </span>
+                  )}
+                  <em>
+                    {skillActive
+                      ? `${option.hint} · via skill`
+                      : effectiveOn && !active
+                        ? `${option.hint} · on via skill`
+                        : option.hint}
+                  </em>
                 </span>
               </button>
             );
@@ -177,15 +244,45 @@ export function ConfigPopover({
                 onClick={() => toggleTool(option.key)}
               >
                 <span className="hg-config-check">{active ? "✓" : skillActive ? "@" : ""}</span>
-                <span>
+                <span className="hg-config-row-body">
                   <strong>{option.label}</strong>
-                  <em>{skillActive ? `${option.hint} · active via skill` : option.hint}</em>
+                  <em>{skillActive ? `${option.hint} · via skill` : option.hint}</em>
                 </span>
               </button>
             );
           })}
         </section>
       </div>
+
+      <footer className="hg-config-popover-foot">
+        <div className="hg-config-foot-row">
+          <span>selected context</span>
+          <span>
+            {selectedSoulTokens != null ? (
+              <>
+                <strong>{formatTokenLabel(selectedSoulTokens)}</strong>
+                <span className="hg-config-foot-limit"> / {formatTokenCount(contextLimit)}</span>
+                {soulContextPercent != null && (
+                  <span className="hg-config-foot-pct"> ({soulContextPercent}%)</span>
+                )}
+              </>
+            ) : (
+              <span className="hg-config-foot-limit">calculating…</span>
+            )}
+          </span>
+        </div>
+        <div className="hg-config-foot-bar" aria-hidden>
+          <div
+            className="hg-config-foot-bar-fill"
+            style={{ width: `${Math.min(soulContextPercent ?? 0, 100)}%` }}
+          />
+        </div>
+        <p className="hg-config-foot-note">
+          {stats
+            ? `Base prompt ~${formatTokenCount(stats.baseTokens)} included. Per-row counts are what each section adds when on.`
+            : "Loading context sizes from your library…"}
+        </p>
+      </footer>
     </div>,
     document.body,
   );

@@ -160,6 +160,53 @@ the `codex-slack-vault-and-execution-plan` branch.
 - **Validation:** review against `web/lib/slack/vault.ts` schema.
 - **Parallel-safe:** yes.
 
+### V1-MEDIA-EXTRACT-001 — Externalize image bytes to bucket storage
+
+- **Goal:** Stop storing image bytes inline in `media_assets.data`.
+  Move them to Supabase Storage (the `journal-images` bucket already
+  exists in the codebase), reference by `supabase_url`. The schema
+  already has the column — 75 rows currently use 166 MB of inline
+  base64, which is **69% of the 240 MB DB**. Externalizing shrinks
+  the DB to ~74 MB, cuts backup size 3×, removes a query-perf hit on
+  the chat route's shelf-rendering path, and aligns with the
+  hosted-lite story (Phase 4) where bytes don't belong on the
+  serverless filesystem anyway.
+- **Files likely touched:**
+  - `web/scripts/media-extract-backfill.mjs` (new — one-time migration
+    that walks `media_assets`, uploads each `data` blob to the
+    bucket, sets `supabase_url`, nulls `data`).
+  - `web/lib/media/storage.ts` (new — `MediaStorage` interface +
+    Supabase adapter; same shape as `BackupDestination` in P8-04).
+  - `web/app/api/storage/route.ts` (modify — writes go to the bucket
+    immediately, not the DB).
+  - All shelf/artifact read sites: `web/app/api/chat-hourglass/artifact/[uuid]/route.ts`,
+    `web/lib/ai/muse-artifact.ts`, journal viewer routes, document
+    image embedders — dereference `supabase_url` instead of base64.
+  - `web/lib/db/migrations/0xx_media_data_optional.sql` (new — make
+    `data` column nullable; do NOT drop it yet, keep one full release
+    as backstop in case the bucket is unreachable).
+- **Risks:**
+  - **Read-path coverage gaps**: missing a single read site means
+    blank images in production. Mitigation: grep for every consumer
+    of `media_assets.data` before migration; add an integration test
+    that loads a real shelf image end-to-end.
+  - **Bucket policy mistake** publishing private images. Mitigation:
+    bucket stays private, all reads through signed URLs (5-minute
+    TTL via `createSignedUrl`).
+  - **Migration is one-way** unless we keep `data` populated during
+    a transition window. Mitigation: backfill script writes
+    `supabase_url` *first*, only nulls `data` in a separate pass
+    after deploy confirms reads work.
+- **Validation:** Backfill `--dry-run` reports row counts and total
+  bytes; full run uploads + sets URLs without nulling data;
+  manual UI check that shelf images and journal entry attachments
+  still render; `SELECT SUM(LENGTH(data)) FROM media_assets WHERE
+  supabase_url IS NOT NULL` returns 0 after the null-out pass.
+- **Parallel-safe:** mostly. The migration touches Hourglass's shelf
+  rendering path, which Codex's open work also touches
+  (`HourglassChat.tsx`, `ArtifactImage.tsx`). Coordinate or defer
+  until Codex's batch merges.
+
 ---
 
 ## Phase 2 — Universal Integration Bus
@@ -522,25 +569,109 @@ research doc).
 - **Parallel-safe with Slack branch:** **No — defer to
   post-merge.**
 
-### P8-04 — Snapshot job + age encryption
+### P8-04 — Snapshot job + age encryption (Supabase adapter)
 
 - **Goal:** A `pnpm snapshot` command that produces an
   `age`-encrypted, chunked tarball and uploads to a dedicated
-  Supabase Storage bucket (`tartarus-backups`, private). Cadence
+  private Supabase Storage bucket (`tartarus-backups`). Cadence
   scaffolding (hourly WAL, daily full) lives in script flags;
   actual scheduling is operator-driven for now.
+  - **Pipeline:** SQLite `db.backup()` → tar → `zstd -19` →
+    `age` encrypt to recipient → split into 64 MiB chunks →
+    upload. All streamed — no full-buffer in memory (the live
+    DB is 240 MB and growing).
+  - **age identity:** auto-generated on first run to
+    `data/backup.age-identity` (file mode 0600). Loss of the
+    identity = loss of backup readability — back it up
+    out-of-band. Document this loudly.
+  - **Adapter shape:** introduces `BackupDestination` interface
+    so P8-04b (Google Drive) can plug in without refactoring.
+    Same pattern V1-MEDIA-EXTRACT-001 uses for `MediaStorage`.
 - **Files:** `web/scripts/snapshot.mjs` (new),
-  `web/lib/backup/snapshot.ts` (new — testable core),
-  `web/lib/backup/supabase-upload.ts` (new),
-  `web/package.json` (`age-encryption`,
+  `web/lib/backup/snapshot.ts` (new — testable streaming core),
+  `web/lib/backup/destination.ts` (new — `BackupDestination`
+  interface),
+  `web/lib/backup/destinations/supabase.ts` (new — Supabase
+  Storage chunked-upload adapter),
+  `web/lib/backup/age-keys.ts` (new — identity load /
+  auto-generate),
+  `web/lib/backup/supabase-upload.ts` (new — already in P8-04
+  notes; consolidated into `destinations/supabase.ts`),
+  `web/package.json` (add `age-encryption ^0.3.0`;
   `@mongodb-js/zstd` *or* shell out to system `zstd`),
-  `docs/SUPABASE_BACKUP_SETUP.md` (new — bucket policy SQL).
-- **Risks:** `db.backup()` blocks writes briefly under heavy
-  WAL — acceptable at 02:00 local.
+  `docs/SUPABASE_BACKUP_SETUP.md` (new — bucket policy SQL,
+  service-role key handling, signed-URL conventions).
+- **Risks:**
+  - `db.backup()` blocks writes briefly under heavy WAL —
+    acceptable at 02:00 local.
+  - Streaming bugs are subtle and only surface at scale —
+    test with a real-size DB clone (~240 MB), not a fixture.
+  - Auto-generated age identity could be silently lost if the
+    user nukes `data/`. Script prints the recipient on first
+    run and a "back this up" reminder; restore drill (P8-05)
+    will fail loud if the identity is missing.
 - **Validation:** `pnpm snapshot --dry-run` produces a local
-  tarball; `pnpm snapshot` uploads; check Supabase Storage
-  console for the file.
-- **Parallel-safe:** Yes.
+  encrypted tarball; `pnpm snapshot --upload` ships to
+  Supabase; check the bucket UI for the file; tarball passes
+  `age --decrypt` round-trip locally.
+- **Parallel-safe:** Yes — all new files, no Slack overlap.
+
+### P8-04b — Google Drive backup destination (follow-up)
+
+- **Goal:** Second `BackupDestination` adapter so snapshots can
+  optionally also push to a personal Google Drive folder.
+  Defense-in-depth: if Supabase is compromised or unreachable,
+  your nightly tarball still lands somewhere you control.
+- **Why Google Drive specifically:** user already has the
+  account, 15 GB free is plenty for encrypted nightly snapshots
+  (compressed DB ≈ 25 MB after V1-MEDIA-EXTRACT-001 runs),
+  official Node.js SDK, supports resumable uploads.
+- **Files:**
+  `web/lib/backup/destinations/gdrive.ts` (new),
+  `web/scripts/gdrive-oauth-setup.mjs` (new — one-time
+  interactive flow that opens a browser, collects the refresh
+  token, writes it to a gitignored file or guides the user
+  through env-var setup),
+  `docs/GDRIVE_BACKUP_SETUP.md` (new),
+  `web/package.json` (add `googleapis`).
+- **Env vars:** `GDRIVE_CLIENT_ID`, `GDRIVE_CLIENT_SECRET`,
+  `GDRIVE_REFRESH_TOKEN`, `GDRIVE_FOLDER_ID`. Snapshot job
+  uses Google Drive **only when all four are set** — otherwise
+  silently skipped. No noisy errors for users who don't opt in.
+- **Risks:**
+  - OAuth refresh tokens can revoke without warning
+    (e.g., 6 months of inactivity, password change, security
+    review). Snapshot job must report failure clearly — falling
+    back to "Supabase only" silently would defeat the
+    diversification purpose. Surface a row in
+    `integration_errors` (from P8-07) when GDrive fails.
+  - Google Drive API rate limit (~3 writes/sec sustained).
+    Nightly snapshots are fine; intra-day catch-up uploads
+    after a long offline period might trip it.
+  - Personal Drive's 750 GB/day upload cap is not a concern
+    for our snapshot sizes but worth knowing for future bulk
+    media archival.
+- **Validation:** Run `pnpm gdrive-oauth-setup` once; trigger
+  `pnpm snapshot --upload`; check the configured Drive folder
+  for the file.
+- **Parallel-safe:** Yes — purely additive to P8-04.
+- **Depends on:** P8-04 (the `BackupDestination` interface).
+
+### P8-04c — NordLocker / Nord cloud storage adapter (rejected)
+
+- **Status:** Rejected. **NordLocker has no public API** (as of
+  May 2026); their only programmatic surface is the desktop
+  app's local sync folder, which defeats automated backup.
+  Nord Account's bundled cloud storage shares the same
+  underlying NordLocker service.
+- **If you want NordLocker in the loop anyway:** manually
+  download a snapshot from Supabase (or Google Drive once
+  P8-04b lands) and drag-and-drop it into NordLocker yourself.
+  Treat it as cold-storage human-driven archival, not
+  scripted backup.
+- **Revisit:** If Nord ever publishes an API, reopen this as
+  P8-04d. The `BackupDestination` interface lets us add a
+  third adapter without touching P8-04 or P8-04b.
 
 ### P8-05 — Restore-drill script
 

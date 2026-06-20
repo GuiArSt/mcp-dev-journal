@@ -8,27 +8,19 @@ import {
   Moon,
   Sun,
   LogOut,
-  Settings,
   Archive,
   PanelLeftClose,
   PanelLeft,
   Menu,
   Activity,
+  Crosshair,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { useState, useEffect } from "react";
-import { DatabaseOperations } from "@/components/db/DatabaseOperations";
 import { useIsMobile } from "@/hooks/useMobile";
 
 const navItems = [
@@ -37,12 +29,6 @@ const navItems = [
     href: "/chat",
     icon: MessageSquare,
     description: "Kronus and the Muse",
-  },
-  {
-    title: "Legacy",
-    href: "/legacy-chat",
-    icon: MessageSquare,
-    description: "Old Kronus chat",
   },
   {
     title: "Reader",
@@ -56,6 +42,12 @@ const navItems = [
     icon: Archive,
     description: "Unified knowledge base",
   },
+  {
+    title: "Artemis",
+    href: "/artemis",
+    icon: Crosshair,
+    description: "Job hunt tracker",
+  },
 ];
 
 // Page title mapping for mobile header
@@ -64,6 +56,7 @@ const pageTitles: Record<string, string> = {
   "/legacy-chat": "Legacy Chat",
   "/reader": "Reader",
   "/library": "Library",
+  "/artemis": "Artemis",
   "/repository": "Library",
   "/kronus": "Kronus History",
   "/multimedia": "Multimedia",
@@ -194,25 +187,25 @@ function SidebarContent({
                 href="/monitor"
                 className={cn(
                   "flex w-full items-center justify-center rounded-md p-2 text-[var(--tartarus-ivory-dim)] transition-colors hover:bg-[var(--tartarus-surface)] hover:text-[var(--tartarus-ivory)]",
-                  pathname === "/monitor" && "text-[var(--tartarus-teal)]"
+                  pathname?.startsWith("/monitor") && "text-[var(--tartarus-teal)]"
                 )}
                 onClick={onNavigate}
               >
-                <Settings className="h-4 w-4" />
+                <Activity className="h-4 w-4" />
               </Link>
             </TooltipTrigger>
-            <TooltipContent side="right">AI Control Panel</TooltipContent>
+            <TooltipContent side="right">Control Panel</TooltipContent>
           </Tooltip>
         ) : (
           <Link
             href="/monitor"
             className={cn(
               "flex w-full items-center gap-2 rounded-md px-2 py-2 text-sm text-[var(--tartarus-ivory-dim)] transition-colors hover:bg-[var(--tartarus-surface)] hover:text-[var(--tartarus-ivory)]",
-              pathname === "/monitor" && "text-[var(--tartarus-teal)]"
+              pathname?.startsWith("/monitor") && "text-[var(--tartarus-teal)]"
             )}
             onClick={onNavigate}
           >
-            <Settings className="h-4 w-4" />
+            <Activity className="h-4 w-4" />
             Control Panel
           </Link>
         )}
@@ -241,43 +234,6 @@ function SidebarContent({
             )}
           </Button>
         )}
-
-        {/* Settings Dialog */}
-        <Dialog>
-          <DialogTrigger asChild>
-            {!expanded ? (
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="w-full justify-center p-2 text-[var(--tartarus-ivory-dim)] hover:bg-[var(--tartarus-surface)] hover:text-[var(--tartarus-ivory)]"
-                  >
-                    <Settings className="h-4 w-4" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent side="right">Settings</TooltipContent>
-              </Tooltip>
-            ) : (
-              <Button
-                variant="ghost"
-                size="sm"
-                className="w-full justify-start gap-2 text-[var(--tartarus-ivory-dim)] hover:bg-[var(--tartarus-surface)] hover:text-[var(--tartarus-ivory)]"
-              >
-                <Settings className="h-4 w-4" />
-                Settings
-              </Button>
-            )}
-          </DialogTrigger>
-          <DialogContent className="max-w-lg border-[var(--tartarus-border)] bg-[var(--tartarus-surface)]">
-            <DialogHeader>
-              <DialogTitle className="text-[var(--tartarus-ivory)]">Settings</DialogTitle>
-            </DialogHeader>
-            <div className="space-y-4 py-4">
-              <DatabaseOperations />
-            </div>
-          </DialogContent>
-        </Dialog>
 
         {/* Theme toggle */}
         {!expanded ? (

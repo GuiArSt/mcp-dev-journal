@@ -66,6 +66,9 @@ export async function POST() {
 
     console.log(`[Slite Sync] Completed:`, syncResult);
 
+    const { markContextMetricsStale } = await import("@/lib/mark-context-metrics-stale");
+    markContextMetricsStale();
+
     return NextResponse.json({
       success: true,
       message: `Synced ${syncResult.notes.total} notes (${syncResult.notes.created} new, ${syncResult.notes.updated} updated)`,

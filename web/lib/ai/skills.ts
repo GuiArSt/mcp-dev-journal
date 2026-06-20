@@ -2,7 +2,7 @@
  * Kronus Skills — On-Demand Context Loading
  *
  * Skills are prompts that declare their context dependencies (soul sections + tools).
- * Kronus starts lean (~6k tokens), loads context only when a skill is activated.
+ * Kronus starts in Lite mode (all summaries, no full bodies), loads full context when a skill is activated.
  * Skills are additive: activating multiple skills OR-merges their configs.
  *
  * Storage: documents table with type="prompt" and metadata.type="kronus-skill"
@@ -53,7 +53,7 @@ export interface SkillInfo {
 // LEAN BASELINE CONFIGS
 // ============================================================================
 
-/** Lean baseline soul config — nothing loaded (minimal tokens) */
+/** Kronus Lite soul config — no full sections (summaries index injected separately) */
 export const LEAN_SOUL_CONFIG: SoulConfigState = {
   writings: false,
   portfolioProjects: false,

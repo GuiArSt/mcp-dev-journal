@@ -7,15 +7,13 @@ import remarkBreaks from "remark-breaks";
 import { MermaidPreview } from "@/components/multimedia/MermaidPreview";
 import { HourglassSpinner } from "./icons";
 import type { ToolCallSummary, Turn } from "./types";
+import { ConversationSummaryControls } from "./ConversationSummaryControls";
+import type { ConversationSummaryRow } from "@/lib/conversation-summary-ui";
 
 const INITIAL_RENDERED_TURNS = 24;
 const LOAD_EARLIER_STEP = 24;
 
-interface RecentConversation {
-  id: number;
-  title: string;
-  updated_at: string;
-}
+type RecentConversation = ConversationSummaryRow;
 
 interface HeroProps {
   turns: Turn[];
@@ -24,12 +22,13 @@ interface HeroProps {
   activeToolCalls?: ToolCallSummary[];
   isThinking: boolean;
   isStreaming: boolean;
-  onRegen?: (turnIndex: number) => void;
+  onRegen?: () => void;
   onCopy?: (text: string) => void;
-  onEdit?: (turnIndex: number) => void;
+  onEdit?: () => void;
   onScrollTurnChange?: (visibleTurn: number) => void;
   recentConversations?: RecentConversation[];
   onLoadConversation?: (id: number) => void;
+  onConversationSummaryUpdated?: (id: number, patch: Partial<RecentConversation>) => void;
 }
 
 export interface HeroHandle {
@@ -42,7 +41,7 @@ function formatTime(ts: number) {
 }
 
 export const Hero = forwardRef<HeroHandle, HeroProps>(function Hero(
-  { turns, streamingAssistantText, pendingUserText, activeToolCalls = [], isThinking, isStreaming, onRegen, onCopy, onEdit, onScrollTurnChange, recentConversations, onLoadConversation },
+  { turns, streamingAssistantText, pendingUserText, activeToolCalls = [], isThinking, isStreaming, onRegen, onCopy, onEdit, onScrollTurnChange, recentConversations, onLoadConversation, onConversationSummaryUpdated },
   ref,
 ) {
   const heroRef = useRef<HTMLElement | null>(null);
@@ -98,11 +97,19 @@ export const Hero = forwardRef<HeroHandle, HeroProps>(function Hero(
     return () => el.removeEventListener("scroll", onScroll);
   }, [currentTurn, onScrollTurnChange, turns.length]);
 
-  // Keep streaming cheap: jump to bottom without queuing smooth-scroll animations.
+  // Keep streaming cheap: throttle scroll-to-bottom to one layout pass per frame.
+  const scrollRafRef = useRef<number | null>(null);
   useEffect(() => {
     const el = heroRef.current;
     if (!el) return;
-    el.scrollTop = el.scrollHeight;
+    if (scrollRafRef.current != null) cancelAnimationFrame(scrollRafRef.current);
+    scrollRafRef.current = requestAnimationFrame(() => {
+      scrollRafRef.current = null;
+      if (heroRef.current) heroRef.current.scrollTop = heroRef.current.scrollHeight;
+    });
+    return () => {
+      if (scrollRafRef.current != null) cancelAnimationFrame(scrollRafRef.current);
+    };
   }, [turns.length, streamingAssistantText]);
 
   const handleReturnClick = () => {
@@ -134,16 +141,26 @@ export const Hero = forwardRef<HeroHandle, HeroProps>(function Hero(
               <div className="hg-doc-empty-history">
                 <div className="hg-doc-empty-history-label">recent</div>
                 {recentConversations.map((c) => (
-                  <button
-                    key={c.id}
-                    className="hg-doc-empty-history-row"
-                    onClick={() => onLoadConversation?.(c.id)}
-                  >
-                    <span className="hg-doc-empty-history-title">{c.title || "untitled"}</span>
-                    <span className="hg-doc-empty-history-age">
-                      {new Date(c.updated_at).toLocaleDateString([], { month: "short", day: "numeric" })}
-                    </span>
-                  </button>
+                  <div key={c.id} className="hg-doc-empty-history-row">
+                    <button
+                      type="button"
+                      className="hg-doc-empty-history-main"
+                      onClick={() => onLoadConversation?.(c.id)}
+                    >
+                      <span className="hg-doc-empty-history-title">{c.title || "untitled"}</span>
+                      {c.summary && (
+                        <span className="hg-doc-empty-history-summary">{c.summary}</span>
+                      )}
+                      <span className="hg-doc-empty-history-age">
+                        {new Date(c.updated_at).toLocaleDateString([], { month: "short", day: "numeric" })}
+                      </span>
+                    </button>
+                    <ConversationSummaryControls
+                      conv={c}
+                      size="sm"
+                      onUpdated={(patch) => onConversationSummaryUpdated?.(c.id, patch)}
+                    />
+                  </div>
                 ))}
               </div>
             )}
@@ -157,46 +174,30 @@ export const Hero = forwardRef<HeroHandle, HeroProps>(function Hero(
 
         {visibleTurns.map((t) => {
           const isLastCompletedTurn = t.index === currentTurn;
-          const isCurrent = isLastCompletedTurn && !pendingUserText;
-          const isLiveTurn = isCurrent && (isThinking || isStreaming);
+          const isCurrent = isLastCompletedTurn && pendingUserText === undefined;
           return (
             <TurnBlock
               key={t.id}
               turn={t}
               isCurrent={isCurrent}
-              overrideAssistantText={isLiveTurn ? streamingAssistantText : undefined}
-              overrideToolCalls={isLiveTurn ? activeToolCalls : undefined}
-              isThinking={isLiveTurn && isThinking && !(streamingAssistantText ?? "").trim()}
-              isStreaming={isLiveTurn && isStreaming}
-              onRegen={isCurrent && onRegen ? () => onRegen(t.index) : undefined}
+              isThinking={false}
+              isStreaming={false}
+              onRegen={isCurrent ? onRegen : undefined}
               onCopy={isCurrent && onCopy ? () => onCopy(t.assistantText) : undefined}
-              onEdit={isCurrent && onEdit ? () => onEdit(t.index) : undefined}
+              onEdit={isCurrent ? onEdit : undefined}
             />
           );
         })}
 
         {/* Pending turn: user has sent, assistant is thinking or streaming */}
         {pendingUserText !== undefined && (
-          <TurnBlock
-            key="pending"
-            turn={{
-              id: "pending",
-              index: turns.length + 1,
-              userMessageId: "pending-user",
-              assistantMessageId: "pending-assistant",
-              startedAt: Date.now(),
-              userText: pendingUserText,
-              assistantText: streamingAssistantText ?? "",
-              toolCalls: activeToolCalls,
-            }}
-            isCurrent
-            overrideAssistantText={streamingAssistantText}
-            overrideToolCalls={activeToolCalls}
+          <PendingTurnBlock
+            turnIndex={turns.length + 1}
+            userText={pendingUserText}
+            assistantText={streamingAssistantText ?? ""}
+            toolCalls={activeToolCalls}
             isThinking={isThinking || (isStreaming && !(streamingAssistantText ?? "").trim())}
             isStreaming={isStreaming && Boolean((streamingAssistantText ?? "").trim())}
-            onRegen={undefined}
-            onCopy={undefined}
-            onEdit={undefined}
           />
         )}
       </div>
@@ -207,8 +208,6 @@ export const Hero = forwardRef<HeroHandle, HeroProps>(function Hero(
 interface TurnBlockProps {
   turn: Turn;
   isCurrent: boolean;
-  overrideAssistantText?: string;
-  overrideToolCalls?: ToolCallSummary[];
   isThinking: boolean;
   isStreaming: boolean;
   onRegen?: () => void;
@@ -216,9 +215,45 @@ interface TurnBlockProps {
   onEdit?: () => void;
 }
 
-const TurnBlock = memo(function TurnBlock({ turn, isCurrent, overrideAssistantText, overrideToolCalls, isThinking, isStreaming, onRegen, onCopy, onEdit }: TurnBlockProps) {
-  const displayedText = overrideAssistantText ?? turn.assistantText;
-  const toolCalls = overrideToolCalls ?? turn.toolCalls ?? [];
+/** Live in-flight turn — isolated so completed TurnBlocks stay memo-stable. */
+function PendingTurnBlock({
+  turnIndex,
+  userText,
+  assistantText,
+  toolCalls,
+  isThinking,
+  isStreaming,
+}: {
+  turnIndex: number;
+  userText: string;
+  assistantText: string;
+  toolCalls: ToolCallSummary[];
+  isThinking: boolean;
+  isStreaming: boolean;
+}) {
+  const turn: Turn = {
+    id: "pending",
+    index: turnIndex,
+    userMessageId: "pending-user",
+    assistantMessageId: "pending-assistant",
+    startedAt: Date.now(),
+    userText,
+    assistantText,
+    toolCalls,
+  };
+  return (
+    <TurnBlock
+      turn={turn}
+      isCurrent
+      isThinking={isThinking}
+      isStreaming={isStreaming}
+    />
+  );
+}
+
+const TurnBlock = memo(function TurnBlock({ turn, isCurrent, isThinking, isStreaming, onRegen, onCopy, onEdit }: TurnBlockProps) {
+  const displayedText = turn.assistantText;
+  const toolCalls = turn.toolCalls ?? [];
 
   return (
     <div className={`hg-turn-block${isCurrent ? " hg-current" : ""}`} data-turn={turn.index}>
@@ -388,12 +423,37 @@ function isLikelyAsciiDiagram(code: string): boolean {
 }
 
 function StreamingDocBody({ text }: { text: string }) {
+  // Split into stable paragraphs + a single growing tail so the layout
+  // engine only re-measures the tail per token, not the entire `pre-wrap`
+  // block. A single ever-growing <span> with pre-wrap is what kills the
+  // tab on long answers (each token triggers a full re-layout of the text
+  // node, and GC pressure compounds).
+  const { stable, tail } = useMemo(() => splitForStream(text), [text]);
   return (
     <div className="hg-doc-body hg-doc-body-stream" aria-live="polite">
-      <span>{text}</span>
+      {stable.length > 0 && (
+        <div className="hg-doc-stream-stable">
+          {stable.map((para, i) => (
+            <span key={i} className="hg-doc-stream-para">{para}</span>
+          ))}
+        </div>
+      )}
+      <span className="hg-doc-stream-tail">{tail}</span>
       <span className="hg-cursor" aria-hidden />
     </div>
   );
+}
+
+/** Split streaming text into completed paragraphs + the in-progress tail.
+ *  A paragraph is a chunk terminated by a blank line. The tail keeps
+ *  whatever is after the last `\n\n` (or the whole text if there is none). */
+function splitForStream(text: string): { stable: string[]; tail: string } {
+  const lastBreak = text.lastIndexOf("\n\n");
+  if (lastBreak === -1) return { stable: [], tail: text };
+  const stableBlock = text.slice(0, lastBreak);
+  const tail = text.slice(lastBreak + 2);
+  const stable = stableBlock.split(/\n\n+/);
+  return { stable, tail };
 }
 
 function childrenToText(children: React.ReactNode): string {

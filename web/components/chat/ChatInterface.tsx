@@ -80,8 +80,8 @@ import {
   ModelConfig,
   ModelConfigState,
   DEFAULT_CONFIG as DEFAULT_MODEL_CONFIG,
-  MODEL_CONTEXT_LIMITS,
 } from "./ModelConfig";
+import { getModelContextLimit, normalizeChatModelKey } from "@/lib/ai/model-catalog";
 import { isLinearTool, getLinearPreview } from "./LinearPreview";
 import { formatBytes } from "@/lib/image-compression";
 import {
@@ -338,7 +338,9 @@ export function ChatInterface() {
           (effectiveSoulConfig.journalEntries ? stats.journalEntriesTokens || 0 : 0) +
           (effectiveSoulConfig.chatIndex ? stats.chatIndexTokens || 0 : 0) +
           (effectiveSoulConfig.linearProjects ? linearProjectTokens : 0) +
-          (effectiveSoulConfig.linearIssues ? linearIssueTokens : 0);
+          (effectiveSoulConfig.linearIssues ? linearIssueTokens : 0) +
+          (effectiveSoulConfig.sliteNotes ? stats.sliteNotesTokens || 0 : 0) +
+          (effectiveSoulConfig.notionPages ? stats.notionPagesTokens || 0 : 0);
 
         setSoulContextTokens(total);
       })
@@ -1253,7 +1255,7 @@ export function ChatInterface() {
   const totalContextTokens = soulContextTokens + conversationTokens;
 
   // Context limit based on selected model (dynamic)
-  const CONTEXT_LIMIT = MODEL_CONTEXT_LIMITS[modelConfig.model] || 200000;
+  const CONTEXT_LIMIT = getModelContextLimit(normalizeChatModelKey(modelConfig.model));
   const WARNING_THRESHOLD = 0.7; // 70%
   const COMPRESS_THRESHOLD = 0.85; // 85%
 

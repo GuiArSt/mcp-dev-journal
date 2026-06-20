@@ -35,18 +35,18 @@ interface KronusModeConfig {
 
 const KRONUS_MODES: KronusModeConfig[] = [
   {
-    id: "lean",
-    name: "Lean",
-    description: "Minimal tokens, on-demand",
+    id: "lite",
+    name: "Lite",
+    description: "All summaries, on-demand depth",
     icon: Leaf,
     color: TARTARUS.textMuted,
     colorGlow: `${TARTARUS.textMuted}15`,
-    skillSlugs: [], // No skills = lean baseline
+    skillSlugs: [], // No skills = Kronus Lite (summary index)
   },
   {
     id: "developer",
     name: "Developer",
-    description: "Code, tickets, journal",
+    description: "Code, journal, git",
     icon: Code2,
     color: "#22c55e",
     colorGlow: "rgba(34, 197, 94, 0.15)",

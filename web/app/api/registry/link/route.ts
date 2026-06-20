@@ -108,6 +108,11 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
        SET portfolio_project_id = ?, commit_hash = NULL, document_id = NULL, destination = 'portfolio'
        WHERE id = ?`,
   ).run(target.id, mediaId);
+  db.prepare(`UPDATE portfolio_projects SET image = ?, updated_at = ? WHERE id = ?`).run(
+    `/api/media/${mediaId}/raw`,
+    new Date().toISOString(),
+    target.id,
+  );
   return NextResponse.json({
     ok: true,
     linked: { kind: "portfolio", sourceTable: "portfolio_projects", sourceId: target.id, title: proj.title },

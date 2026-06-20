@@ -43,6 +43,8 @@ const MODEL_COSTS: Record<string, { input: number; output: number }> = {
   "claude-opus-4-5": { input: 15.0, output: 75.0 },
   "claude-opus-4-6": { input: 5.0, output: 25.0 },
   "claude-opus-4-7": { input: 5.0, output: 25.0 },
+  "claude-opus-4-8": { input: 5.0, output: 25.0 },
+  "claude-fable-5": { input: 10.0, output: 50.0 },
   "claude-3-5-haiku-20241022": { input: 0.8, output: 4.0 },
   // OpenAI
   "gpt-5.4": { input: 2.5, output: 15.0 },
@@ -418,7 +420,7 @@ const IMAGE_COSTS: Record<string, number> = {
   // Google Gemini image models
   "nano-banana-2": 0.04,
   "nano-banana-pro": 0.10,
-  "nano-banana": 0.04,
+  "nano-banana": 0.04, // legacy alias → same as nano-banana-2
 };
 
 /**

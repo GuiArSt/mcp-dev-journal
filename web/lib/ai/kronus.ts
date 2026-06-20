@@ -773,7 +773,7 @@ ${repository}`;
  * Builds a lean baseline + injects only what active skills declare.
  *
  * - activeSkills present: merge configs, load needed sections, inject skill prompts
- * - activeSkills empty: lean baseline (~6k tokens)
+ * - activeSkills empty: Kronus Lite — all summaries index + optional manual soul toggles
  *
  * Only Soul.xml is cached. Everything else rebuilds per message.
  */
@@ -829,6 +829,15 @@ export async function getKronusSystemPromptWithSkills(
   const { content: repository, tokenEstimate } =
     await loadRepositoryForSoul(effectiveSoulConfig);
 
+  let liteSection = "";
+  let liteTokenEstimate = 0;
+  if (activeSkills.length === 0) {
+    const { buildKronusLiteSummaryIndex } = await import("@/lib/ai/kronus-lite");
+    const lite = await buildKronusLiteSummaryIndex();
+    liteSection = lite.content ? `\n\n${lite.content}` : "";
+    liteTokenEstimate = lite.tokenEstimate;
+  }
+
   // Linear identity context (avoids needing get_viewer calls)
   const linearUserId = process.env.LINEAR_USER_ID;
   const linearTeamId = process.env.LINEAR_TEAM_ID;
@@ -843,16 +852,16 @@ export async function getKronusSystemPromptWithSkills(
 **Today is ${todayDate}.**${linearContext}
 
 ${buildLeanProtocol(agentConfig.name)}
-${skillPromptSection}${availableSkillsSection}
+${skillPromptSection}${availableSkillsSection}${liteSection}
 ${repository}`;
 
   const totalTokens = estimateTokens(systemPrompt);
   const skillNames =
     activeSkills.length > 0
       ? activeSkills.map((s) => s.title).join(", ")
-      : "none (lean baseline)";
+      : "none (Kronus Lite — summaries index)";
   console.log(
-    `[${agentConfig.name}] System prompt assembled (skills: ${skillNames}): ~${totalTokens} tokens total (repository: ~${tokenEstimate})`
+    `[${agentConfig.name}] System prompt assembled (skills: ${skillNames}): ~${totalTokens} tokens total (repository: ~${tokenEstimate}, lite: ~${liteTokenEstimate})`
   );
 
   return systemPrompt;

@@ -6,33 +6,48 @@ import { DefaultChatTransport, lastAssistantMessageIsCompleteWithToolCalls } fro
 import type { UIMessage } from "ai";
 import { LEAN_SOUL_CONFIG, LEAN_TOOLS_CONFIG } from "@/lib/ai/skills";
 import { executeToolCall } from "@/lib/ai/tool-executors";
-import { Topbar } from "./Topbar";
-import { Rail } from "./Rail";
 import { Hero, type HeroHandle } from "./Hero";
-import { MoodPanel, type MuseThought } from "./MoodPanel";
+import { HourglassChrome } from "./HourglassChrome";
 import { Composer } from "./Composer";
+import type { MuseThought } from "./MoodPanel";
 import { useMuse, useMuseEdit, useMuseObserver } from "./useMuse";
 import type { MuseProposeResponse, MuseGenerateResponse, MuseShelfRef } from "./useMuse";
 import { MuseEditPopover } from "./MuseEditPopover";
 import { ArtifactAddSheet } from "./artifacts/ArtifactAddSheet";
 import { SkillsPopover, type SkillOption } from "./SkillsPopover";
 import { ConfigPopover } from "./ConfigPopover";
-import type { ComposerMode, MoodTab, RailView, ToolCallSummary, Turn } from "./types";
+import type { KronusContextStats } from "@/lib/kronus-context-stats";
+import {
+  computeHourglassContextMeter,
+  formatContextTokenCount,
+} from "@/lib/hourglass-context-meter";
+import type { ComposerMode, MoodTab, Turn } from "./types";
 import type { Artifact, ArtifactBody, ArtifactRef } from "./artifacts/types";
 import type { ChatMessage } from "@/lib/db-conversations";
+import { sanitizeMessagesForPersist } from "@/lib/conversation-persist";
+import { restorePartsFromPersist } from "@/lib/chat-message-repair";
 import { appendEntry, extractMuseThoughtsFromChatLog, type ChatLogEntry } from "@/lib/chat-log";
 import type { PendingApproval, PendingApprovalAlternative } from "./ApprovalCard";
 import type { SoulConfigState } from "@/components/chat/SoulConfig";
 import type { ToolsConfigState } from "@/components/chat/ToolsConfig";
 import { compressImage, fileToDataUrl } from "@/lib/image-compression";
+import { startMemLog, markMem } from "@/lib/dev-memlog";
+import { setClientErrorContext } from "@/lib/dev-client-errors";
 import {
   CHAT_MODELS,
   DEFAULT_CHAT_MODEL,
   DEFAULT_IMAGE_CHAT_MODEL,
   DEFAULT_OPENAI_IMAGE_CHAT_MODEL,
-  isChatModelKey,
+  getModelContextLimit,
+  normalizeChatModelKey,
   type ChatModelKey,
 } from "@/lib/ai/model-catalog";
+import {
+  buildTurnsFromMessages,
+  extractLiveTail,
+  messageToText,
+  shouldCommitCompletedTurns,
+} from "@/lib/hourglass-turns";
 
 // The muse ticks every N completed turns. First image earliest = turn 2.
 const MUSE_TICK_EVERY = 3;
@@ -46,35 +61,6 @@ type MuseVisualChoiceLog = {
   selected: PendingApprovalAlternative;
   alternatives?: PendingApprovalAlternative[];
 };
-
-/**
- * Extract plain text from a UIMessage, concatenating all text parts.
- * Tool calls are serialized into readable pill text so they surface
- * in the reader's doc body via markdown.
- */
-function messageToText(m: UIMessage): string {
-  if (!m.parts) return "";
-  const out: string[] = [];
-  for (const part of m.parts) {
-    if (part.type === "text") out.push(part.text ?? "");
-    else if (part.type === "file") {
-      const filePart = part as unknown as { filename?: string; mediaType?: string };
-      if (filePart.mediaType?.startsWith("image/")) {
-        out.push(`[image attached${filePart.filename ? `: ${filePart.filename}` : ""}]`);
-      } else if (filePart.mediaType === "application/pdf") {
-        out.push(`[PDF attached${filePart.filename ? `: ${filePart.filename}` : ""}]`);
-      }
-    } else if ((part as unknown as { type?: string }).type === "image") {
-      out.push("[image attached]");
-    }
-    else if (part.type?.startsWith("tool-")) {
-      const t = part as unknown as { type: string };
-      // leave tool calls to be rendered as pills elsewhere; omit from text.
-      void t;
-    }
-  }
-  return out.join("");
-}
 
 function normalizeMuseTitle(title: string | null | undefined): string | null {
   if (!title) return null;
@@ -99,11 +85,13 @@ function uiToChat(m: UIMessage): ChatMessage {
 
 /** Reconstruct a minimal UIMessage from a persisted ChatMessage. */
 function chatToUI(m: ChatMessage): UIMessage {
+  const rawParts = (m.parts as unknown[] | undefined) ?? [{ type: "text" as const, text: m.content }];
+  const parts = restorePartsFromPersist(rawParts) as UIMessage["parts"];
   return {
     id: m.id,
     role: m.role as UIMessage["role"],
     content: m.content,
-    parts: m.parts ?? [{ type: "text" as const, text: m.content }],
+    parts,
     createdAt: m.createdAt ? new Date(m.createdAt) : undefined,
   } as UIMessage;
 }
@@ -128,7 +116,7 @@ function parseHourglassSessionConfig(raw: string | null | undefined): HourglassS
     const parsed = JSON.parse(raw) as Partial<HourglassSessionConfig>;
     if (parsed?.surface && parsed.surface !== "hourglass") return null;
     const model = parsed.modelConfig?.model;
-    const validModel = isChatModelKey(model) ? model : DEFAULT_CHAT_MODEL;
+    const validModel = normalizeChatModelKey(model);
     return {
       v: 1,
       surface: "hourglass",
@@ -144,20 +132,6 @@ function parseHourglassSessionConfig(raw: string | null | undefined): HourglassS
   } catch {
     return null;
   }
-}
-
-function messageToolCalls(m: UIMessage): ToolCallSummary[] {
-  const calls: ToolCallSummary[] = [];
-  if (!m.parts) return calls;
-  for (const part of m.parts) {
-    if (part.type?.startsWith("tool-")) {
-      const p = part as unknown as { toolName?: string; state?: string };
-      const name = p.toolName ?? part.type.slice(5);
-      const state = p.state === "output-available" ? "done" : p.state === "output-error" ? "error" : "pending";
-      calls.push({ name, status: state });
-    }
-  }
-  return calls;
 }
 
 function asksForVisualTool(text: string): boolean {
@@ -202,6 +176,8 @@ export function HourglassChat() {
   const [skillsAnchorRect, setSkillsAnchorRect] = useState<DOMRect | null>(null);
   const [configOpen, setConfigOpen] = useState(false);
   const [configAnchorRect, setConfigAnchorRect] = useState<DOMRect | null>(null);
+  const [contextStats, setContextStats] = useState<KronusContextStats | null>(null);
+  const [liteIndexTokens, setLiteIndexTokens] = useState(0);
   const sessionConfigRef = useRef<HourglassSessionConfig | null>(null);
   const skillConfigForUi = useMemo(() => {
     const soul: Partial<SoulConfigState> = {};
@@ -218,6 +194,61 @@ export function HourglassChat() {
     }
     return { soul, tools };
   }, [activeSkillSlugs, availableSkillOptions]);
+
+  // Skill definitions live in DB and change over time — load on mount so
+  // ConfigPopover "active via skill" reflects current presets (not a stale
+  // first-open cache from before migrations).
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/kronus/skills")
+      .then(async (res) => {
+        if (!res.ok) throw new Error(`skills ${res.status}`);
+        const json = (await res.json()) as {
+          skills: Array<{
+            slug: string;
+            title: string;
+            description?: string;
+            config: SkillOption["config"];
+            tokenEstimate?: number;
+          }>;
+        };
+        if (cancelled) return;
+        setAvailableSkillOptions(
+          (json.skills ?? []).map((s) => ({
+            slug: s.slug,
+            title: s.title,
+            summary: s.description,
+            config: s.config,
+            tokenEstimate: s.tokenEstimate,
+          })),
+        );
+      })
+      .catch(() => {
+        /* SkillsPopover can still lazy-load as fallback */
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const refreshContextStats = useCallback(() => {
+    fetch("/api/kronus/stats")
+      .then(async (res) => {
+        if (!res.ok) throw new Error(`stats ${res.status}`);
+        const data = (await res.json()) as KronusContextStats & { liteIndexTokens?: number };
+        if (typeof data.writings === "number") {
+          setContextStats(data);
+          setLiteIndexTokens(typeof data.liteIndexTokens === "number" ? data.liteIndexTokens : 0);
+        }
+      })
+      .catch(() => {
+        /* keep previous */
+      });
+  }, []);
+
+  useEffect(() => {
+    refreshContextStats();
+  }, [refreshContextStats]);
 
   // When user toggles "Images" on, auto-swap to an image-capable model if
   // they're currently on Claude. We don't force-swap back on off.
@@ -264,7 +295,7 @@ export function HourglassChat() {
     if (!restored) return;
     setSoulConfig(restored.soulConfig);
     setBaseToolsConfig(restored.toolsConfig);
-    setChatModel(restored.modelConfig.model);
+    setChatModel(normalizeChatModelKey(restored.modelConfig.model));
     setActiveSkillSlugs(restored.activeSkillSlugs);
     setImagesEnabled(restored.imagesEnabled || restored.toolsConfig.imageGeneration);
     setImagesProvider(restored.imagesProvider);
@@ -277,12 +308,18 @@ export function HourglassChat() {
   const [moodTab, setMoodTab] = useState<MoodTab>("mood");
   const [moodCollapsed, setMoodCollapsed] = useState(false);
   const [railOpen, setRailOpen] = useState(false);
-  const [railView, setRailView] = useState<RailView>("chat");
-  const [viewingTurn, setViewingTurnRaw] = useState(1);
   const [daimonActive, setDaimonActive] = useState(false);
   const [daimonPending, setDaimonPending] = useState(false);
   const [conversationTitle, setConversationTitle] = useState("");
-  const [recentConversations, setRecentConversations] = useState<Array<{ id: number; title: string; updated_at: string }>>([]);
+  const [recentConversations, setRecentConversations] = useState<
+    Array<{
+      id: number;
+      title: string;
+      updated_at: string;
+      summary?: string | null;
+      summary_updated_at?: string | null;
+    }>
+  >([]);
   const [conversationStartedAt, setConversationStartedAt] = useState(() => Date.now());
   // Conversation persistence — maps to chat_conversations row
   const [conversationId, setConversationId] = useState<number | null>(null);
@@ -293,6 +330,9 @@ export function HourglassChat() {
   const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastSavedTurnRef = useRef<number>(0);
   const lastSavedShelfLenRef = useRef<number>(0);
+  const saveConversationNowRef = useRef<
+    (msgs: UIMessage[], currentShelf: ArtifactRef[]) => Promise<void>
+  >(async () => {});
 
   const heroRef = useRef<HeroHandle>(null);
 
@@ -318,6 +358,10 @@ export function HourglassChat() {
   const { messages, sendMessage, status, stop, setMessages, addToolResult } = useChat({
     transport,
     sendAutomaticallyWhen: lastAssistantMessageIsCompleteWithToolCalls,
+    onFinish: () => {
+      // Flush immediately — debounced save can miss a tab freeze/crash within 1s.
+      void saveConversationNowRef.current(messagesRef.current, shelfRef.current);
+    },
     async onToolCall({ toolCall }) {
       const { toolName, input, toolCallId } = toolCall;
       const args = (input ?? {}) as Record<string, unknown>;
@@ -520,36 +564,25 @@ export function HourglassChat() {
 
   const isStreaming = status === "streaming";
   const isThinking = status === "submitted";
+  const isLive = isStreaming || isThinking;
   const messagesRef = useRef<UIMessage[]>([]);
   useEffect(() => { messagesRef.current = messages; }, [messages]);
 
-  // Reconstruct turns from messages
-  const turns = useMemo<Turn[]>(() => {
-    const out: Turn[] = [];
-    let pendingUser: UIMessage | null = null;
-    let idx = 0;
-    for (const m of messages) {
-      if (m.role === "user") {
-        pendingUser = m;
-      } else if (m.role === "assistant" && pendingUser) {
-        idx += 1;
-        const userText = messageToText(pendingUser).trim();
-        const assistantText = messageToText(m).trim();
-        out.push({
-          id: m.id,
-          index: idx,
-          userMessageId: pendingUser.id,
-          assistantMessageId: m.id,
-          startedAt: (m as unknown as { createdAt?: Date }).createdAt?.getTime?.() ?? Date.now(),
-          userText,
-          assistantText,
-          toolCalls: messageToolCalls(m),
-        });
-        pendingUser = null;
-      }
-    }
-    return out;
-  }, [messages]);
+  // Completed turns — frozen while streaming. Rebuilt once when idle so we
+  // never walk full message history per token (see lib/hourglass-turns.ts).
+  const [completedTurns, setCompletedTurns] = useState<Turn[]>([]);
+  useEffect(() => {
+    if (isLive) return;
+    if (!shouldCommitCompletedTurns(messages)) return;
+    setCompletedTurns(buildTurnsFromMessages(messages));
+  }, [isLive, messages]);
+
+  const turns = completedTurns;
+
+  const liveTail = useMemo(
+    () => extractLiveTail(messages, isLive),
+    [messages, isLive],
+  );
 
   // ─── Artifact shelf ─────────────────────────────────────────────────────
   // Append-only list of refs pointing to tartarus_objects. Each time the
@@ -652,16 +685,20 @@ export function HourglassChat() {
 
   // ─── Conversation persistence ────────────────────────────────────────────
 
+  /** Build the PATCH/POST body used by save + unload beacon. */
+  const buildConversationSaveBody = useCallback((msgs: UIMessage[], currentShelf: ArtifactRef[]) => ({
+    title: conversationTitleRef.current || "untitled conversation",
+    messages: sanitizeMessagesForPersist(
+      msgs.filter((m) => m.role === "user" || m.role === "assistant").map(uiToChat),
+    ),
+    sessionConfig: sessionConfigRef.current,
+    artifactRefs: currentShelf,
+    chatLog: chatLogRef.current,
+  }), []);
+
   const saveConversationNow = useCallback(async (msgs: UIMessage[], currentShelf: ArtifactRef[]) => {
     if (msgs.length === 0) return;
-    const title = conversationTitleRef.current || "untitled conversation";
-    const body = {
-      title,
-      messages: msgs.filter((m) => m.role === "user" || m.role === "assistant").map(uiToChat),
-      sessionConfig: sessionConfigRef.current,
-      artifactRefs: currentShelf,
-      chatLog: chatLogRef.current,
-    };
+    const body = buildConversationSaveBody(msgs, currentShelf);
     const cid = conversationIdRef.current;
     try {
       if (cid === null) {
@@ -685,7 +722,11 @@ export function HourglassChat() {
     } catch (err) {
       console.warn("[hourglass] conversation save failed:", err);
     }
-  }, []);
+  }, [buildConversationSaveBody]);
+
+  useEffect(() => {
+    saveConversationNowRef.current = saveConversationNow;
+  }, [saveConversationNow]);
 
   /** Upsert the conversation to the API (debounced, 1 s). */
   const scheduleSave = useCallback((msgs: UIMessage[], currentShelf: ArtifactRef[]) => {
@@ -730,7 +771,15 @@ export function HourglassChat() {
       try {
         const res = await fetch("/api/conversations?limit=8");
         if (!res.ok) return;
-        const { conversations } = await res.json() as { conversations: Array<{ id: number; title: string; updated_at: string }> };
+        const { conversations } = await res.json() as {
+          conversations: Array<{
+            id: number;
+            title: string;
+            updated_at: string;
+            summary?: string | null;
+            summary_updated_at?: string | null;
+          }>;
+        };
         if (!conversations.length) return;
         setRecentConversations(conversations);
         const latest = conversations[0];
@@ -783,41 +832,38 @@ export function HourglassChat() {
     })();
   }, [restoreSessionConfig]);
 
-  // Hero-scroll "which turn am I looking at" — separate from the shelf.
-  const currentTurnIndex = turns.length;
+  const streamingAssistantText = liveTail?.assistantText || undefined;
+  const pendingUserText = liveTail ? liveTail.userText : undefined;
+  const activeToolCalls = liveTail?.toolCalls ?? [];
+
+  // ─── Dev memory telemetry ───────────────────────────────────────────────
+  // Sampled every 3 s; tagged with live chat context so the post-mortem of
+  // a crash can pinpoint which surface was growing. See /lib/dev-memlog.
+  // Refs keep the context provider closure stable across renders.
+  const memCtxRef = useRef<() => Record<string, unknown>>(() => ({}));
+  memCtxRef.current = () => ({
+    conversationId: conversationIdRef.current,
+    isStreaming,
+    isThinking,
+    musePainting,
+    messages: messages.length,
+    turns: turns.length,
+    shelf: shelf.length,
+    museThoughts: museThoughts.length,
+    chatLog: chatLog.length,
+    streamingChars: streamingAssistantText?.length ?? 0,
+    pendingApproval: !!pendingApproval,
+  });
   useEffect(() => {
-    if (currentTurnIndex > 0) setViewingTurnRaw(currentTurnIndex);
-  }, [currentTurnIndex]);
-
-  // Detect pending streaming assistant text + unanswered user text
-  const streamingAssistantText = useMemo(() => {
-    if (!isStreaming && !isThinking) return undefined;
-    const last = messages[messages.length - 1];
-    if (!last || last.role !== "assistant") return undefined;
-    return messageToText(last);
-  }, [messages, isStreaming, isThinking]);
-
-  const pendingUserText = useMemo(() => {
-    if (!isStreaming && !isThinking) return undefined;
-    // Find the last user message. Only synthesize a pending turn while no
-    // assistant message exists yet; once streaming creates an assistant
-    // message, that real turn should stream in place instead of duplicating.
-    for (let i = messages.length - 1; i >= 0; i--) {
-      if (messages[i].role === "user") {
-        const laterAssistant = messages.slice(i + 1).some((m) => m.role === "assistant");
-        return laterAssistant ? undefined : messageToText(messages[i]);
-      }
-    }
-    return undefined;
-  }, [messages, isStreaming, isThinking]);
-
-  const activeToolCalls = useMemo<ToolCallSummary[]>(() => {
-    if (!isStreaming && !isThinking) return [];
-    for (let i = messages.length - 1; i >= 0; i--) {
-      if (messages[i].role === "assistant") return messageToolCalls(messages[i]);
-    }
-    return [];
-  }, [messages, isStreaming, isThinking]);
+    const ctx = () => memCtxRef.current();
+    startMemLog({ intervalMs: 3000, getCtx: ctx });
+    setClientErrorContext(ctx);
+  }, []);
+  // Hard markers around the streaming lifecycle make the log easy to scan.
+  useEffect(() => {
+    if (isStreaming || isThinking) markMem(isThinking ? "stream_submit" : "stream_start");
+    else markMem("stream_idle");
+  }, [isStreaming, isThinking]);
 
   // Title — neutral until the Muse has enough context to name the exchange.
   useEffect(() => {
@@ -830,12 +876,31 @@ export function HourglassChat() {
   useEffect(() => {
     if (isStreaming || isThinking) return;
     if (turns.length === 0) return;
-    // Save on every new completed turn
+    // Save on every new completed turn — immediate, not debounced (onFinish also flushes).
     if (turns.length !== lastSavedTurnRef.current) {
       lastSavedTurnRef.current = turns.length;
-      scheduleSave(messages, shelfRef.current);
+      void saveConversationNow(messages, shelfRef.current);
     }
-  }, [turns.length, isStreaming, isThinking, messages, scheduleSave]);
+  }, [turns.length, isStreaming, isThinking, messages, saveConversationNow]);
+
+  // Last-resort flush when the tab unloads after a long stream (sendBeacon survives navigation).
+  useEffect(() => {
+    const flushOnUnload = () => {
+      const msgs = messagesRef.current;
+      if (msgs.length === 0) return;
+      const cid = conversationIdRef.current;
+      if (cid === null) return;
+      try {
+        const body = JSON.stringify(buildConversationSaveBody(msgs, shelfRef.current));
+        const blob = new Blob([body], { type: "text/plain" });
+        if (typeof navigator !== "undefined" && typeof navigator.sendBeacon === "function") {
+          navigator.sendBeacon(`/api/conversations/${cid}`, blob);
+        }
+      } catch { /* telemetry must never block unload */ }
+    };
+    window.addEventListener("pagehide", flushOnUnload);
+    return () => window.removeEventListener("pagehide", flushOnUnload);
+  }, [buildConversationSaveBody]);
 
   // Also save whenever the shelf gains a new item (muse paint / user add)
   useEffect(() => {
@@ -1124,6 +1189,39 @@ export function HourglassChat() {
       ? { ...toolsConfig, imageGeneration: true }
       : toolsConfig;
     if (visualIntent && !imagesEnabled) setImagesEnabled(true);
+
+    let conversationIdForSend = conversationIdRef.current;
+    if (conversationIdForSend === null) {
+      const firstMessage: ChatMessage = {
+        id: `preflight-user-${Date.now()}`,
+        role: "user",
+        content: text,
+        parts: [{ type: "text", text }],
+        createdAt: new Date().toISOString(),
+      };
+      try {
+        const res = await fetch("/api/conversations", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            title: conversationTitleRef.current || text.slice(0, 80) || "untitled conversation",
+            messages: [firstMessage],
+            sessionConfig: sessionConfigRef.current,
+            artifactRefs: shelfRef.current,
+            chatLog: chatLogRef.current,
+          }),
+        });
+        if (res.ok) {
+          const json = await res.json() as { id: number };
+          conversationIdForSend = json.id;
+          conversationIdRef.current = json.id;
+          setConversationId(json.id);
+        }
+      } catch (err) {
+        console.warn("[hourglass] conversation preflight save failed:", err);
+      }
+    }
+
     sendMessage(
       { text, files },
       {
@@ -1137,7 +1235,7 @@ export function HourglassChat() {
           chatLog: chatLogRef.current,
           // Used by /api/chat → observability to tag every trace span
           // with this chat's conversation_id for the cost meter.
-          conversationId: conversationIdRef.current ?? undefined,
+          conversationId: conversationIdForSend ?? undefined,
         },
       },
     );
@@ -1146,6 +1244,7 @@ export function HourglassChat() {
   const handleNewChat = useCallback(() => {
     if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
     setMessages([]);
+    setCompletedTurns([]);
     setComposerDraftResetNonce((n) => n + 1);
     setShelf([]);
     setViewingUuid(null);
@@ -1162,7 +1261,6 @@ export function HourglassChat() {
     lastMuseTitleRef.current = "";
     setConversationTitle("");
     setConversationStartedAt(Date.now());
-    setViewingTurnRaw(1);
     setConversationId(null);
     setSoulConfig(LEAN_SOUL_CONFIG);
     setBaseToolsConfig(LEAN_TOOLS_CONFIG);
@@ -1205,12 +1303,6 @@ export function HourglassChat() {
       console.warn("[hourglass] conversation load failed:", err);
     }
   }, [handleNewChat, restoreSessionConfig, setMessages]);
-
-  const handleScrollToTurn = useCallback((n: number) => {
-    heroRef.current?.scrollToTurn(n);
-    setViewingTurnRaw(n);
-    if (railOpen) setRailOpen(false);
-  }, [railOpen]);
 
   // Regen: re-paint the currently-viewed artifact with the same prompt
   // (generate/source=proposal), or fall back to direct generation from
@@ -1351,6 +1443,8 @@ export function HourglassChat() {
       commitHash?: string;
       documentId?: number;
       portfolioProjectId?: string;
+      provider?: "google" | "openai";
+      painterModel?: string;
     },
     choiceLog?: MuseVisualChoiceLog,
   ) => {
@@ -1367,6 +1461,8 @@ export function HourglassChat() {
         document_id: extras?.documentId,
         portfolio_project_id: extras?.portfolioProjectId,
         conversationId: conversationIdRef.current ?? undefined,
+        ...(extras?.provider ? { provider: extras.provider } : {}),
+        ...(extras?.painterModel ? { painterModel: extras.painterModel } : {}),
       } as Parameters<typeof callMuse>[0])) as MuseGenerateResponse;
       if (res.artifactRef) {
         const artifactRef = { ...res.artifactRef, turnIndex };
@@ -1432,7 +1528,6 @@ export function HourglassChat() {
         prompt,
         renderMode: ref.renderMode,
         styleHint: ref.styleHint,
-        provider: imagesProvider,
         source_artifact_uuid: ref.uuid,
         conversationId: conversationIdRef.current ?? undefined,
       });
@@ -1467,7 +1562,7 @@ export function HourglassChat() {
     } finally {
       setMusePainting(false);
     }
-  }, [musePainting, viewingUuid, loadDisplayedImageDataUrl, callMuseEdit, imagesProvider, pushArtifact, saveConversationNow, logEvent, turns.length]);
+  }, [musePainting, viewingUuid, loadDisplayedImageDataUrl, callMuseEdit, pushArtifact, saveConversationNow, logEvent, turns.length]);
 
   /** Accept a single OR direct-mode pending approval. Routes through the
    *  same paintProposal helper, forwarding any linkage Kronus stashed for
@@ -1482,7 +1577,16 @@ export function HourglassChat() {
     }
     // Direct mode (Kronus's generate_image) stashed linkage + styleHint
     // on the approval payload via a non-typed `_direct` escape hatch.
-    const stash = (p as unknown as { _direct?: { commitHash?: string; documentId?: number; portfolioProjectId?: string; styleHint?: string } })._direct;
+    const stash = (p as unknown as {
+      _direct?: {
+        commitHash?: string;
+        documentId?: number;
+        portfolioProjectId?: string;
+        styleHint?: string;
+        provider?: "google" | "openai";
+        model?: string;
+      };
+    })._direct;
     const selected: PendingApprovalAlternative = {
       label: p.direct?.styleHint ?? (p.mode === "direct" ? "direct prompt" : p.action === "refine" ? "refine" : "single visual"),
       visualForm: p.direct?.styleHint ?? null,
@@ -1490,7 +1594,11 @@ export function HourglassChat() {
       prompt: p.prompt,
       rationale: p.reason,
     };
-    await paintProposal(p.prompt, p.renderMode, p.turnIndex, p.targetUuid, stash, {
+    await paintProposal(p.prompt, p.renderMode, p.turnIndex, p.targetUuid, {
+      ...stash,
+      provider: stash?.provider,
+      painterModel: stash?.model,
+    }, {
       source: p.mode === "direct" ? "direct" : "single",
       reason: p.reason,
       selected,
@@ -1572,10 +1680,67 @@ export function HourglassChat() {
     return () => window.removeEventListener("mousedown", onClick);
   }, [railOpen]);
 
-  // Derived metrics (mock-ish — real context% would need a server count)
-  const totalText = useMemo(() => messages.map(messageToText).join(" "), [messages]);
-  const estTokens = Math.round(totalText.length / 4);
-  const contextPercent = Math.min(99, Math.round((estTokens / 200_000) * 100));
+  // Context meter — mirrors /api/chat system prompt estimate for the selected model.
+  const contextLimit = useMemo(() => getModelContextLimit(chatModel), [chatModel]);
+  const conversationText = useMemo(() => {
+    const parts: string[] = [];
+    for (const t of completedTurns) {
+      if (t.userText) parts.push(t.userText);
+      if (t.assistantText) parts.push(t.assistantText);
+    }
+    if (liveTail?.userText) parts.push(liveTail.userText);
+    if (liveTail?.assistantText) parts.push(liveTail.assistantText);
+    return parts.join("\n");
+  }, [completedTurns, liveTail]);
+  const activeSkillBodyTokens = useMemo(() => {
+    const active = new Set(activeSkillSlugs);
+    return availableSkillOptions.reduce(
+      (sum, s) => sum + (active.has(s.slug) ? (s.tokenEstimate ?? 0) : 0),
+      0,
+    );
+  }, [activeSkillSlugs, availableSkillOptions]);
+  const contextMeter = useMemo(
+    () =>
+      computeHourglassContextMeter({
+        contextLimit,
+        contextStats,
+        liteIndexTokens,
+        soulConfig,
+        impliedSoul: skillConfigForUi.soul,
+        activeSkillSlugs,
+        activeSkillBodyTokens,
+        conversationText,
+      }),
+    [
+      contextLimit,
+      contextStats,
+      liteIndexTokens,
+      soulConfig,
+      skillConfigForUi.soul,
+      activeSkillSlugs,
+      activeSkillBodyTokens,
+      conversationText,
+    ],
+  );
+  const chatModelLabel = useMemo(
+    () => CHAT_MODELS.find((m) => m.key === chatModel)?.label ?? chatModel,
+    [chatModel],
+  );
+  const contextTokenLabel = `${formatContextTokenCount(contextMeter.totalTokens)} / ${formatContextTokenCount(contextMeter.contextLimit)}`;
+  const contextTooltip = useMemo(() => {
+    const lines = [
+      `Soul ${formatContextTokenCount(contextMeter.soulTokens)}`,
+      contextMeter.liteTokens > 0
+        ? `Lite index ${formatContextTokenCount(contextMeter.liteTokens)}`
+        : null,
+      contextMeter.skillBodyTokens > 0
+        ? `Skill bodies ${formatContextTokenCount(contextMeter.skillBodyTokens)}`
+        : null,
+      `Conversation ${formatContextTokenCount(contextMeter.conversationTokens)}`,
+      `${chatModelLabel} · ${contextMeter.contextLimit.toLocaleString()} token window`,
+    ].filter(Boolean);
+    return lines.join(" · ");
+  }, [contextMeter, chatModelLabel]);
   const effectiveContextCount = useMemo(
     () => countEnabledMerged(soulConfig, skillConfigForUi.soul),
     [soulConfig, skillConfigForUi.soul],
@@ -1588,10 +1753,6 @@ export function HourglassChat() {
     Object.values(skillConfigForUi.soul).some(Boolean) ||
     Object.values(skillConfigForUi.tools).some(Boolean)
   );
-  const chatModelLabel = useMemo(
-    () => CHAT_MODELS.find((m) => m.key === chatModel)?.label ?? chatModel,
-    [chatModel],
-  );
 
   // Per-tab counts for the topbar's shelf-tab strip.
   const shelfCounts = useMemo(() => ({
@@ -1600,38 +1761,125 @@ export function HourglassChat() {
     repo: shelf.filter((r) => r.kind !== "muse-image").length,
   }), [shelf]);
 
+  const handleToggleRail = useCallback(() => setRailOpen((o) => !o), []);
+  const handleToggleMoodCollapsed = useCallback(() => setMoodCollapsed((c) => !c), []);
+  const handleOpenAddSheet = useCallback(() => setAddSheetOpen(true), []);
+  const handleSkillsClick = useCallback((anchor: DOMRect) => {
+    setSkillsAnchorRect(anchor);
+    setSkillsOpen((o) => !o);
+  }, []);
+  const handleConfigClick = useCallback((anchor: DOMRect) => {
+    setConfigAnchorRect(anchor);
+    setConfigOpen((o) => !o);
+  }, []);
+  const handleRequestCloseSkills = useCallback(() => setSkillsOpen(false), []);
+  const handleRequestCloseConfig = useCallback(() => setConfigOpen(false), []);
+  const handleChatModelChange = useCallback((k: string) => setChatModel(k as ChatModelKey), []);
+  const handleToggleDaimon = useCallback(() => setDaimonActive((a) => !a), []);
+  const handleHeroRegen = useCallback(() => { void handleRegen(); }, [handleRegen]);
+  const handleScrollTurnChange = useCallback(() => {}, []);
+  const handleConversationSummaryUpdated = useCallback((id: number, patch: Partial<(typeof recentConversations)[number]>) => {
+    setRecentConversations((prev) => prev.map((c) => (c.id === id ? { ...c, ...patch } : c)));
+  }, []);
+  const handleEditImageOpen = useCallback(() => {
+    setEditPopoverError(null);
+    setEditPopoverOpen(true);
+  }, []);
+  const handleMuseEditClose = useCallback(() => setEditPopoverOpen(false), []);
+  const handleMuseEditSubmit = useCallback((p: string) => { void paintEdit(p); }, [paintEdit]);
+  const handleArtifactAdded = useCallback((ref: ArtifactRef) => {
+    pushArtifact({ ...ref, turnIndex: turnsRef.current.length || undefined });
+  }, [pushArtifact]);
+  const handleSkillsOpenChange = useCallback((open: boolean) => {
+    setSkillsOpen(open);
+    if (!open) setSkillsAnchorRect(null);
+  }, []);
+  const handleConfigOpenChange = useCallback((open: boolean) => {
+    setConfigOpen(open);
+    if (!open) setConfigAnchorRect(null);
+  }, []);
+
+  const canEditDisplayedImage =
+    hydratedArtifact != null &&
+    (hydratedArtifact.body.kind === "muse-image" || hydratedArtifact.body.kind === "media");
+
+  const museEditPopover = useMemo(
+    () => (
+      <MuseEditPopover
+        open={editPopoverOpen}
+        busy={musePainting}
+        onClose={handleMuseEditClose}
+        onSubmit={handleMuseEditSubmit}
+        sourceTitle={hydratedArtifact?.title}
+        error={editPopoverError}
+      />
+    ),
+    [editPopoverOpen, musePainting, handleMuseEditClose, handleMuseEditSubmit, hydratedArtifact?.title, editPopoverError],
+  );
+
   return (
     <div className={`hg-stage${moodCollapsed ? " hg-mood-collapsed" : ""}`}>
-      <Topbar
-        title={conversationTitle || "an unnamed conversation"}
+      <HourglassChrome
+        conversationTitle={conversationTitle}
         conversationId={conversationId}
-        shelfVisible={!moodCollapsed}
-        shelfTabs={{
-          active: moodTab,
-          onChange: setMoodTab,
-          counts: shelfCounts,
-        }}
-      />
-
-      <Rail
-        view={railView}
-        onViewChange={(v) => {
-          setRailView(v);
-          if (v === "reader") window.location.href = "/reader";
-          else if (v === "repo") window.location.href = "/library";
-        }}
-        turns={turns}
-        currentTurn={currentTurnIndex}
-        viewingTurn={viewingTurn}
-        onScrollToTurn={handleScrollToTurn}
+        moodCollapsed={moodCollapsed}
+        moodTab={moodTab}
+        onMoodTabChange={setMoodTab}
+        shelfCounts={shelfCounts}
         onNewChat={handleNewChat}
         onLoadConversation={handleLoadConversation}
-        open={railOpen}
-        onToggleOpen={() => setRailOpen((o) => !o)}
-        conversationTitle={conversationTitle}
+        railOpen={railOpen}
+        onToggleRail={handleToggleRail}
         conversationStartedAt={conversationStartedAt}
-        modelLabel={chatModelLabel}
-        currentConversationId={conversationId}
+        chatModelLabel={chatModelLabel}
+        shelf={shelf}
+        viewingUuid={viewingUuid}
+        onViewingUuidChange={setViewingUuid}
+        hydratedArtifact={hydratedArtifact}
+        hydrating={hydrating}
+        museSilenceReason={museSilenceReason}
+        museThoughts={museThoughts}
+        musePainting={musePainting}
+        onToggleMoodCollapsed={handleToggleMoodCollapsed}
+        onRegen={handleRegen}
+        onOpenAddSheet={handleOpenAddSheet}
+        pendingApproval={pendingApproval}
+        onAcceptApproval={handleAcceptProposal}
+        onPickAlternative={handlePickAlternative}
+        onSkipApproval={handleSkipProposal}
+        onEditImage={canEditDisplayedImage ? handleEditImageOpen : undefined}
+        editPopover={museEditPopover}
+      />
+
+      <Composer
+        mode={composerMode}
+        onModeChange={setComposerMode}
+        draftResetNonce={composerDraftResetNonce}
+        onSubmit={handleSend}
+        disabled={isThinking || isStreaming || daimonPending}
+        contextPercent={contextMeter.percent}
+        contextTokenLabel={contextTokenLabel}
+        contextTooltip={contextTooltip}
+        activeSkillCount={activeSkillSlugs.length}
+        skillContextActive={skillContextActive}
+        effectiveContextCount={effectiveContextCount}
+        effectiveToolsCount={effectiveToolsCount}
+        chatModel={chatModel}
+        chatModels={CHAT_MODELS}
+        onChatModelChange={handleChatModelChange}
+        imagesEnabled={imagesEnabled}
+        onToggleImages={handleToggleImages}
+        imagesProvider={imagesProvider}
+        onImagesProviderChange={handleImagesProviderChange}
+        onPaint={handlePaint}
+        onSkillsClick={handleSkillsClick}
+        onConfigClick={handleConfigClick}
+        onRequestCloseSkills={handleRequestCloseSkills}
+        onRequestCloseConfig={handleRequestCloseConfig}
+        daimonActive={daimonActive}
+        onToggleDaimon={handleToggleDaimon}
+        onStop={stop}
+        isStreaming={isStreaming}
       />
 
       <Hero
@@ -1642,96 +1890,23 @@ export function HourglassChat() {
         activeToolCalls={activeToolCalls}
         isThinking={isThinking}
         isStreaming={isStreaming}
-        onRegen={() => handleRegen()}
+        onRegen={handleHeroRegen}
         onCopy={handleCopy}
-        onScrollTurnChange={(v) => setViewingTurnRaw(v)}
+        onScrollTurnChange={handleScrollTurnChange}
         recentConversations={recentConversations}
         onLoadConversation={handleLoadConversation}
-      />
-
-      <MoodPanel
-        shelf={shelf}
-        viewingUuid={viewingUuid}
-        onViewingUuidChange={setViewingUuid}
-        hydratedArtifact={hydratedArtifact}
-        hydrating={hydrating}
-        museSilenceReason={museSilenceReason}
-        museThoughts={museThoughts}
-        musePainting={musePainting}
-        collapsed={moodCollapsed}
-        onToggleCollapse={() => setMoodCollapsed((c) => !c)}
-        tab={moodTab}
-        onTabChange={setMoodTab}
-        onRegen={handleRegen}
-        onAdd={() => setAddSheetOpen(true)}
-        pendingApproval={pendingApproval}
-        onAcceptApproval={handleAcceptProposal}
-        onPickAlternative={handlePickAlternative}
-        onSkipApproval={handleSkipProposal}
-        onEditImage={
-          hydratedArtifact && (hydratedArtifact.body.kind === "muse-image" || hydratedArtifact.body.kind === "media")
-            ? () => { setEditPopoverError(null); setEditPopoverOpen(true); }
-            : undefined
-        }
-        editPopover={
-          <MuseEditPopover
-            open={editPopoverOpen}
-            busy={musePainting}
-            onClose={() => setEditPopoverOpen(false)}
-            onSubmit={(p) => { void paintEdit(p); }}
-            sourceTitle={hydratedArtifact?.title}
-            error={editPopoverError}
-          />
-        }
-      />
-
-      <Composer
-        mode={composerMode}
-        onModeChange={setComposerMode}
-        draftResetNonce={composerDraftResetNonce}
-        onSubmit={handleSend}
-        disabled={isThinking || isStreaming || daimonPending}
-        contextPercent={contextPercent}
-        activeSkillCount={activeSkillSlugs.length}
-        skillContextActive={skillContextActive}
-        effectiveContextCount={effectiveContextCount}
-        effectiveToolsCount={effectiveToolsCount}
-        chatModel={chatModel}
-        chatModels={CHAT_MODELS}
-        onChatModelChange={(k) => setChatModel(k as ChatModelKey)}
-        imagesEnabled={imagesEnabled}
-        onToggleImages={handleToggleImages}
-        imagesProvider={imagesProvider}
-        onImagesProviderChange={handleImagesProviderChange}
-        onPaint={handlePaint}
-        onSkillsClick={(anchor) => {
-          setSkillsAnchorRect(anchor);
-          setSkillsOpen((o) => !o);
-        }}
-        onConfigClick={(anchor) => {
-          setConfigAnchorRect(anchor);
-          setConfigOpen((o) => !o);
-        }}
-        onRequestCloseSkills={() => setSkillsOpen(false)}
-        onRequestCloseConfig={() => setConfigOpen(false)}
-        daimonActive={daimonActive}
-        onToggleDaimon={() => setDaimonActive((a) => !a)}
-        onStop={stop}
-        isStreaming={isStreaming}
+        onConversationSummaryUpdated={handleConversationSummaryUpdated}
       />
 
       <ArtifactAddSheet
         open={addSheetOpen}
         onOpenChange={setAddSheetOpen}
-        onAdded={(ref) => pushArtifact({ ...ref, turnIndex: turns.length || undefined })}
+        onAdded={handleArtifactAdded}
       />
 
       <SkillsPopover
         open={skillsOpen}
-        onOpenChange={(open) => {
-          setSkillsOpen(open);
-          if (!open) setSkillsAnchorRect(null);
-        }}
+        onOpenChange={handleSkillsOpenChange}
         anchorRect={skillsAnchorRect}
         activeSkillSlugs={activeSkillSlugs}
         onActiveSkillSlugsChange={setActiveSkillSlugs}
@@ -1740,10 +1915,7 @@ export function HourglassChat() {
 
       <ConfigPopover
         open={configOpen}
-        onOpenChange={(open) => {
-          setConfigOpen(open);
-          if (!open) setConfigAnchorRect(null);
-        }}
+        onOpenChange={handleConfigOpenChange}
         anchorRect={configAnchorRect}
         soulConfig={soulConfig}
         toolsConfig={baseToolsConfig}
@@ -1751,6 +1923,8 @@ export function HourglassChat() {
         impliedToolsConfig={skillConfigForUi.tools}
         onSoulConfigChange={setSoulConfig}
         onToolsConfigChange={setBaseToolsConfig}
+        contextStats={contextStats}
+        contextLimit={contextLimit}
       />
     </div>
   );

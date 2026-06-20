@@ -557,7 +557,7 @@ export const toolSpecs = {
   // ===== Image Generation =====
   generate_image: {
     description:
-      "Generate an image from a text prompt. Routes to OpenAI GPT Image 2 by default (best for text rendering, infographics, photorealism). Pass provider='gemini' for faster, painterly Nano Banana 2. Pass commit_hash / document_id / portfolio_project_id to attach the image to a journal entry, document, or portfolio project — REQUIRED when generating an image FOR a specific journal/doc you're writing.",
+      "Generate an image from a text prompt. Default painter: OpenAI GPT Image 2 (gpt-image-2) — best for text rendering, infographics, photorealism. Pass provider='gemini' for Google Nano Banana 2 (gemini-3.1-flash-image-preview). Pass commit_hash / document_id / portfolio_project_id to attach the image to a journal entry, document, or portfolio project — REQUIRED when generating an image FOR a specific journal/doc you're writing.",
     inputSchema: z.object({
       prompt: z
         .string()
@@ -570,13 +570,14 @@ export const toolSpecs = {
         .optional()
         .default("openai")
         .describe(
-          "'openai' (default) → GPT Image 2, best for in-image text. 'gemini' → Nano Banana 2, faster + painterly.",
+          "'openai' (default) → GPT Image 2. 'gemini' → Nano Banana 2 (Gemini 3.1 Flash Image).",
         ),
       model: z
-        .enum(["nano-banana-2", "nano-banana-pro", "nano-banana", "gpt-image-2"])
+        .enum(["gpt-image-2", "nano-banana-2", "nano-banana-pro"])
         .optional()
+        .default("gpt-image-2")
         .describe(
-          "Specific model override.",
+          "Painter override. Default gpt-image-2. Gemini: nano-banana-2 (fast) or nano-banana-pro (4K).",
         ),
       mode: z
         .enum(["mood", "infographic"])

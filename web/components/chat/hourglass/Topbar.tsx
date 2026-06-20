@@ -1,6 +1,5 @@
 "use client";
 
-import { Settings } from "lucide-react";
 import type { MoodTab } from "./types";
 import { CostMeter } from "./CostMeter";
 
@@ -19,7 +18,7 @@ interface TopbarProps {
 }
 
 /**
- * Topbar — `[Tartarus + ⊙ logo | left] · · · [💰 cost] [⚙ settings] [tabs]`
+ * Topbar — `[Tartarus + ⊙ logo | left] · · · [💰 cost] [tabs]`
  *
  * The shelf tabs (MOOD / INFOGRAPHIC / REPO) sit on the far right, visually
  * attached to the right panel. When the shelf collapses, the tabs hide
@@ -40,14 +39,6 @@ export function Topbar({ title, conversationId, shelfTabs, shelfVisible }: Topba
 
       <div className="hg-topbar-meta">
         <CostMeter conversationId={conversationId} />
-        <button
-          type="button"
-          className="hg-topbar-settings"
-          title="settings (coming soon)"
-          aria-label="Settings"
-        >
-          <Settings size={14} />
-        </button>
       </div>
 
       {shelfVisible && shelfTabs && (

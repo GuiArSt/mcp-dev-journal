@@ -75,6 +75,12 @@ Resources ARE available. Use ReadMcpResourceTool with the URIs below to access t
 - repository://cv/education — Education
 - repository://portfolio-project/{id} — Portfolio project
 
+### Artemis (read-only job hunt)
+- artemis_list_applications — List tracked job applications
+- artemis_get_application — Full application detail
+- artemis_list_due_followups — Applications needing follow-up
+- artemis_search_companies — Company search over tracked applications
+
 ## Known Repositories
 Before creating a journal entry, load the live repo list — it is injected dynamically into the \`tartarus\` prompt (call it once per session). Do NOT invent repo name variants. Use the exact names from the list.
 

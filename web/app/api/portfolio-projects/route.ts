@@ -5,6 +5,8 @@ import { withErrorHandler } from "@/lib/api-handler";
 import { requireQuery, requireBody } from "@/lib/validations";
 import { portfolioQuerySchema, createPortfolioProjectSchema } from "@/lib/validations/schemas";
 import { ConflictError } from "@/lib/errors";
+import { getDatabase } from "@/lib/db";
+import { normalizePortfolioImageInput, portfolioProjectImageForClient } from "@/lib/media-image-url";
 
 /**
  * Generate AI summary for portfolio project (async, non-blocking)
@@ -97,9 +99,11 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
     .orderBy(desc(portfolioProjects.featured), asc(portfolioProjects.sortOrder))
     .all();
 
+  const sqlite = getDatabase();
   // Parse JSON fields
   const parsedProjects = projects.map((p) => ({
     ...p,
+    image: portfolioProjectImageForClient(p.image, sqlite),
     technologies: JSON.parse(p.technologies || "[]"),
     metrics: JSON.parse(p.metrics || "{}"),
     links: JSON.parse(p.links || "{}"),
@@ -132,6 +136,9 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
     throw new ConflictError("Project with this ID already exists");
   }
 
+  const sqlite = getDatabase();
+  const storedImage = body.image ? normalizePortfolioImageInput(body.image, sqlite) : null;
+
   // Insert new project
   db.insert(portfolioProjects)
     .values({
@@ -142,7 +149,7 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
       dateCompleted: body.dateCompleted || null,
       status: body.status,
       featured: body.featured,
-      image: body.image || null,
+      image: storedImage,
       excerpt: body.excerpt || null,
       description: body.description || null,
       role: body.role || null,
@@ -170,6 +177,9 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
     const { registerObject } = await import("@/lib/object-registry");
     registerObject({ type: 'portfolio_project', sourceTable: 'portfolio_projects', sourceId: body.id, title: body.title });
   } catch { /* registry is non-critical */ }
+
+  const { markContextMetricsStale } = await import("@/lib/mark-context-metrics-stale");
+  markContextMetricsStale();
 
   return NextResponse.json({
     ...project,

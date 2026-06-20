@@ -4,6 +4,7 @@ const nextConfig: NextConfig = {
   serverExternalPackages: ["@cursor/sdk", "sqlite3"],
   // Enable server-side features
   experimental: {
+    middlewareClientMaxBodySize: "50mb",
     serverActions: {
       bodySizeLimit: "50mb",
     },

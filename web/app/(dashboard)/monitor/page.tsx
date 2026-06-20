@@ -94,6 +94,10 @@ interface KronusStats {
   linearProjectsTokens: number;
   linearIssues: number;
   linearIssuesTokens: number;
+  sliteNotes?: number;
+  sliteNotesTokens?: number;
+  notionPages?: number;
+  notionPagesTokens?: number;
   baseTokens: number;
   totalTokens: number;
   totalTokensWithCompleted: number;
@@ -174,6 +178,13 @@ export default function ControlPanelPage() {
         <div className="cp-header-text">
           <h1 className="cp-title">AI Control Panel</h1>
           <p className="cp-subtitle">Edit prompts and tune the agents — no redeploys.</p>
+          <p className="cp-subtitle" style={{ marginTop: "0.35rem", fontSize: "0.8rem" }}>
+            <a href="/monitor/summaries" className="sum-dash-link">Summary dashboard</a>
+            {" · "}
+            <a href="/monitor/memlog" className="sum-dash-link">Memory breaches (dev)</a>
+            {" · "}
+            <a href="/monitor/crashes" className="sum-dash-link">Client errors (dev)</a>
+          </p>
         </div>
         <nav className="cp-header-tabs">
           {(["prompts", "muse", "context", "live"] as Tab[]).map((t) => (
@@ -760,6 +771,8 @@ const CONTEXT_SECTIONS: Array<{
   { key: "chatIndex", tokenKey: "chatIndexTokens", label: "Chat Index", source: "chat_conversations summaries", note: "Summarized prior conversations; also enables memory tools." },
   { key: "linearProjects", tokenKey: "linearProjectsTokens", label: "Linear Projects", source: "linear_projects cache", note: "Active project records by default." },
   { key: "linearIssues", tokenKey: "linearIssuesTokens", label: "Linear Issues", source: "linear_issues cache", note: "Active issue records by default." },
+  { key: "sliteNotes", tokenKey: "sliteNotesTokens", label: "Slite", source: "slite_notes cache", note: "Cached workspace notes with summaries." },
+  { key: "notionPages", tokenKey: "notionPagesTokens", label: "Notion", source: "notion_pages cache", note: "Cached workspace pages with summaries." },
 ];
 
 const PIPELINE = [
@@ -795,9 +808,18 @@ const PIPELINE = [
   },
 ];
 
+interface SummaryStatusReport {
+  total: number;
+  withSummary: number;
+  missingSummary: number;
+  stale: number;
+  bySource: Record<string, { total: number; withSummary: number; missingSummary: number; stale: number }>;
+}
+
 function ContextTab() {
   const [stats, setStats] = useState<KronusStats | null>(null);
   const [skills, setSkills] = useState<KronusSkillInfo[]>([]);
+  const [summaryStatus, setSummaryStatus] = useState<SummaryStatusReport | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -806,15 +828,19 @@ function ContextTab() {
       setLoading(true);
       setError(null);
       try {
-        const [statsRes, skillsRes] = await Promise.all([
+        const [statsRes, skillsRes, summaryRes] = await Promise.all([
           fetch("/api/kronus/stats"),
           fetch("/api/kronus/skills"),
+          fetch("/api/kronus/summary-status"),
         ]);
         if (!statsRes.ok) throw new Error(`stats ${statsRes.status}`);
         if (!skillsRes.ok) throw new Error(`skills ${skillsRes.status}`);
         setStats(await statsRes.json());
         const skillsJson = await skillsRes.json();
         setSkills(skillsJson.skills ?? []);
+        if (summaryRes.ok) {
+          setSummaryStatus(await summaryRes.json());
+        }
       } catch (err) {
         setError(err instanceof Error ? err.message : "failed to load context dashboard");
       } finally {
@@ -853,8 +879,8 @@ function ContextTab() {
         <div>
           <h2>Context Management</h2>
           <p>
-            Kronus runs lean by default. Manual context toggles and active skills add repository memory,
-            while tool toggles decide what actions are exposed. Live traces track what actually ran.
+            Kronus Lite loads all summaries when no skill is active. Manual soul toggles and skills add full
+            bodies; tool toggles decide what actions are exposed. Live traces track what actually ran.
           </p>
         </div>
         <div className="cp-context-kpis">
@@ -864,6 +890,42 @@ function ContextTab() {
           <Kpi label="skill adds" value={`${skillTotals.soul.length}/${skillTotals.tools.length}`} sub="context/tools" />
         </div>
       </section>
+
+      {summaryStatus && (
+        <section className="cp-context-section">
+          <div className="cp-section-header">
+            <h3 className="cp-section-title">Summary Index (Kronus Lite)</h3>
+            <span className="cp-footnote">
+              <a href="/monitor/summaries" className="sum-dash-link">
+                Open summary dashboard →
+              </a>
+              {" · "}
+              Coverage and staleness vs last content save
+            </span>
+          </div>
+          <div className="cp-context-kpis">
+            <Kpi label="indexed items" value={formatInt(summaryStatus.total)} sub="entities" />
+            <Kpi label="with summary" value={formatInt(summaryStatus.withSummary)} sub="ready for Lite" />
+            <Kpi label="missing" value={formatInt(summaryStatus.missingSummary)} sub="needs backfill" />
+            <Kpi label="stale" value={formatInt(summaryStatus.stale)} sub="saved after summarize" />
+          </div>
+          <div className="cp-context-grid">
+            {Object.entries(summaryStatus.bySource)
+              .sort(([a], [b]) => a.localeCompare(b))
+              .map(([source, row]) => (
+                <div key={source} className="cp-context-source-card">
+                  <div className="cp-context-source-top">
+                    <strong>{source}</strong>
+                    <span>{formatInt(row.withSummary)}/{formatInt(row.total)}</span>
+                  </div>
+                  <div className="cp-context-source-tokens">
+                    {formatInt(row.missingSummary)} missing · {formatInt(row.stale)} stale
+                  </div>
+                </div>
+              ))}
+          </div>
+        </section>
+      )}
 
       <section className="cp-context-section">
         <div className="cp-section-header">

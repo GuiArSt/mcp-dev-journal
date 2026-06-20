@@ -5,6 +5,7 @@ import {
   searchConversations,
   initConversationsTable,
 } from "@/lib/db-conversations";
+import { sanitizeMessagesForPersist } from "@/lib/conversation-persist";
 import { withErrorHandler } from "@/lib/api-handler";
 import { requireQuery, requireBody } from "@/lib/validations";
 import { conversationQuerySchema, saveConversationSchema } from "@/lib/validations/schemas";
@@ -51,13 +52,14 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
 
   // Validate after parsing
   const { title, messages, sessionConfig, artifactRefs, chatLog } = saveConversationSchema.parse(body);
+  const persistedMessages = sanitizeMessagesForPersist(messages);
   const sessionJson =
     sessionConfig !== undefined && sessionConfig !== null
       ? JSON.stringify(sessionConfig)
       : null;
   const artifactRefsJson = artifactRefs !== undefined ? JSON.stringify(artifactRefs) : null;
   const chatLogJson = chatLog !== undefined ? JSON.stringify(chatLog) : null;
-  const id = saveConversation(title, messages, sessionJson, artifactRefsJson, chatLogJson);
+  const id = saveConversation(title, persistedMessages, sessionJson, artifactRefsJson, chatLogJson);
 
   return NextResponse.json({
     id,

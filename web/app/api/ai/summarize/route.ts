@@ -12,6 +12,8 @@ import { NextResponse } from "next/server";
 import { registerRequest, deregisterRequest } from "@/lib/request-registry";
 import { traceAI } from "@/lib/observability";
 import { DEFAULT_CHAT_MODEL, getChatModelEntry, resolveChatModelId } from "@/lib/ai/model-catalog";
+import { getPrompt } from "@/lib/ai/prompt-store";
+import { TARTARUS_MASTER_SUMMARY_DEFAULT } from "@/lib/ai/prompt-defaults";
 
 const SUMMARY_MODEL_KEY = DEFAULT_CHAT_MODEL;
 const SUMMARY_MODEL_ID = resolveChatModelId(getChatModelEntry(SUMMARY_MODEL_KEY), process.env);
@@ -92,6 +94,8 @@ export async function POST(req: Request) {
       }
     }
 
+    const systemPrompt = getPrompt("tartarus-master-summary", TARTARUS_MASTER_SUMMARY_DEFAULT);
+
     const result = await traceAI(
       `summarize:${input.type}`,
       SUMMARY_MODEL_ID,
@@ -99,34 +103,10 @@ export async function POST(req: Request) {
         model,
         abortSignal: controller.signal,
         output: Output.object({ schema: SummaryOutputSchema }),
-      system: `You are a precise summarization engine for the Tartarus system.
-Your task is to generate dense, information-rich 3-sentence summaries for AI retrieval indexing.
+      system: systemPrompt,
+      prompt: `Generate a 3-sentence retrieval summary.
 
-## Summary Structure
-- Sentence 1: What it is and its primary purpose
-- Sentence 2: Key details, components, or changes
-- Sentence 3: Current status, impact, or notable aspects
-
-## Guidelines
-- Be DENSE with information - pack maximum meaning into minimum words
-- NO fluff, NO filler phrases, NO vague descriptions
-- Use specific technical terms when relevant
-- Include key identifiers (file names, versions, IDs) when present
-- This is for AI retrieval - precision and recall matter most
-
-## Type-Specific Guidance
-- journal_entry: Focus on what changed, why, and impact
-- project_summary: Focus on purpose, architecture, and current state
-- document: Focus on topic, key points, and intended use
-  - **For prompts**: Include purpose, role (system/user/assistant/chat), and if schemas/config are present
-- linear_issue: Focus on problem, status, and assignee/priority
-- linear_project: Focus on goals, progress, and timeline
-- attachment/media: Focus on what it shows/contains and its context
-- skill: Focus on expertise level, key applications, and relevance
-- work_experience: Focus on role, key achievements, and impact
-- education: Focus on degree, field of study, and key learnings
-- portfolio_project: Focus on what was built, technologies used, and outcomes`,
-      prompt: `Generate a 3-sentence summary for this ${input.type}:
+SUMMARY_MODE: ${input.type}
 
 ${input.title ? `Title: ${input.title}` : ""}${metadataContext}
 

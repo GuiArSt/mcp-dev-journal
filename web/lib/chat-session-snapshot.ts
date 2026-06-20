@@ -13,7 +13,7 @@ import type { ModelConfigState, ModelSelection } from "@/components/chat/ModelCo
 import { DEFAULT_CONFIG as DEFAULT_MODEL_CONFIG } from "@/components/chat/ModelConfig";
 import type { FormatConfigState } from "@/components/chat/FormatConfig";
 import { DEFAULT_FORMAT_CONFIG } from "@/components/chat/FormatConfig";
-import { isChatModelKey } from "@/lib/ai/model-catalog";
+import { normalizeChatModelKey } from "@/lib/ai/model-catalog";
 
 export const CHAT_SESSION_SNAPSHOT_VERSION = 1 as const;
 
@@ -44,10 +44,7 @@ function mergeTools(partial: unknown): ToolsConfigState {
 
 function mergeModel(partial: unknown): ModelConfigState {
   if (!isPlainObject(partial)) return { ...DEFAULT_MODEL_CONFIG };
-  const model =
-    isChatModelKey(partial.model)
-      ? (partial.model as ModelSelection)
-      : DEFAULT_MODEL_CONFIG.model;
+  const model = normalizeChatModelKey(partial.model) as ModelSelection;
   const reasoningEnabled =
     typeof partial.reasoningEnabled === "boolean"
       ? partial.reasoningEnabled

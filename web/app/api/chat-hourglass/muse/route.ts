@@ -36,7 +36,7 @@ import { MUSE_PROPOSE_SYSTEM_DEFAULT, MUSE_GENERATE_SYSTEM_DEFAULT } from "@/lib
 import { persistMuseImage } from "@/lib/ai/muse-artifact";
 import { paintImage } from "@/lib/ai/muse-paint";
 import type { PaintSize, RenderMode, PaintQuality } from "@/lib/ai/muse-paint";
-import { getProviderPair, type MuseProvider } from "@/lib/ai/muse-provider";
+import { getProviderPair, normalizePaintModel, type MuseProvider } from "@/lib/ai/muse-provider";
 
 export type { ArtifactRefPayload } from "@/lib/ai/muse-artifact";
 export type { MuseProvider, PaintModel } from "@/lib/ai/muse-provider";
@@ -347,6 +347,7 @@ interface ProposeBody {
   repositoryIndex?: string;
   currentTitle?: string;
   provider?: MuseProvider;
+  painterModel?: string;
   commit_hash?: string;
 }
 
@@ -372,9 +373,23 @@ interface GenerateBody {
   size?: PaintSize;
   quality?: PaintQuality;
   provider?: MuseProvider;
+  /** Override configured painter (gpt-image-2 | nano-banana-2 | nano-banana-pro). */
+  painterModel?: string;
 }
 
 // -------- Legacy bodies (kept for backward compat with existing callers) ---
+
+function resolvePainter(
+  body: { provider?: MuseProvider; painterModel?: string },
+  cfgProvider: MuseProvider,
+  cfgPainter: string,
+): { provider: MuseProvider; painter: ReturnType<typeof normalizePaintModel> } {
+  const painter = normalizePaintModel(body.painterModel ?? cfgPainter);
+  const provider: MuseProvider =
+    body.provider ??
+    (painter === "gpt-image-2" ? "openai" : painter.startsWith("nano-banana") ? "google" : cfgProvider);
+  return { provider, painter };
+}
 
 interface LegacyAutoBody {
   mode: "auto" | "auto-mandatory";
@@ -390,6 +405,7 @@ interface LegacyForceBody {
   size?: PaintSize;
   quality?: PaintQuality;
   provider?: MuseProvider;
+  painterModel?: string;
   commit_hash?: string;
 }
 
@@ -400,12 +416,20 @@ export async function POST(req: NextRequest) {
   if (!body) return NextResponse.json({ error: "Bad request" }, { status: 400 });
 
   const controller = new AbortController();
-  const provider: MuseProvider = body.provider ?? "openai";
 
   // Load config + prompts from DB (fall back to hardcoded defaults transparently)
   const cfg = getMuseConfig();
-  const resolvedProvider: MuseProvider = (cfg.provider as MuseProvider) ?? provider;
-  const pair = getProviderPair(resolvedProvider, { driverModel: cfg.driverModel, painterModel: cfg.painterModel });
+  const painterOverride =
+    "painterModel" in body && typeof body.painterModel === "string" ? body.painterModel : undefined;
+  const { provider: resolvedProvider, painter: resolvedPainter } = resolvePainter(
+    { provider: body.provider, painterModel: painterOverride },
+    (cfg.provider as MuseProvider) ?? "openai",
+    cfg.painterModel,
+  );
+  const pair = getProviderPair(resolvedProvider, {
+    driverModel: cfg.driverModel,
+    painterModel: resolvedPainter,
+  });
   const proposeSystemPrompt = `${getPrompt("muse-propose-system", MUSE_PROPOSE_SYSTEM_DEFAULT)}${VISUAL_ART_ADDENDUM}`;
   const generateSystemPrompt = `${getPrompt("muse-generate-system", MUSE_GENERATE_SYSTEM_DEFAULT)}${VISUAL_ART_ADDENDUM}`;
 
@@ -428,7 +452,7 @@ export async function POST(req: NextRequest) {
   });
 
   try {
-    const painter = pair.painterModel;
+    const painter = resolvedPainter;
 
     // ─── PROPOSE MODE ─────────────────────────────────────────────────────
     // Voice + optional image proposal (single OR alternatives). Never renders.
@@ -614,5 +638,5 @@ export async function POST(req: NextRequest) {
   } finally {
     deregisterRequest(registryId);
   }
-  }, { provider, mode: body.mode }, "/api/chat-hourglass/muse", conversationId);
+  }, { provider: resolvedProvider, mode: body.mode }, "/api/chat-hourglass/muse", conversationId);
 }

@@ -5,6 +5,7 @@ import {
   deleteConversation,
   initConversationsTable,
 } from "@/lib/db-conversations";
+import { sanitizeMessagesForPersist } from "@/lib/conversation-persist";
 import { withErrorHandler } from "@/lib/api-handler";
 import { requireParams } from "@/lib/validations";
 import { idParamSchema, saveConversationSchema } from "@/lib/validations/schemas";
@@ -54,6 +55,7 @@ export const PATCH = withErrorHandler(
     }
 
     const { title, messages, sessionConfig, artifactRefs, chatLog } = saveConversationSchema.parse(body);
+    const persistedMessages = sanitizeMessagesForPersist(messages);
     const sessionJson =
       sessionConfig !== undefined
         ? sessionConfig === null
@@ -62,7 +64,7 @@ export const PATCH = withErrorHandler(
         : undefined;
     const artifactRefsJson = artifactRefs !== undefined ? JSON.stringify(artifactRefs) : undefined;
     const chatLogJson = chatLog !== undefined ? JSON.stringify(chatLog) : undefined;
-    updateConversation(id, title, messages, sessionJson, artifactRefsJson, chatLogJson);
+    updateConversation(id, title, persistedMessages, sessionJson, artifactRefsJson, chatLogJson);
 
     return NextResponse.json({
       message: "Conversation updated successfully",

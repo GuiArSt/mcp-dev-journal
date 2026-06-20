@@ -142,6 +142,74 @@ export interface NotionCachedPage {
   isDeleted: boolean;
 }
 
+export interface SlackVaultStatus {
+  configured: boolean;
+  tokenSource: string | null;
+  requiredEnv?: string[];
+  auth: {
+    team?: string | null;
+    user?: string | null;
+    url?: string | null;
+  } | null;
+  stats: {
+    users: number;
+    messages: number;
+    conversations: Record<string, number>;
+    backfill?: {
+      discovered: number;
+      eligible: number;
+      withMessages: number;
+      touched: number;
+      pendingCursors: number;
+      exhausted: number;
+      lastBackfillAt: string | null;
+      touchedPercent: number;
+      exhaustedPercent: number;
+      note: string;
+    };
+  };
+  lastSync: string | null;
+  lastError: string | null;
+}
+
+export interface SlackCachedConversation {
+  id: string;
+  name: string | null;
+  type: string;
+  vaultType: "personal_conversation" | "group" | "public_forum";
+  isMember: number;
+  isArchived: number;
+  isPrivate: number;
+  userId: string | null;
+  numMembers: number | null;
+  latestTs: string | null;
+  title: string | null;
+  summary: string | null;
+  syncedAt: string | null;
+  updatedAt: string | null;
+  messageCount: number;
+  hasPendingCursor: number;
+  syncStateUpdatedAt: string | null;
+}
+
+export interface SlackCachedMessage {
+  conversationId: string;
+  ts: string;
+  userId: string | null;
+  username: string | null;
+  subtype: string | null;
+  text: string | null;
+  threadTs: string | null;
+  replyCount: number | null;
+  conversationTitle: string | null;
+  conversationName: string | null;
+  conversationType: string | null;
+  conversationVaultType: string | null;
+  authorName: string | null;
+  authorHandle: string | null;
+  syncedAt: string | null;
+}
+
 export interface KronusChat {
   id: number;
   trace_id: string;

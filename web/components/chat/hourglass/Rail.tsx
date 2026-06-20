@@ -1,13 +1,13 @@
 "use client";
 
+import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
-import { MessageSquare, BookOpen, Archive, Menu, Plus, Sparkles } from "lucide-react";
-import type { Turn, RailView } from "./types";
+import { Activity, Archive, BookOpen, History, MessageSquare, Plus, Sparkles } from "lucide-react";
+import { ConversationSummaryControls } from "./ConversationSummaryControls";
+import type { ConversationSummaryRow } from "@/lib/conversation-summary-ui";
 
-interface SavedConversation {
-  id: number;
-  title: string;
-  updated_at: string;
+interface SavedConversation extends ConversationSummaryRow {
   /** Running cost for the chat (USD). Populated server-side. */
   cost_usd?: number | null;
   /** Token totals (actual). */
@@ -22,12 +22,6 @@ interface SavedConversation {
 }
 
 interface RailProps {
-  view: RailView;
-  onViewChange: (v: RailView) => void;
-  turns: Turn[];
-  currentTurn: number;
-  viewingTurn: number;
-  onScrollToTurn: (n: number) => void;
   onNewChat: () => void;
   onLoadConversation?: (id: number) => void;
   open: boolean;
@@ -39,25 +33,17 @@ interface RailProps {
 }
 
 export function Rail({
-  view,
-  onViewChange,
-  turns,
-  currentTurn,
-  viewingTurn,
-  onScrollToTurn,
   onNewChat,
   onLoadConversation,
   open,
   onToggleOpen,
   currentConversationId,
 }: RailProps) {
+  const pathname = usePathname();
   const [savedConvs, setSavedConvs] = useState<SavedConversation[]>([]);
   const [loadingHistory, setLoadingHistory] = useState(false);
 
-  // Lazy-load history when the rail opens. The rail is conversation history:
-  // the current chat's beat navigation lives in the main stream/shelf.
-  useEffect(() => {
-    if (!open || savedConvs.length > 0) return;
+  const loadHistory = () => {
     setLoadingHistory(true);
     fetch("/api/conversations?limit=40")
       .then(async (res) => {
@@ -67,60 +53,71 @@ export function Rail({
       })
       .catch(() => {})
       .finally(() => setLoadingHistory(false));
-  }, [open, savedConvs.length]);
+  };
+
+  // Reload history whenever the rail opens (summary state may have changed).
+  useEffect(() => {
+    if (!open) return;
+    loadHistory();
+  }, [open]);
 
   const otherConvs = savedConvs.filter((c) => c.id !== currentConversationId);
+  const navItems = [
+    { href: "/chat", label: "Chat", icon: MessageSquare },
+    { href: "/reader", label: "Reader", icon: BookOpen },
+    { href: "/library", label: "Library", icon: Archive },
+    { href: "/monitor", label: "Control Panel", icon: Activity },
+  ];
+
+  const isActiveHref = (href: string) =>
+    pathname === href || (href !== "/chat" && pathname?.startsWith(`${href}/`));
 
   return (
     <aside className={`hg-rail${open ? " hg-open" : ""}`}>
       <div className="hg-rail-col">
-        <button
-          className={`hg-rail-ic${view === "chat" ? " active" : ""}`}
-          title="Hourglass · Kronos stream (Muse on the right)"
-          onClick={() => onViewChange("chat")}
-          aria-label="Chat"
-        >
-          <MessageSquare />
-        </button>
-        <button
-          className={`hg-rail-ic${view === "reader" ? " active" : ""}`}
-          title="Reader · Browse journal entries"
-          onClick={() => onViewChange("reader")}
-          aria-label="Reader"
-        >
-          <BookOpen />
-        </button>
-        <button
-          className={`hg-rail-ic${view === "repo" ? " active" : ""}`}
-          title="Library · Unified knowledge base"
-          onClick={() => onViewChange("repo")}
-          aria-label="Library"
-        >
-          <Archive />
-        </button>
+        <div className="hg-rail-group">
+          {navItems.map((item) => {
+            const Icon = item.icon;
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                className={`hg-rail-ic${isActiveHref(item.href) ? " active" : ""}`}
+                title={item.label}
+                aria-label={item.label}
+              >
+                <Icon />
+              </Link>
+            );
+          })}
+        </div>
 
         <div className="hg-rail-divider" />
 
-        <button className="hg-rail-ic" title="Chat history" onClick={onToggleOpen} aria-label="Open chat history">
-          <Menu />
-        </button>
-        <button className="hg-rail-ic" title="New chat" onClick={onNewChat} aria-label="New chat">
-          <Plus />
-        </button>
+        <div className="hg-rail-group">
+          <button className={`hg-rail-ic${open ? " active" : ""}`} title="Chat history" onClick={onToggleOpen} aria-label="Open chat history">
+            <History />
+          </button>
+          <button className="hg-rail-ic" title="New chat" onClick={onNewChat} aria-label="New chat">
+            <Plus />
+          </button>
+        </div>
+
+        <div className="hg-rail-spacer" />
       </div>
 
       {/* Expanded panel */}
       <div className="hg-rail-panel">
         <div className="hg-rail-open-head">
-          <h3>chat history</h3>
-          <div className="hg-sub">other saved conversations</div>
+          <h3>Chat History</h3>
+          <div className="hg-sub">Other saved conversations</div>
         </div>
 
         <div className="hg-rail-tabs hg-rail-actions">
-          <span className="hg-rail-tab active">history</span>
+          <span className="hg-rail-tab active">History</span>
           <div style={{ flex: 1 }} />
           <button className="hg-rail-new-btn" onClick={onNewChat} title="New conversation">
-            <Plus size={12} /> new
+            <Plus size={12} /> New
           </button>
         </div>
 
@@ -129,7 +126,7 @@ export function Rail({
             <div className="hg-rail-empty">loading...</div>
           )}
           {!loadingHistory && otherConvs.length === 0 && (
-            <div className="hg-rail-empty">no other saved conversations yet</div>
+            <div className="hg-rail-empty">No other saved conversations yet</div>
           )}
           {otherConvs.map((c) => {
             const age = new Date(c.updated_at).toLocaleDateString([], { month: "short", day: "numeric" });
@@ -152,7 +149,18 @@ export function Rail({
                   </div>
                 )}
                 <div className="hg-body">
-                  <div className="hg-q">{c.title || "untitled"}</div>
+                  <div className="hg-hist-title-row">
+                    <div className="hg-q">{c.title || "untitled"}</div>
+                    <ConversationSummaryControls
+                      conv={c}
+                      size="sm"
+                      onUpdated={(patch) =>
+                        setSavedConvs((prev) =>
+                          prev.map((row) => (row.id === c.id ? { ...row, ...patch } : row)),
+                        )
+                      }
+                    />
+                  </div>
                   {c.summary && <div className="hg-a">{c.summary}</div>}
                   <div className="hg-hist-meta">
                     {artifactN > 0 && <span title="artifacts on shelf">art {artifactN}</span>}

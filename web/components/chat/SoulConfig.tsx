@@ -79,6 +79,10 @@ interface SectionStats {
   journalEntriesTokens: number;
   chatIndex: number;
   chatIndexTokens: number;
+  sliteNotes?: number;
+  sliteNotesTokens?: number;
+  notionPages?: number;
+  notionPagesTokens?: number;
   // Legacy fields for backwards compatibility
   linearProjects: number;
   linearProjectsTokens: number;
@@ -188,6 +192,20 @@ const REPOSITORY_SECTIONS = [
     statsKey: "chatIndex",
     tokensKey: "chatIndexTokens",
   },
+  {
+    key: "sliteNotes",
+    label: "Slite",
+    icon: BookOpen,
+    statsKey: "sliteNotes",
+    tokensKey: "sliteNotesTokens",
+  },
+  {
+    key: "notionPages",
+    label: "Notion",
+    icon: BookOpen,
+    statsKey: "notionPages",
+    tokensKey: "notionPagesTokens",
+  },
 ] as const;
 
 const LINEAR_SECTIONS = [
@@ -276,7 +294,9 @@ export function SoulConfig({
     (config.journalEntries ? currentStats.journalEntriesTokens : 0) +
     (config.chatIndex ? currentStats.chatIndexTokens : 0) +
     (config.linearProjects ? linearProjectTokens : 0) +
-    (config.linearIssues ? linearIssueTokens : 0);
+    (config.linearIssues ? linearIssueTokens : 0) +
+    (config.sliteNotes ? (currentStats.sliteNotesTokens ?? 0) : 0) +
+    (config.notionPages ? (currentStats.notionPagesTokens ?? 0) : 0);
 
   const contextPercentage = (estimatedTokens / contextLimit) * 100;
   const isHighContext = contextPercentage > CONTEXT_WARNING_THRESHOLD * 100;
@@ -297,6 +317,8 @@ export function SoulConfig({
       chatIndex: true,
       linearProjects: true,
       linearIssues: true,
+      sliteNotes: true,
+      notionPages: true,
     });
   };
 
@@ -312,6 +334,8 @@ export function SoulConfig({
       chatIndex: false,
       linearProjects: false,
       linearIssues: false,
+      sliteNotes: false,
+      notionPages: false,
     });
   };
 

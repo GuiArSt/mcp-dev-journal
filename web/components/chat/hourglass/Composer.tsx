@@ -21,6 +21,8 @@ interface ComposerProps {
   onSubmit: (text: string, files?: FileList) => void;
   disabled: boolean;
   contextPercent: number;
+  contextTokenLabel?: string;
+  contextTooltip?: string;
   activeSkillCount?: number;
   skillContextActive?: boolean;
   effectiveContextCount?: number;
@@ -54,6 +56,8 @@ export function Composer({
   onSubmit,
   disabled,
   contextPercent,
+  contextTokenLabel,
+  contextTooltip,
   activeSkillCount = 0,
   skillContextActive = false,
   effectiveContextCount,
@@ -379,8 +383,14 @@ export function Composer({
         )}
 
         <div className="hg-spacer" />
-        <span className="hg-model">
-          ctx <span className="hg-val">{contextPercent}%</span>
+        <span
+          className="hg-model hg-ctx-meter"
+          title={contextTooltip ?? `Estimated context vs ${contextPercent}% of model window`}
+        >
+          ctx{" "}
+          <span className="hg-val">
+            {contextTokenLabel ? `${contextTokenLabel} · ${contextPercent}%` : `${contextPercent}%`}
+          </span>
         </span>
 
         {/* Single Models button keeps image-model details inside the popover. */}

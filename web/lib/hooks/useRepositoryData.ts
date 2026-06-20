@@ -11,6 +11,9 @@ import type {
   LinearCachedIssue,
   SliteCachedNote,
   NotionCachedPage,
+  SlackCachedConversation,
+  SlackCachedMessage,
+  SlackVaultStatus,
   KronusChat,
   ChatConversation,
   MediaAsset,
@@ -60,6 +63,12 @@ export function useRepositoryData(activeTab: string) {
   const [notionPages, setNotionPages] = useState<NotionCachedPage[]>([]);
   const [notionLastSync, setNotionLastSync] = useState<string | null>(null);
   const [notionSyncing, setNotionSyncing] = useState(false);
+
+  // Slack vault state
+  const [slackConversations, setSlackConversations] = useState<SlackCachedConversation[]>([]);
+  const [slackMessages, setSlackMessages] = useState<SlackCachedMessage[]>([]);
+  const [slackStatus, setSlackStatus] = useState<SlackVaultStatus | null>(null);
+  const [slackSyncing, setSlackSyncing] = useState(false);
 
   // Kronus MCP chats state
   const [kronusChats, setKronusChats] = useState<KronusChat[]>([]);
@@ -133,6 +142,11 @@ export function useRepositoryData(activeTab: string) {
       case "notion":
         setNotionPages(data.pages || []);
         setNotionLastSync(data.lastSync || null);
+        break;
+      case "slack":
+        setSlackConversations(data.conversations || []);
+        setSlackMessages(data.recentMessages || []);
+        setSlackStatus(data.status || null);
         break;
       case "chats":
         setConversations(data.conversations || []);
@@ -253,6 +267,10 @@ export function useRepositoryData(activeTab: string) {
             pages: data.pages || [],
             lastSync: data.lastSync || null,
           };
+        } else if (activeTab === "slack") {
+          const res = await fetch("/api/integrations/slack/cache?limit=80", { signal });
+          if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
+          fetchedData = await res.json();
         } else if (activeTab === "chats") {
           const [convRes, kronusRes] = await Promise.all([
             fetch("/api/conversations?limit=20", { signal }),
@@ -318,6 +336,10 @@ export function useRepositoryData(activeTab: string) {
         } else if (activeTab === "notion") {
           setNotionPages([]);
           setNotionLastSync(null);
+        } else if (activeTab === "slack") {
+          setSlackConversations([]);
+          setSlackMessages([]);
+          setSlackStatus(null);
         } else if (activeTab === "chats") {
           setConversations([]);
           setConversationsPagination(null);
@@ -389,6 +411,42 @@ export function useRepositoryData(activeTab: string) {
       setNotionSyncing(false);
     }
   }, []);
+
+  // Sync one safe Slack backfill slice. Full paced backfills should use npm run slack:backfill.
+  const syncSlackData = useCallback(async () => {
+    setSlackSyncing(true);
+    try {
+      const res = await fetch("/api/integrations/slack/sync", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          syncUsers: false,
+          syncConversations: false,
+          syncMessages: true,
+          syncThreads: false,
+          maxConversations: 1,
+          maxConversationPages: 1,
+          messageLimit: 15,
+          maxRateLimitWaitMs: 70_000,
+          continueBackfill: true,
+          includeNonMemberPublic: false,
+          forceFull: true,
+        }),
+      });
+      if (!res.ok) {
+        throw new Error(`HTTP error! status: ${res.status}`);
+      }
+      const cacheRes = await fetch("/api/integrations/slack/cache?limit=80");
+      if (cacheRes.ok) {
+        applyTabData("slack", await cacheRes.json());
+        invalidateTabCache("slack");
+      }
+    } catch (error) {
+      console.error("Failed to sync Slack data:", error);
+    } finally {
+      setSlackSyncing(false);
+    }
+  }, [applyTabData, invalidateTabCache]);
 
   // Sync Linear data
   const syncLinearData = useCallback(async () => {
@@ -464,6 +522,11 @@ export function useRepositoryData(activeTab: string) {
     notionLastSync,
     notionSyncing,
     syncNotionData,
+    slackConversations,
+    slackMessages,
+    slackStatus,
+    slackSyncing,
+    syncSlackData,
     kronusChats,
     kronusChatsPagination,
     conversations,

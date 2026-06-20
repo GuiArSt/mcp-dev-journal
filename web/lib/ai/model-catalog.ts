@@ -9,6 +9,7 @@ export interface ChatModelCatalogEntry {
   provider: AiProviderKey;
   providerLabel: string;
   modelId: string;
+  /** Provider-documented max input context (tokens). */
   contextWindow: number;
   hasThinking: boolean;
   tier: ModelTier;
@@ -16,11 +17,7 @@ export interface ChatModelCatalogEntry {
   envModelIdKey?: string;
 }
 
-export const DEFAULT_CHAT_MODEL = "gemini-3.5-flash" as const;
-export const DEFAULT_IMAGE_CHAT_MODEL = "gemini-3.5-flash" as const;
-export const DEFAULT_OPENAI_IMAGE_CHAT_MODEL = "gpt-5.5" as const;
-export const DEFAULT_GOOGLE_FALLBACK_MODEL = "gemini-3.1-flash-lite" as const;
-
+/** User-facing chat models in Hourglass + legacy ChatInterface picker. */
 export const CHAT_MODEL_CATALOG = [
   {
     key: "gemini-3.5-flash",
@@ -29,34 +26,24 @@ export const CHAT_MODEL_CATALOG = [
     provider: "google",
     providerLabel: "Google",
     modelId: "gemini-3.5-flash",
-    contextWindow: 1_000_000,
+    // Google AI: 1,048,576 input tokens (gemini-3.5-flash model card / API docs, May 2026)
+    contextWindow: 1_048_576,
     hasThinking: true,
     tier: "standard",
-    description: "Agentic Flash default",
+    description: "Default — fast agentic chat",
   },
   {
-    key: "gemini-3.1-pro",
-    label: "Gemini 3.1 Pro",
-    shortLabel: "3.1 Pro",
-    provider: "google",
-    providerLabel: "Google",
-    modelId: "gemini-3.1-pro-preview",
+    key: "claude-opus-4.8",
+    label: "Claude Opus 4.8",
+    shortLabel: "Opus 4.8",
+    provider: "anthropic",
+    providerLabel: "Anthropic",
+    modelId: "claude-opus-4-8",
+    // Anthropic API: 1M context window (Claude Opus 4.8 docs, May 2026)
     contextWindow: 1_000_000,
     hasThinking: true,
     tier: "prime",
-    description: "Previous Gemini Pro lane",
-  },
-  {
-    key: "gemini-3.1-flash-lite",
-    label: "Gemini 3.1 Flash-Lite",
-    shortLabel: "Flash-Lite",
-    provider: "google",
-    providerLabel: "Google",
-    modelId: "gemini-3.1-flash-lite-preview",
-    contextWindow: 1_000_000,
-    hasThinking: false,
-    tier: "background",
-    description: "Fast background work",
+    description: "Frontier Opus — coding, agents, long-horizon work",
   },
   {
     key: "claude-opus-4.7",
@@ -65,34 +52,25 @@ export const CHAT_MODEL_CATALOG = [
     provider: "anthropic",
     providerLabel: "Anthropic",
     modelId: "claude-opus-4-7",
+    // Anthropic API: 1M context window (Claude Opus 4.7 docs, Apr 2026)
     contextWindow: 1_000_000,
     hasThinking: true,
     tier: "prime",
-    description: "Latest Opus lane",
+    description: "Deep reasoning and agents",
   },
   {
-    key: "claude-opus-4.6",
-    label: "Claude Opus 4.6",
-    shortLabel: "Opus 4.6",
+    key: "claude-fable-5",
+    label: "Claude Fable 5",
+    shortLabel: "Fable 5",
     provider: "anthropic",
     providerLabel: "Anthropic",
-    modelId: "claude-opus-4-6",
+    modelId: "claude-fable-5",
+    // Anthropic API: 1M context, adaptive thinking (Claude Fable 5 docs, Jun 2026)
     contextWindow: 1_000_000,
     hasThinking: true,
     tier: "prime",
-    description: "Stable Opus lane",
-  },
-  {
-    key: "claude-sonnet-4.6",
-    label: "Claude Sonnet 4.6",
-    shortLabel: "Sonnet 4.6",
-    provider: "anthropic",
-    providerLabel: "Anthropic",
-    modelId: "claude-sonnet-4-6",
-    contextWindow: 1_000_000,
-    hasThinking: true,
-    tier: "standard",
-    description: "Best value Claude lane",
+    description: "Mythos-class — long-horizon agentic work",
+    envModelIdKey: "ANTHROPIC_FABLE_MODEL_ID",
   },
   {
     key: "gpt-5.5",
@@ -101,39 +79,34 @@ export const CHAT_MODEL_CATALOG = [
     provider: "openai",
     providerLabel: "OpenAI",
     modelId: "gpt-5.5",
-    contextWindow: 1_000_000,
+    // OpenAI API model page: 1,050,000 context window (gpt-5.5, Apr 2026)
+    contextWindow: 1_050_000,
     hasThinking: true,
     tier: "prime",
-    description: "OpenAI latest lane",
+    description: "OpenAI frontier",
     envModelIdKey: "OPENAI_GPT55_MODEL_ID",
-  },
-  {
-    key: "gpt-5.4",
-    label: "GPT-5.4",
-    shortLabel: "GPT-5.4",
-    provider: "openai",
-    providerLabel: "OpenAI",
-    modelId: "gpt-5.4",
-    contextWindow: 1_000_000,
-    hasThinking: true,
-    tier: "prime",
-    description: "OpenAI flagship lane",
-  },
-  {
-    key: "gpt-5.3-instant",
-    label: "GPT-5.3 Instant",
-    shortLabel: "5.3 Instant",
-    provider: "openai",
-    providerLabel: "OpenAI",
-    modelId: "gpt-5.3-instant",
-    contextWindow: 200_000,
-    hasThinking: false,
-    tier: "standard",
-    description: "Fast OpenAI chat",
   },
 ] as const satisfies readonly ChatModelCatalogEntry[];
 
 export type ChatModelKey = (typeof CHAT_MODEL_CATALOG)[number]["key"];
+
+export const DEFAULT_CHAT_MODEL = "gemini-3.5-flash" as const;
+export const DEFAULT_IMAGE_CHAT_MODEL = "gemini-3.5-flash" as const;
+export const DEFAULT_OPENAI_IMAGE_CHAT_MODEL = "gpt-5.5" as const;
+
+/** Background / batch jobs only — not shown in the chat model picker. */
+export const BACKGROUND_GEMINI_FLASH_LITE_MODEL_ID = "gemini-3.1-flash-lite-preview";
+
+/** Maps saved sessions that still reference retired picker models. */
+const LEGACY_CHAT_MODEL_KEYS: Record<string, ChatModelKey> = {
+  "gemini-3.1-pro": "gemini-3.5-flash",
+  "gemini-3.1-flash-lite": "gemini-3.5-flash",
+  "claude-opus-4.6": "claude-opus-4.8",
+  "claude-opus-4.7": "claude-opus-4.8",
+  "claude-sonnet-4.6": "claude-opus-4.8",
+  "gpt-5.4": "gpt-5.5",
+  "gpt-5.3-instant": "gpt-5.5",
+};
 
 export const CHAT_MODELS = CHAT_MODEL_CATALOG.map((model) => ({
   key: model.key,
@@ -152,8 +125,21 @@ export function isChatModelKey(value: unknown): value is ChatModelKey {
   return typeof value === "string" && CHAT_MODEL_CATALOG.some((model) => model.key === value);
 }
 
+export function normalizeChatModelKey(value: unknown): ChatModelKey {
+  if (isChatModelKey(value)) return value;
+  if (typeof value === "string" && value in LEGACY_CHAT_MODEL_KEYS) {
+    return LEGACY_CHAT_MODEL_KEYS[value];
+  }
+  return DEFAULT_CHAT_MODEL;
+}
+
 export function getChatModelEntry(key: ChatModelKey): ChatModelCatalogEntry {
   return CHAT_MODEL_CATALOG.find((model) => model.key === key) ?? CHAT_MODEL_CATALOG[0];
+}
+
+/** Context budget for UI meters (Hourglass ctx %, Soul popover, legacy chat). */
+export function getModelContextLimit(key: ChatModelKey): number {
+  return getChatModelEntry(key).contextWindow;
 }
 
 export function resolveChatModelId(

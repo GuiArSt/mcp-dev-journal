@@ -41,7 +41,7 @@ ${achievements.length ? `Key Achievements:\n${achievements.map((a: string) => `-
     if (response.ok) {
       const { summary } = await response.json();
       const db = getDatabase();
-      db.prepare("UPDATE work_experience SET summary = ? WHERE id = ?").run(summary, expId);
+      db.prepare("UPDATE work_experience SET summary = ?, summary_updated_at = CURRENT_TIMESTAMP WHERE id = ?").run(summary, expId);
     }
   } catch (error) {
     console.error("Failed to generate experience summary:", error);

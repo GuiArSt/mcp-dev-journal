@@ -278,7 +278,7 @@ type MuseConfigRow = {
 
 const MUSE_CONFIG_DEFAULTS: Omit<MuseConfig, "updatedAt"> = {
   provider: "openai",
-  driverModel: process.env.OPENAI_GPT55_MODEL_ID || "gpt-5.4",
+  driverModel: process.env.OPENAI_GPT55_MODEL_ID || "gpt-5.5",
   painterModel: "gpt-image-2",
   observeModel: "gemini-2.5-flash",
   tickEvery: 3,

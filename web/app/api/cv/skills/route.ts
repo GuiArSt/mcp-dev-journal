@@ -37,7 +37,7 @@ ${skill.lastUsed ? `Last used: ${skill.lastUsed}` : ""}
     if (response.ok) {
       const { summary } = await response.json();
       const db = getDatabase();
-      db.prepare("UPDATE skills SET summary = ? WHERE id = ?").run(summary, skillId);
+      db.prepare("UPDATE skills SET summary = ?, summary_updated_at = CURRENT_TIMESTAMP WHERE id = ?").run(summary, skillId);
     }
   } catch (error) {
     console.error("Failed to generate skill summary:", error);
@@ -101,6 +101,9 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
     const { registerObject } = await import("@/lib/object-registry");
     registerObject({ type: 'skill', sourceTable: 'skills', sourceId: body.id, title: body.name });
   } catch { /* registry is non-critical */ }
+
+  const { markContextMetricsStale } = await import("@/lib/mark-context-metrics-stale");
+  markContextMetricsStale();
 
   return NextResponse.json({
     ...skill,

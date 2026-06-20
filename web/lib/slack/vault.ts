@@ -19,6 +19,7 @@ export interface SlackSyncOptions {
   includeArchived?: boolean;
   includeNonMemberPublic?: boolean;
   forceFull?: boolean;
+  latestTs?: string;
 }
 
 const DEFAULT_RATE_LIMIT_WAIT_MS = 70_000;
@@ -345,14 +346,21 @@ function getConversationLastSyncedTs(conversationId: string): string | null {
   return row?.last_synced_ts ?? null;
 }
 
-function getSyncState(scope: string): { cursor: string | null; lastSyncedTs: string | null } {
+function getSyncState(scope: string): { cursor: string | null; lastSyncedTs: string | null; stats: Record<string, unknown> } {
   const db = getDatabase();
-  const row = db.prepare(`SELECT cursor, last_synced_ts FROM slack_sync_state WHERE scope = ?`).get(scope) as
-    | { cursor?: string | null; last_synced_ts?: string | null }
+  const row = db.prepare(`SELECT cursor, last_synced_ts, stats_json FROM slack_sync_state WHERE scope = ?`).get(scope) as
+    | { cursor?: string | null; last_synced_ts?: string | null; stats_json?: string | null }
     | undefined;
+  let stats: Record<string, unknown> = {};
+  try {
+    stats = row?.stats_json ? JSON.parse(row.stats_json) : {};
+  } catch {
+    stats = {};
+  }
   return {
     cursor: row?.cursor ?? null,
     lastSyncedTs: row?.last_synced_ts ?? null,
+    stats,
   };
 }
 
@@ -465,20 +473,49 @@ export function getSlackVaultStatus() {
   };
 }
 
-export function listSlackVaultCache(limit = 50) {
+export function listSlackVaultCache(
+  limit = 50,
+  options: { conversationId?: string | null; messageLimit?: number } = {},
+) {
   ensureSlackVaultSchema();
   const db = getDatabase();
+  const messageLimit = options.messageLimit ?? limit;
   const conversations = db.prepare(`
     SELECT c.id, c.name, c.type, c.vault_type as vaultType, c.is_member as isMember, c.is_archived as isArchived,
            c.is_private as isPrivate, c.user_id as userId, c.num_members as numMembers, c.latest_ts as latestTs,
            COALESCE(c.name, im.real_name, im.name, c.user_id, c.id) as title,
-           c.summary, c.synced_at as syncedAt, c.updated_at as updatedAt
+           c.summary, c.synced_at as syncedAt, c.updated_at as updatedAt,
+           COALESCE(mc.messageCount, 0) as messageCount,
+           CASE WHEN s.cursor IS NOT NULL AND s.cursor != '' THEN 1 ELSE 0 END as hasPendingCursor,
+           s.updated_at as syncStateUpdatedAt
     FROM slack_conversations c
     LEFT JOIN slack_users im ON im.id = c.user_id
+    LEFT JOIN (
+      SELECT conversation_id, COUNT(*) as messageCount
+      FROM slack_messages
+      GROUP BY conversation_id
+    ) mc ON mc.conversation_id = c.id
+    LEFT JOIN slack_sync_state s ON s.scope = 'conversation:' || c.id
     ORDER BY c.updated_at DESC
     LIMIT ?
   `).all(limit);
-  const recentMessages = db.prepare(`
+  const recentMessages = options.conversationId
+    ? db.prepare(`
+    SELECT m.conversation_id as conversationId, m.ts, m.user_id as userId, m.username, m.subtype, m.text,
+           m.thread_ts as threadTs, m.reply_count as replyCount, m.synced_at as syncedAt,
+           c.name as conversationName, c.type as conversationType, c.vault_type as conversationVaultType,
+           COALESCE(c.name, im.real_name, im.name, c.user_id, m.conversation_id) as conversationTitle,
+           COALESCE(u.real_name, u.name, m.username, m.user_id, m.bot_id) as authorName,
+           u.name as authorHandle
+    FROM slack_messages m
+    LEFT JOIN slack_conversations c ON c.id = m.conversation_id
+    LEFT JOIN slack_users u ON u.id = m.user_id
+    LEFT JOIN slack_users im ON im.id = c.user_id
+    WHERE m.conversation_id = ?
+    ORDER BY CAST(m.ts AS REAL) ASC
+    LIMIT ?
+  `).all(options.conversationId, messageLimit)
+    : db.prepare(`
     SELECT m.conversation_id as conversationId, m.ts, m.user_id as userId, m.username, m.subtype, m.text,
            m.thread_ts as threadTs, m.reply_count as replyCount, m.synced_at as syncedAt,
            c.name as conversationName, c.type as conversationType, c.vault_type as conversationVaultType,
@@ -491,7 +528,7 @@ export function listSlackVaultCache(limit = 50) {
     LEFT JOIN slack_users im ON im.id = c.user_id
     ORDER BY CAST(m.ts AS REAL) DESC
     LIMIT ?
-  `).all(limit);
+  `).all(messageLimit);
   return { conversations, recentMessages, status: getSlackVaultStatus() };
 }
 
@@ -545,9 +582,15 @@ async function syncConversations(token: string, opts: Required<Pick<SlackSyncOpt
   return { pages, conversations: count, items: conversations };
 }
 
-async function syncMessagesForConversation(token: string, conversation: SlackConversation, opts: Required<Pick<SlackSyncOptions, "maxConversationPages" | "messageLimit" | "forceFull" | "continueBackfill">>) {
+async function syncMessagesForConversation(
+  token: string,
+  conversation: SlackConversation,
+  opts: Required<Pick<SlackSyncOptions, "maxConversationPages" | "messageLimit" | "forceFull" | "continueBackfill">> & Pick<SlackSyncOptions, "latestTs">,
+) {
   const state = getSyncState(`conversation:${conversation.id}`);
-  let cursor = opts.continueBackfill ? state.cursor ?? "" : "";
+  const priorLatestTs = typeof state.stats.cutoffLatestTs === "string" ? state.stats.cutoffLatestTs : null;
+  const canResumeCursor = !opts.latestTs || priorLatestTs === opts.latestTs;
+  let cursor = opts.continueBackfill && canResumeCursor ? state.cursor ?? "" : "";
   let count = 0;
   let pages = 0;
   let newestTs = getConversationLastSyncedTs(conversation.id);
@@ -559,11 +602,15 @@ async function syncMessagesForConversation(token: string, conversation: SlackCon
       limit: opts.messageLimit,
       cursor,
       oldest,
+      latest: opts.latestTs,
       inclusive: false,
     }, token);
     pages += 1;
     if (!res.ok) {
-      saveSyncState(`conversation:${conversation.id}`, { stats: { pages, messages: count, backfill: opts.forceFull || opts.continueBackfill }, error: res.error ?? "unknown" });
+      saveSyncState(`conversation:${conversation.id}`, {
+        stats: { pages, messages: count, backfill: opts.forceFull || opts.continueBackfill, cutoffLatestTs: opts.latestTs ?? null },
+        error: res.error ?? "unknown",
+      });
       return { conversationId: conversation.id, ok: false, error: res.error, pages, messages: count, retryAfter: res.retry_after };
     }
     const messages = (res.messages as SlackMessage[] | undefined) ?? [];
@@ -588,7 +635,12 @@ async function syncMessagesForConversation(token: string, conversation: SlackCon
     `).run(newestTs, newestTs, conversation.id);
   }
 
-  saveSyncState(`conversation:${conversation.id}`, { cursor: cursor || null, lastSyncedTs: newestTs ?? null, stats: { pages, messages: count, backfill: opts.forceFull || opts.continueBackfill }, error: null });
+  saveSyncState(`conversation:${conversation.id}`, {
+    cursor: cursor || null,
+    lastSyncedTs: newestTs ?? null,
+    stats: { pages, messages: count, backfill: opts.forceFull || opts.continueBackfill, cutoffLatestTs: opts.latestTs ?? null },
+    error: null,
+  });
   return { conversationId: conversation.id, ok: true, pages, messages: count, cursor: cursor || null };
 }
 
@@ -669,6 +721,7 @@ export async function syncSlackVault(options: SlackSyncOptions = {}) {
     includeArchived: options.includeArchived ?? false,
     includeNonMemberPublic: options.includeNonMemberPublic ?? false,
     forceFull: options.forceFull ?? false,
+    latestTs: typeof options.latestTs === "string" && options.latestTs.trim() ? options.latestTs.trim() : undefined,
   };
 
   const result: Record<string, unknown> = {
@@ -705,7 +758,11 @@ export async function syncSlackVault(options: SlackSyncOptions = {}) {
             OR (? = 1 OR c.is_member = 1)
           )
         ORDER BY
-          CASE WHEN s.updated_at IS NULL THEN 0 ELSE 1 END ASC,
+          CASE
+            WHEN s.updated_at IS NULL THEN 0
+            WHEN s.cursor IS NOT NULL AND s.cursor != '' THEN 1
+            ELSE 2
+          END ASC,
           s.updated_at ASC,
           c.updated_at ASC
         LIMIT ?
@@ -727,6 +784,7 @@ export async function syncSlackVault(options: SlackSyncOptions = {}) {
           messageLimit: opts.messageLimit,
           forceFull: opts.forceFull,
           continueBackfill: opts.continueBackfill,
+          latestTs: opts.latestTs,
         });
         messageResults.push(synced);
         if (!synced.ok && synced.retryAfter) break;

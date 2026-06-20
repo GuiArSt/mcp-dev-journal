@@ -9,6 +9,7 @@ export interface SkillOption {
   title: string;
   summary?: string;
   config?: SkillConfig;
+  tokenEstimate?: number;
 }
 
 interface Props {
@@ -88,34 +89,37 @@ export function SkillsPopover({
     setTimeout(() => setSyncStatus(null), 3500);
   };
 
-  // Lazy-load skills the first time the popover opens.
+  // Reload skill presets when opened — definitions change in DB (migrations).
   useEffect(() => {
-    if (!open || skills !== null) return;
+    if (!open) return;
     setLoading(true);
     setError(null);
-    fetch("/api/documents?type=prompt&limit=100")
+    fetch("/api/kronus/skills")
       .then(async (res) => {
         if (!res.ok) throw new Error(`skills ${res.status}`);
         const json = (await res.json()) as {
-          documents: Array<{ slug: string; title: string; summary?: string; metadata?: string | Record<string, unknown> }>;
+          skills: Array<{
+            slug: string;
+            title: string;
+            description?: string;
+            config: SkillConfig;
+            tokenEstimate?: number;
+          }>;
         };
-        const out: SkillOption[] = [];
-        for (const d of json.documents || []) {
-          let meta: Record<string, unknown> = {};
-          try {
-            meta = typeof d.metadata === "string" ? JSON.parse(d.metadata) : (d.metadata ?? {});
-          } catch { /* ignore */ }
-          if (meta.type === "kronus-skill" && meta.skillConfig) {
-            out.push({ slug: d.slug, title: d.title, summary: d.summary, config: meta.skillConfig as SkillConfig });
-          }
-        }
+        const out: SkillOption[] = (json.skills ?? []).map((s) => ({
+          slug: s.slug,
+          title: s.title,
+          summary: s.description,
+          config: s.config,
+          tokenEstimate: s.tokenEstimate,
+        }));
         out.sort((a, b) => a.title.localeCompare(b.title));
         setSkills(out);
         onSkillsLoaded?.(out);
       })
       .catch((err) => setError(err instanceof Error ? err.message : "failed"))
       .finally(() => setLoading(false));
-  }, [open, skills, onSkillsLoaded]);
+  }, [open, onSkillsLoaded]);
 
   useEffect(() => {
     if (!open) return;
