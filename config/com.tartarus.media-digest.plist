@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.tartarus.media-digest</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>/usr/bin/curl</string>
+        <string>-s</string>
+        <string>-X</string>
+        <string>POST</string>
+        <string>-H</string>
+        <string>Content-Type: application/json</string>
+        <string>http://localhost:3005/api/media-digest/run</string>
+    </array>
+
+    <!-- Run every morning at 07:00 local time. -->
+    <key>StartCalendarInterval</key>
+    <dict>
+        <key>Hour</key>
+        <integer>7</integer>
+        <key>Minute</key>
+        <integer>0</integer>
+    </dict>
+
+    <key>StandardOutPath</key>
+    <string>/tmp/tartarus-media-digest.log</string>
+    <key>StandardErrorPath</key>
+    <string>/tmp/tartarus-media-digest.log</string>
+
+    <key>RunAtLoad</key>
+    <false/>
+</dict>
+</plist>

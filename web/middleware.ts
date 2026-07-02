@@ -19,6 +19,7 @@ export function middleware(request: NextRequest) {
     request.nextUrl.pathname.startsWith("/api/documents") ||
     request.nextUrl.pathname.startsWith("/api/cv/") ||
     request.nextUrl.pathname.startsWith("/api/portfolio-projects") ||
+    request.nextUrl.pathname.startsWith("/api/portfolio-products") ||
     request.nextUrl.pathname.startsWith("/api/media") ||
     request.nextUrl.pathname.startsWith("/api/memory/chats") ||
     request.nextUrl.pathname.startsWith("/api/ai-integrations")
@@ -26,7 +27,8 @@ export function middleware(request: NextRequest) {
 
   // Cron-accessible endpoints and MCP-callable integration endpoints (localhost only, no auth needed)
   const isCronEndpoint = request.nextUrl.pathname === "/api/integrations/linear/sync"
-    || request.nextUrl.pathname === "/api/integrations/slite/sync";
+    || request.nextUrl.pathname === "/api/integrations/slite/sync"
+    || request.nextUrl.pathname === "/api/media-digest/run";
   const isIntegrationApi = request.nextUrl.pathname.startsWith("/api/integrations/linear/sync/");
   const isLocalhost = request.headers.get("host")?.startsWith("localhost");
 

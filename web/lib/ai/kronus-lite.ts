@@ -6,6 +6,7 @@
 import {
   getDrizzleDb,
   documents,
+  portfolioProducts,
   portfolioProjects,
   skills,
   workExperience,
@@ -47,10 +48,19 @@ export async function collectKronusLiteSummaryLines(): Promise<LiteSummaryLine[]
     });
   }
 
-  const projects = db.select().from(portfolioProjects).all();
-  for (const p of projects) {
+  for (const product of db.select().from(portfolioProducts).orderBy(portfolioProducts.displayOrder).all()) {
     lines.push({
-      source: "portfolio",
+      source: "portfolio_product",
+      id: product.id,
+      title: product.title,
+      summary: product.summary,
+      hasSummary: !!product.summary?.trim(),
+    });
+  }
+
+  for (const p of db.select().from(portfolioProjects).all()) {
+    lines.push({
+      source: "portfolio_project",
       id: p.id,
       title: p.title,
       summary: p.summary,

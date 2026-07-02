@@ -532,6 +532,189 @@ export function listSlackVaultCache(
   return { conversations, recentMessages, status: getSlackVaultStatus() };
 }
 
+const SLACK_CONVERSATION_INDEX_SQL = `
+  SELECT c.id, c.name, c.type, c.vault_type as vaultType, c.is_member as isMember,
+         c.is_archived as isArchived, c.is_private as isPrivate, c.user_id as userId,
+         c.num_members as numMembers, c.latest_ts as latestTs, c.topic, c.purpose,
+         COALESCE(c.name, im.real_name, im.name, c.user_id, c.id) as title,
+         c.summary, c.summarized_at as summarizedAt, c.synced_at as syncedAt, c.updated_at as updatedAt,
+         COALESCE(mc.messageCount, 0) as messageCount,
+         CASE WHEN s.cursor IS NOT NULL AND s.cursor != '' THEN 1 ELSE 0 END as hasPendingCursor
+  FROM slack_conversations c
+  LEFT JOIN slack_users im ON im.id = c.user_id
+  LEFT JOIN (
+    SELECT conversation_id, COUNT(*) as messageCount
+    FROM slack_messages
+    GROUP BY conversation_id
+  ) mc ON mc.conversation_id = c.id
+  LEFT JOIN slack_sync_state s ON s.scope = 'conversation:' || c.id
+`;
+
+export interface SlackConversationIndexRow {
+  id: string;
+  name: string | null;
+  type: string | null;
+  vaultType: SlackVaultType;
+  isMember: number;
+  isArchived: number;
+  isPrivate: number;
+  userId: string | null;
+  numMembers: number | null;
+  latestTs: string | null;
+  topic: string | null;
+  purpose: string | null;
+  title: string;
+  summary: string | null;
+  summarizedAt: string | null;
+  syncedAt: string | null;
+  updatedAt: string | null;
+  messageCount: number;
+  hasPendingCursor: number;
+}
+
+function buildSlackConversationFilters(options: {
+  query?: string;
+  vaultType?: SlackVaultType;
+  withMessagesOnly?: boolean;
+}) {
+  const conditions: string[] = [];
+  const params: unknown[] = [];
+
+  if (options.withMessagesOnly !== false) {
+    conditions.push("COALESCE(mc.messageCount, 0) > 0");
+  }
+  if (options.vaultType) {
+    conditions.push("c.vault_type = ?");
+    params.push(options.vaultType);
+  }
+  if (options.query?.trim()) {
+    const q = `%${options.query.trim()}%`;
+    conditions.push(`(
+      COALESCE(c.name, im.real_name, im.name, c.user_id, c.id) LIKE ?
+      OR COALESCE(c.summary, '') LIKE ?
+      OR COALESCE(c.topic, '') LIKE ?
+      OR COALESCE(c.purpose, '') LIKE ?
+    )`);
+    params.push(q, q, q, q);
+  }
+
+  return { conditions, params };
+}
+
+export function listSlackConversationsFromVault(
+  options: {
+    query?: string;
+    vaultType?: SlackVaultType;
+    withMessagesOnly?: boolean;
+    limit?: number;
+    offset?: number;
+  } = {},
+) {
+  ensureSlackVaultSchema();
+  const db = getDatabase();
+  const limit = Math.min(Math.max(options.limit ?? 20, 1), 100);
+  const offset = Math.max(options.offset ?? 0, 0);
+  const { conditions, params } = buildSlackConversationFilters(options);
+  const where = conditions.length ? `WHERE ${conditions.join(" AND ")}` : "";
+
+  const conversations = db
+    .prepare(
+      `${SLACK_CONVERSATION_INDEX_SQL}
+      ${where}
+      ORDER BY CAST(COALESCE(c.latest_ts, '0') AS REAL) DESC, c.updated_at DESC
+      LIMIT ? OFFSET ?`,
+    )
+    .all(...params, limit, offset) as SlackConversationIndexRow[];
+
+  const totalRow = db
+    .prepare(
+      `SELECT COUNT(*) as count
+       FROM slack_conversations c
+       LEFT JOIN slack_users im ON im.id = c.user_id
+       LEFT JOIN (
+         SELECT conversation_id, COUNT(*) as messageCount
+         FROM slack_messages
+         GROUP BY conversation_id
+       ) mc ON mc.conversation_id = c.id
+       ${where}`,
+    )
+    .get(...params) as { count: number };
+
+  return { conversations, total: totalRow.count, limit, offset };
+}
+
+export function getSlackConversationsForSoulContext() {
+  return listSlackConversationsFromVault({
+    withMessagesOnly: true,
+    limit: 500,
+    offset: 0,
+  }).conversations;
+}
+
+export function formatSlackSoulSection(conversations: SlackConversationIndexRow[]): string {
+  if (conversations.length === 0) return "";
+
+  const sections = conversations.map((conversation) => {
+    const summary = conversation.summary?.trim() || "_No summary yet — run slack:summarize or use slack_get_conversation._";
+    return `### ${conversation.title}
+**ID:** ${conversation.id} | **Vault:** ${conversation.vaultType} | **Messages:** ${conversation.messageCount} | **Latest:** ${conversation.latestTs || "unknown"}
+**Summary:** ${summary}`;
+  });
+
+  return `## Slack Vault (${conversations.length} conversations)
+
+Cached Slack conversations mirrored locally (summaries only — no message bodies).
+Use slack_list_conversations to search the index, then slack_get_conversation for full message history.
+
+${sections.join("\n\n---\n\n")}`;
+}
+
+export function getSlackConversationFromVault(
+  conversationId: string,
+  options: { messageLimit?: number; messageOffset?: number } = {},
+) {
+  ensureSlackVaultSchema();
+  const db = getDatabase();
+  const messageLimit = Math.min(Math.max(options.messageLimit ?? 50, 1), 500);
+  const messageOffset = Math.max(options.messageOffset ?? 0, 0);
+
+  const conversation = db
+    .prepare(`${SLACK_CONVERSATION_INDEX_SQL} WHERE c.id = ?`)
+    .get(conversationId) as SlackConversationIndexRow | undefined;
+
+  if (!conversation) {
+    return null;
+  }
+
+  const totalMessagesRow = db
+    .prepare("SELECT COUNT(*) as count FROM slack_messages WHERE conversation_id = ?")
+    .get(conversationId) as { count: number };
+
+  const messages = db
+    .prepare(
+      `SELECT m.ts, m.user_id as userId, m.username, m.subtype, m.text,
+              m.thread_ts as threadTs, m.reply_count as replyCount, m.is_thread_parent as isThreadParent,
+              COALESCE(u.real_name, u.name, m.username, m.user_id, m.bot_id) as authorName
+       FROM slack_messages m
+       LEFT JOIN slack_users u ON u.id = m.user_id
+       WHERE m.conversation_id = ?
+       ORDER BY CAST(m.ts AS REAL) ASC
+       LIMIT ? OFFSET ?`,
+    )
+    .all(conversationId, messageLimit, messageOffset);
+
+  return {
+    conversation,
+    messages,
+    pagination: {
+      total: totalMessagesRow.count,
+      limit: messageLimit,
+      offset: messageOffset,
+      hasMore: messageOffset + messages.length < totalMessagesRow.count,
+    },
+  };
+}
+
 async function syncUsers(token: string) {
   let cursor = "";
   let createdOrUpdated = 0;

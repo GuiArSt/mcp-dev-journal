@@ -419,10 +419,48 @@ export const toolSpecs = {
     }),
   },
 
+  // ===== Slack Vault Tools (read from local mirror) =====
+  slack_list_conversations: {
+    description:
+      "Search or list Slack conversations from the local vault mirror. Returns conversation IDs, vault types, message counts, and AI summaries — not raw messages. Use slack_get_conversation to fetch message history.",
+    inputSchema: z.object({
+      query: z.string().optional().describe("Search titles, summaries, topics, or purposes"),
+      vaultType: z
+        .enum(["personal_conversation", "group", "public_forum"])
+        .optional()
+        .describe("Filter by vault category"),
+      withMessagesOnly: z
+        .boolean()
+        .optional()
+        .default(true)
+        .describe("Only conversations with mirrored messages"),
+      limit: z.number().optional().default(20).describe("Max results (1-100)"),
+      offset: z.number().optional().default(0).describe("Pagination offset"),
+    }),
+  },
+
+  slack_get_conversation: {
+    description:
+      "Fetch a Slack conversation from the local vault with paginated message history. Does NOT call Slack API — reads mirrored data only.",
+    inputSchema: z.object({
+      conversationId: z.string().min(1).describe("Slack conversation/channel ID from slack_list_conversations"),
+      messageLimit: z
+        .number()
+        .optional()
+        .default(50)
+        .describe("Messages per page (max 500)"),
+      messageOffset: z
+        .number()
+        .optional()
+        .default(0)
+        .describe("Message pagination offset"),
+    }),
+  },
+
   // ===== Web Search Grounding =====
   web_search: {
     description:
-      "Search the web using the configured hosted search provider. Returns a synthesized answer with cited sources and confidence signals. Use this for current events, real-time data, factual lookups, or any query requiring up-to-date web information.",
+      "Search the web using the configured provider (Perplexity Search API when PERPLEXITY_API_KEY is set, otherwise Gemini grounding). Returns ranked sources with snippets or a synthesized answer. Use for current events, factual lookups, and real-time data.",
     inputSchema: z.object({
       query: z
         .string()
@@ -434,12 +472,60 @@ export const toolSpecs = {
   // Backward-compatible alias for older tool history and saved chats.
   gemini_search: {
     description:
-      "Legacy alias for web_search. Search the web using Google Search grounding via Gemini.",
+      "Search the web using Google Search grounding via Gemini (explicit Gemini path).",
     inputSchema: z.object({
       query: z
         .string()
         .min(1)
         .describe("Search query - be specific for better grounded results"),
+    }),
+  },
+
+  perplexity_search: {
+    description:
+      "Search the web with Perplexity Search API. Returns ranked results (title, URL, snippet, date) without LLM synthesis — best for source packs and citations.",
+    inputSchema: z.object({
+      query: z.string().min(1).describe("Search query"),
+      max_results: z.number().optional().describe("Max results (1-20, default 8)"),
+      search_context_size: z
+        .enum(["low", "medium", "high"])
+        .optional()
+        .describe("Snippet depth — low saves tokens"),
+      country: z.string().optional().describe("ISO country code, e.g. US, DE"),
+    }),
+  },
+
+  perplexity_ask: {
+    description:
+      "Ask Perplexity Sonar Pro for a concise web-grounded answer with citations. Good for quick factual questions.",
+    inputSchema: z.object({
+      question: z.string().min(1).describe("Question to ask"),
+    }),
+  },
+
+  perplexity_research: {
+    description:
+      "Deep research via Perplexity Sonar Deep Research. Slower, thorough — use for complex topics needing a report-style answer.",
+    inputSchema: z.object({
+      topic: z.string().min(1).describe("Topic to research in depth"),
+      strip_thinking: z
+        .boolean()
+        .optional()
+        .default(true)
+        .describe("Strip model thinking tags from output"),
+    }),
+  },
+
+  perplexity_reason: {
+    description:
+      "Advanced reasoning with Perplexity Sonar Reasoning Pro. Use for multi-step analysis; higher cost.",
+    inputSchema: z.object({
+      problem: z.string().min(1).describe("Problem requiring reasoning"),
+      strip_thinking: z
+        .boolean()
+        .optional()
+        .default(true)
+        .describe("Strip model thinking tags from output"),
     }),
   },
 
@@ -953,6 +1039,16 @@ export const toolSpecs = {
       tags: z.array(z.string()).optional().describe("Tags for categorization"),
       description: z.string().optional().describe("Project description (markdown)"),
       image: z.string().optional().describe("Project image path or URL"),
+      productIds: z.array(z.string()).optional().describe("Linked portfolio product IDs"),
+      visible: z.boolean().optional().describe("Show on public website catalog"),
+      diagramImage: z.string().optional(),
+      imageFallback: z.string().optional(),
+      caseStudyLevel: z.enum(["full", "compact", "archive"]).optional(),
+      humaneProblem: z.string().optional(),
+      humaneSolution: z.string().optional(),
+      technicalProblem: z.string().optional(),
+      technicalSolution: z.string().optional(),
+      technicalSpecs: z.string().optional(),
     }),
   },
 
@@ -970,6 +1066,68 @@ export const toolSpecs = {
       tags: z.array(z.string()).optional().describe("Updated tags"),
       description: z.string().optional().describe("Updated description"),
       image: z.string().optional().describe("Updated image path or URL"),
+      productIds: z.array(z.string()).optional().describe("Linked portfolio product IDs"),
+      visible: z.boolean().optional().describe("Show on public website catalog"),
+      diagramImage: z.string().optional().describe("Diagram image path"),
+      imageFallback: z.string().optional().describe("Fallback image when DB image missing"),
+      caseStudyLevel: z.enum(["full", "compact", "archive"]).optional(),
+      humaneProblem: z.string().optional(),
+      humaneSolution: z.string().optional(),
+      technicalProblem: z.string().optional(),
+      technicalSolution: z.string().optional(),
+      technicalSpecs: z.string().optional(),
+    }),
+  },
+
+  repository_list_portfolio_products: {
+    description: "List commercial portfolio products (what you can hire me to do)",
+    inputSchema: z.object({
+      wildcard: z.boolean().optional().describe("Filter wildcard vs core offerings"),
+    }),
+  },
+
+  repository_get_portfolio_product: {
+    description: "Get a portfolio product by ID",
+    inputSchema: z.object({
+      id: z.string().describe("Product ID slug (e.g. 'ai-systems')"),
+    }),
+  },
+
+  repository_create_portfolio_product: {
+    description: "Create a commercial portfolio product offering",
+    inputSchema: z.object({
+      id: z.string().describe("Unique product ID slug"),
+      title: z.string().describe("Product title"),
+      tagline: z.string().describe("Short tagline"),
+      humaneDescription: z.string().describe("Buyer-facing description"),
+      buyerPain: z.string().describe("Pain point this product solves"),
+      promise: z.string().describe("One-line promise"),
+      deliverables: z.array(z.string()).optional().describe("Deliverable bullets"),
+      startingPrice: z.string().describe("Starting price label"),
+      timeline: z.string().describe("Typical timeline"),
+      ctaLabel: z.string().describe("Call-to-action button label"),
+      accent: z.enum(["gold", "red", "blue"]).default("gold"),
+      wildcard: z.boolean().default(false),
+      displayOrder: z.number().default(0),
+    }),
+  },
+
+  repository_update_portfolio_product: {
+    description: "Update a portfolio product offering",
+    inputSchema: z.object({
+      id: z.string().describe("Product ID to update"),
+      title: z.string().optional(),
+      tagline: z.string().optional(),
+      humaneDescription: z.string().optional(),
+      buyerPain: z.string().optional(),
+      promise: z.string().optional(),
+      deliverables: z.array(z.string()).optional(),
+      startingPrice: z.string().optional(),
+      timeline: z.string().optional(),
+      ctaLabel: z.string().optional(),
+      accent: z.enum(["gold", "red", "blue"]).optional(),
+      wildcard: z.boolean().optional(),
+      displayOrder: z.number().optional(),
     }),
   },
 
@@ -1296,6 +1454,7 @@ export const toolCategories: Record<string, ToolName[]> = {
     "notion_create_page",
     "notion_update_page",
   ],
+  slack: ["slack_list_conversations", "slack_get_conversation"],
   repository: [
     "repository_search_documents",
     "repository_get_document",
@@ -1314,6 +1473,10 @@ export const toolCategories: Record<string, ToolName[]> = {
     "repository_get_portfolio_project",
     "repository_create_portfolio_project",
     "repository_update_portfolio_project",
+    "repository_list_portfolio_products",
+    "repository_get_portfolio_product",
+    "repository_create_portfolio_product",
+    "repository_update_portfolio_product",
   ],
   git: [
     "git_parse_repo_url",
@@ -1333,6 +1496,10 @@ export const toolCategories: Record<string, ToolName[]> = {
   ],
   webSearch: [
     "web_search",
+    "perplexity_search",
+    "perplexity_ask",
+    "perplexity_research",
+    "perplexity_reason",
   ],
   memory: [
     "memory_list_chat_index",

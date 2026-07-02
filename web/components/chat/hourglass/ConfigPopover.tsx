@@ -33,7 +33,7 @@ interface Props {
 
 const SOUL_OPTIONS: Array<{ key: SoulContextSectionKey; label: string; hint: string }> = [
   { key: "writings", label: "writings", hint: "essays, poems, notes" },
-  { key: "portfolioProjects", label: "portfolio", hint: "case studies" },
+  { key: "portfolioProjects", label: "portfolio", hint: "services + projects" },
   { key: "skills", label: "cv skills", hint: "capability index" },
   { key: "workExperience", label: "experience", hint: "work history" },
   { key: "education", label: "education", hint: "academic history" },
@@ -43,6 +43,7 @@ const SOUL_OPTIONS: Array<{ key: SoulContextSectionKey; label: string; hint: str
   { key: "linearIssues", label: "linear issues", hint: "issue sync" },
   { key: "sliteNotes", label: "slite", hint: "knowledge notes" },
   { key: "notionPages", label: "notion", hint: "workspace pages" },
+  { key: "slackConversations", label: "slack", hint: "conversation summaries" },
 ];
 
 const TOOL_OPTIONS: Array<{ key: keyof ToolsConfigState; label: string; hint: string }> = [
@@ -52,6 +53,7 @@ const TOOL_OPTIONS: Array<{ key: keyof ToolsConfigState; label: string; hint: st
   { key: "linear", label: "linear", hint: "issues/projects" },
   { key: "slite", label: "slite", hint: "knowledge base" },
   { key: "notion", label: "notion", hint: "workspace pages" },
+  { key: "slack", label: "slack", hint: "vault mirror" },
   { key: "git", label: "git", hint: "repository reads" },
   { key: "media", label: "media", hint: "asset library" },
   { key: "imageGeneration", label: "image tools", hint: "chat image generation" },

@@ -46,7 +46,10 @@ interface ComposerProps {
   daimonActive: boolean;
   onToggleDaimon: () => void;
   onStop?: () => void;
-  isStreaming: boolean;
+  /** True while streaming or awaiting the next model chunk (submitted). */
+  isLive?: boolean;
+  /** Show stop as active (live generation or tool loop halted). */
+  canStop?: boolean;
 }
 
 export function Composer({
@@ -78,7 +81,8 @@ export function Composer({
   daimonActive,
   onToggleDaimon,
   onStop,
-  isStreaming,
+  isLive = false,
+  canStop = false,
 }: ComposerProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const composerRef = useRef<HTMLDivElement>(null);
@@ -252,7 +256,7 @@ export function Composer({
         value={draft}
         onChange={(e) => setDraft(e.target.value)}
         onKeyDown={onKeyDown}
-        disabled={disabled && !isStreaming}
+        disabled={disabled && !isLive}
         style={textareaStyle}
       />
 
@@ -423,22 +427,27 @@ export function Composer({
           />
         </div>
 
-        {isStreaming && onStop ? (
-          <button className="hg-send" type="button" onClick={onStop} title="stop streaming">
-            ⏹ stop
-          </button>
-        ) : (
+        {onStop && (
           <button
-            className="hg-send"
+            className={`hg-stop${canStop ? " hg-stop-active" : ""}`}
             type="button"
-            onClick={submitDraft}
-            disabled={disabled || isCompressing || (!draft.trim() && !selectedFiles?.length)}
-            title={isCompressing ? "preparing attachment" : "send (⏎)"}
+            onClick={onStop}
+            disabled={!canStop}
+            title={canStop ? "Stop generation (Esc)" : "Nothing running"}
           >
-            {isCompressing ? "prep" : "send"}
-            <Send />
+            stop
           </button>
         )}
+        <button
+          className="hg-send"
+          type="button"
+          onClick={submitDraft}
+          disabled={canStop || disabled || isCompressing || (!draft.trim() && !selectedFiles?.length)}
+          title={isCompressing ? "preparing attachment" : "send (⏎)"}
+        >
+          {isCompressing ? "prep" : "send"}
+          <Send />
+        </button>
       </div>
 
       {/* Resize handle — only when floating */}

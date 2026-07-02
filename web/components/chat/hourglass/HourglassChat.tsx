@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type Dispatch, type SetStateAction } from "react";
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport, lastAssistantMessageIsCompleteWithToolCalls } from "ai";
+import { shouldAutoSendAfterToolCalls, wouldRepeatToolLoop, toolCallSignature, identicalToolLimitNotice, runawayToolNotice } from "@/lib/hourglass-auto-send-guard";
 import type { UIMessage } from "ai";
 import { LEAN_SOUL_CONFIG, LEAN_TOOLS_CONFIG } from "@/lib/ai/skills";
 import { executeToolCall } from "@/lib/ai/tool-executors";
@@ -25,7 +26,7 @@ import type { ComposerMode, MoodTab, Turn } from "./types";
 import type { Artifact, ArtifactBody, ArtifactRef } from "./artifacts/types";
 import type { ChatMessage } from "@/lib/db-conversations";
 import { sanitizeMessagesForPersist } from "@/lib/conversation-persist";
-import { restorePartsFromPersist } from "@/lib/chat-message-repair";
+import { restorePartsFromPersist, finalizeRestoredUiMessages } from "@/lib/chat-message-repair";
 import { appendEntry, extractMuseThoughtsFromChatLog, type ChatLogEntry } from "@/lib/chat-log";
 import type { PendingApproval, PendingApprovalAlternative } from "./ApprovalCard";
 import type { SoulConfigState } from "@/components/chat/SoulConfig";
@@ -94,6 +95,10 @@ function chatToUI(m: ChatMessage): UIMessage {
     parts,
     createdAt: m.createdAt ? new Date(m.createdAt) : undefined,
   } as UIMessage;
+}
+
+function chatMessagesToUI(messages: ChatMessage[]): UIMessage[] {
+  return finalizeRestoredUiMessages(messages.map(chatToUI));
 }
 
 /** Use the ApprovalCard's PendingApproval shape directly. */
@@ -354,10 +359,29 @@ export function HourglassChat() {
   const setMuseThoughtsRef = useRef<Dispatch<SetStateAction<MuseThought[]>> | null>(null);
   const setMusePaintingRef = useRef<Dispatch<SetStateAction<boolean>> | null>(null);
   const applyMuseTitleRef = useRef<(title: string | null | undefined, reason?: string | null, turnIndex?: number) => void>(() => {});
+  /** Prevent duplicate client execution if the SDK replays a tool call id. */
+  const executedToolCallIdsRef = useRef<Set<string>>(new Set());
+  const toolSigRef = useRef<Set<string>>(new Set());
+  const stopRef = useRef<() => void>(() => {});
+  /** Block auto-continue after restoring a saved conversation until the user sends again. */
+  const suppressAutoSendRef = useRef(false);
+  const [toolLoopBlocked, setToolLoopBlocked] = useState(false);
+
+  const autoSendGate = useCallback(({ messages: msgs }: { messages: UIMessage[] }) => {
+    if (suppressAutoSendRef.current) return false;
+    const allow = shouldAutoSendAfterToolCalls({ messages: msgs });
+    if (!allow && lastAssistantMessageIsCompleteWithToolCalls({ messages: msgs })) {
+      queueMicrotask(() => {
+        stopRef.current();
+        setToolLoopBlocked(true);
+      });
+    }
+    return allow;
+  }, []);
 
   const { messages, sendMessage, status, stop, setMessages, addToolResult } = useChat({
     transport,
-    sendAutomaticallyWhen: lastAssistantMessageIsCompleteWithToolCalls,
+    sendAutomaticallyWhen: autoSendGate,
     onFinish: () => {
       // Flush immediately — debounced save can miss a tab freeze/crash within 1s.
       void saveConversationNowRef.current(messagesRef.current, shelfRef.current);
@@ -365,6 +389,28 @@ export function HourglassChat() {
     async onToolCall({ toolCall }) {
       const { toolName, input, toolCallId } = toolCall;
       const args = (input ?? {}) as Record<string, unknown>;
+
+      if (executedToolCallIdsRef.current.has(toolCallId)) return;
+      executedToolCallIdsRef.current.add(toolCallId);
+
+      const sig = toolCallSignature(toolName, args);
+      const loop = wouldRepeatToolLoop(messagesRef.current, toolName, args);
+      if (loop.loopDetected || toolSigRef.current.has(sig)) {
+        // Soft path: skip the redundant call and hand the model a clear notice
+        // so it can recover and finish on its own. Only a true runaway
+        // (loop.hardStop) halts the run and surfaces the banner.
+        const output = loop.hardStop ? runawayToolNotice() : identicalToolLimitNotice(toolName);
+        addToolResult({ tool: toolName, toolCallId, output });
+        logEventRef.current({ kind: "tool_result", name: toolName, ok: false, preview: output.slice(0, 200), ts: Date.now() });
+        if (loop.hardStop) {
+          queueMicrotask(() => {
+            stopRef.current();
+            setToolLoopBlocked(true);
+          });
+        }
+        return;
+      }
+      toolSigRef.current.add(sig);
 
       // Log the call (chat-log writer is the ref bridge — state lives below).
       const argsPreview = JSON.stringify(args).slice(0, 200);
@@ -565,7 +611,27 @@ export function HourglassChat() {
   const isStreaming = status === "streaming";
   const isThinking = status === "submitted";
   const isLive = isStreaming || isThinking;
+  stopRef.current = stop;
   const messagesRef = useRef<UIMessage[]>([]);
+
+  const applyRestoredMessages = useCallback((uiMsgs: UIMessage[]) => {
+    suppressAutoSendRef.current = true;
+    stop();
+    executedToolCallIdsRef.current.clear();
+    toolSigRef.current.clear();
+    setToolLoopBlocked(false);
+    if (uiMsgs.length > 0) {
+      setMessages(finalizeRestoredUiMessages(uiMsgs));
+    }
+    queueMicrotask(() => stop());
+  }, [setMessages, stop]);
+
+  useEffect(() => {
+    if (!suppressAutoSendRef.current) return;
+    if (status === "submitted" || status === "streaming") {
+      stop();
+    }
+  }, [status, stop]);
   useEffect(() => { messagesRef.current = messages; }, [messages]);
 
   // Completed turns — frozen while streaming. Rebuilt once when idle so we
@@ -790,8 +856,8 @@ export function HourglassChat() {
         if (!full.ok) return;
         const conv = await full.json() as { id: number; title: string; messages: ChatMessage[]; session_config?: string | null; artifact_refs?: string; chat_log?: string; updated_at: string };
         // Restore messages
-        const uiMsgs = (conv.messages ?? []).map(chatToUI);
-        if (uiMsgs.length > 0) setMessages(uiMsgs);
+        const uiMsgs = chatMessagesToUI(conv.messages ?? []);
+        if (uiMsgs.length > 0) applyRestoredMessages(uiMsgs);
         // Restore shelf
         let refs: ArtifactRef[] = [];
         try {
@@ -830,7 +896,7 @@ export function HourglassChat() {
         console.warn("[hourglass] conversation restore failed:", err);
       }
     })();
-  }, [restoreSessionConfig]);
+  }, [applyRestoredMessages, restoreSessionConfig]);
 
   const streamingAssistantText = liveTail?.assistantText || undefined;
   const pendingUserText = liveTail ? liveTail.userText : undefined;
@@ -1161,6 +1227,11 @@ export function HourglassChat() {
       }
     }
 
+    if (isLive) stop();
+    suppressAutoSendRef.current = false;
+    executedToolCallIdsRef.current.clear();
+    toolSigRef.current.clear();
+    setToolLoopBlocked(false);
     if (messages.length === 0) setConversationStartedAt(Date.now());
     // Ship shelf + displayed artifact so Kronus can see what's on the
     // shared panel. The server resolves the displayed uuid to full content
@@ -1239,9 +1310,14 @@ export function HourglassChat() {
         },
       },
     );
-  }, [daimonActive, messages, sendMessage, soulConfig, toolsConfig, modelConfig, imagesProvider, activeSkillSlugs, shelf, viewingUuid, imagesEnabled]);
+  }, [daimonActive, isLive, messages, sendMessage, soulConfig, stop, toolsConfig, modelConfig, imagesProvider, activeSkillSlugs, shelf, viewingUuid, imagesEnabled]);
 
   const handleNewChat = useCallback(() => {
+    stop();
+    executedToolCallIdsRef.current.clear();
+    toolSigRef.current.clear();
+    setToolLoopBlocked(false);
+    suppressAutoSendRef.current = false;
     if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
     setMessages([]);
     setCompletedTurns([]);
@@ -1268,7 +1344,7 @@ export function HourglassChat() {
     setActiveSkillSlugs([]);
     setImagesEnabled(false);
     setImagesProvider("google");
-  }, [setMessages]);
+  }, [setMessages, stop]);
 
   const handleLoadConversation = useCallback(async (id: number) => {
     handleNewChat();
@@ -1276,8 +1352,8 @@ export function HourglassChat() {
       const res = await fetch(`/api/conversations/${id}`);
       if (!res.ok) return;
       const conv = await res.json() as { id: number; title: string; messages: ChatMessage[]; session_config?: string | null; artifact_refs?: string; chat_log?: string; updated_at: string };
-      const uiMsgs = (conv.messages ?? []).map(chatToUI);
-      if (uiMsgs.length > 0) setMessages(uiMsgs);
+      const uiMsgs = chatMessagesToUI(conv.messages ?? []);
+      if (uiMsgs.length > 0) applyRestoredMessages(uiMsgs);
       try {
         const refs = JSON.parse(conv.artifact_refs ?? "[]") as ArtifactRef[];
         if (refs.length > 0) { setShelf(refs); setViewingUuid(refs[refs.length - 1].uuid); }
@@ -1302,7 +1378,7 @@ export function HourglassChat() {
     } catch (err) {
       console.warn("[hourglass] conversation load failed:", err);
     }
-  }, [handleNewChat, restoreSessionConfig, setMessages]);
+  }, [applyRestoredMessages, handleNewChat, restoreSessionConfig]);
 
   // Regen: re-paint the currently-viewed artifact with the same prompt
   // (generate/source=proposal), or fall back to direct generation from
@@ -1654,7 +1730,12 @@ export function HourglassChat() {
     navigator.clipboard?.writeText(text).catch(() => { /* ignore */ });
   }, []);
 
-  // Keyboard: Cmd+/ toggle rail; Esc return-to-now
+  // Keyboard: Cmd+/ toggle rail; Esc stop when live else jump to latest
+  const isLiveRef = useRef(false);
+  const toolLoopBlockedRef = useRef(false);
+  isLiveRef.current = isLive;
+  toolLoopBlockedRef.current = toolLoopBlocked;
+
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key === "/") {
@@ -1662,7 +1743,12 @@ export function HourglassChat() {
         setRailOpen((o) => !o);
       }
       if (e.key === "Escape") {
-        heroRef.current?.scrollToBottom();
+        if (isLiveRef.current || toolLoopBlockedRef.current) {
+          stopRef.current();
+          setToolLoopBlocked(false);
+        } else {
+          heroRef.current?.scrollToBottom();
+        }
       }
     };
     window.addEventListener("keydown", onKey);
@@ -1777,7 +1863,45 @@ export function HourglassChat() {
   const handleChatModelChange = useCallback((k: string) => setChatModel(k as ChatModelKey), []);
   const handleToggleDaimon = useCallback(() => setDaimonActive((a) => !a), []);
   const handleHeroRegen = useCallback(() => { void handleRegen(); }, [handleRegen]);
-  const handleScrollTurnChange = useCallback(() => {}, []);
+  const [visibleTurn, setVisibleTurn] = useState(1);
+  const latestTurn = pendingUserText !== undefined ? turns.length + 1 : turns.length;
+  const handleScrollTurnChange = useCallback((turn: number) => {
+    setVisibleTurn(turn);
+  }, []);
+  const handleTurnNavStep = useCallback((direction: -1 | 1) => {
+    const latest = pendingUserText !== undefined ? turns.length + 1 : turns.length;
+    if (latest <= 0) return;
+    setVisibleTurn((currentVisible) => {
+      const current = Math.min(Math.max(currentVisible || latest, 1), latest);
+      const target = direction < 0 ? Math.max(1, current - 1) : Math.min(latest, current + 1);
+      if (target === current) {
+        if (direction > 0) heroRef.current?.scrollToTurn(latest);
+        return currentVisible;
+      }
+      heroRef.current?.scrollToTurn(target);
+      return target;
+    });
+  }, [pendingUserText, turns.length]);
+  const handleTurnNavCharged = useCallback((direction: -1 | 1) => {
+    const latest = pendingUserText !== undefined ? turns.length + 1 : turns.length;
+    if (latest <= 0) return;
+    if (direction < 0) {
+      setVisibleTurn(1);
+      heroRef.current?.scrollToTurn(1);
+      return;
+    }
+    setVisibleTurn(latest);
+    heroRef.current?.scrollToTurn(latest);
+  }, [pendingUserText, turns.length]);
+  const turnNav = useMemo(() => {
+    if (latestTurn <= 0) return undefined;
+    return {
+      visibleTurn: Math.min(Math.max(visibleTurn, 1), latestTurn),
+      latestTurn,
+      onStep: handleTurnNavStep,
+      onCharged: handleTurnNavCharged,
+    };
+  }, [handleTurnNavCharged, handleTurnNavStep, latestTurn, visibleTurn]);
   const handleConversationSummaryUpdated = useCallback((id: number, patch: Partial<(typeof recentConversations)[number]>) => {
     setRecentConversations((prev) => prev.map((c) => (c.id === id ? { ...c, ...patch } : c)));
   }, []);
@@ -1819,6 +1943,14 @@ export function HourglassChat() {
 
   return (
     <div className={`hg-stage${moodCollapsed ? " hg-mood-collapsed" : ""}`}>
+      {toolLoopBlocked && (
+        <div className="hg-tool-budget-banner" role="status">
+          <span>Repeated tool loop detected — agent stopped. Send a new message or dismiss to continue.</span>
+          <button type="button" onClick={() => { stop(); setToolLoopBlocked(false); }}>
+            dismiss
+          </button>
+        </div>
+      )}
       <HourglassChrome
         conversationTitle={conversationTitle}
         conversationId={conversationId}
@@ -1849,6 +1981,7 @@ export function HourglassChat() {
         onSkipApproval={handleSkipProposal}
         onEditImage={canEditDisplayedImage ? handleEditImageOpen : undefined}
         editPopover={museEditPopover}
+        turnNav={turnNav}
       />
 
       <Composer
@@ -1879,7 +2012,8 @@ export function HourglassChat() {
         daimonActive={daimonActive}
         onToggleDaimon={handleToggleDaimon}
         onStop={stop}
-        isStreaming={isStreaming}
+        isLive={isLive}
+        canStop={isLive || toolLoopBlocked}
       />
 
       <Hero
@@ -1890,6 +2024,7 @@ export function HourglassChat() {
         activeToolCalls={activeToolCalls}
         isThinking={isThinking}
         isStreaming={isStreaming}
+        conversationAnchorKey={conversationId ?? "new"}
         onRegen={handleHeroRegen}
         onCopy={handleCopy}
         onScrollTurnChange={handleScrollTurnChange}

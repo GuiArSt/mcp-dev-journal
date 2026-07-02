@@ -11,6 +11,7 @@ import { repositoryExecutors } from "./repository";
 import { aiIntegrationExecutors } from "./ai-integrations";
 import { gitExecutors } from "./git";
 import { searchExecutors } from "./search";
+import { slackExecutors } from "./slack";
 import { googleExecutors } from "./google";
 import { cursorDelegateExecutors } from "./cursor-delegate";
 import type { ToolExecutionResult, ToolExecutor } from "./types";
@@ -28,6 +29,7 @@ const toolExecutors: Record<string, ToolExecutor> = {
   ...aiIntegrationExecutors,
   ...gitExecutors,
   ...searchExecutors,
+  ...slackExecutors,
   ...googleExecutors,
   ...cursorDelegateExecutors,
 };

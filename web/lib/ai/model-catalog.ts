@@ -33,6 +33,19 @@ export const CHAT_MODEL_CATALOG = [
     description: "Default — fast agentic chat",
   },
   {
+    key: "claude-sonnet-5",
+    label: "Claude Sonnet 5",
+    shortLabel: "Sonnet 5",
+    provider: "anthropic",
+    providerLabel: "Anthropic",
+    modelId: "claude-sonnet-5",
+    // Anthropic API: 1M context, adaptive thinking (Claude Sonnet 5 docs, Jun 2026)
+    contextWindow: 1_000_000,
+    hasThinking: true,
+    tier: "standard",
+    description: "Agentic Sonnet — speed, tools, everyday work",
+  },
+  {
     key: "claude-opus-4.8",
     label: "Claude Opus 4.8",
     shortLabel: "Opus 4.8",
@@ -103,7 +116,7 @@ const LEGACY_CHAT_MODEL_KEYS: Record<string, ChatModelKey> = {
   "gemini-3.1-flash-lite": "gemini-3.5-flash",
   "claude-opus-4.6": "claude-opus-4.8",
   "claude-opus-4.7": "claude-opus-4.8",
-  "claude-sonnet-4.6": "claude-opus-4.8",
+  "claude-sonnet-4.6": "claude-sonnet-5",
   "gpt-5.4": "gpt-5.5",
   "gpt-5.3-instant": "gpt-5.5",
 };

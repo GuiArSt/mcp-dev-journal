@@ -1,6 +1,6 @@
 "use client";
 
-import { forwardRef, memo, useRef, useImperativeHandle, useEffect, useMemo, useState } from "react";
+import { forwardRef, memo, useRef, useImperativeHandle, useEffect, useMemo, useState, useCallback } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import remarkBreaks from "remark-breaks";
@@ -12,6 +12,13 @@ import type { ConversationSummaryRow } from "@/lib/conversation-summary-ui";
 
 const INITIAL_RENDERED_TURNS = 24;
 const LOAD_EARLIER_STEP = 24;
+const USER_MSG_PREVIEW_CHARS = 80;
+
+function previewUserText(text: string, max = USER_MSG_PREVIEW_CHARS): string {
+  const oneLine = text.replace(/\s+/g, " ").trim();
+  if (oneLine.length <= max) return oneLine;
+  return `${oneLine.slice(0, max - 1)}…`;
+}
 
 type RecentConversation = ConversationSummaryRow;
 
@@ -29,37 +36,142 @@ interface HeroProps {
   recentConversations?: RecentConversation[];
   onLoadConversation?: (id: number) => void;
   onConversationSummaryUpdated?: (id: number, patch: Partial<RecentConversation>) => void;
+  /** Changes when a conversation is loaded or reset — triggers scroll-to-start after render. */
+  conversationAnchorKey?: string | number | null;
 }
 
 export interface HeroHandle {
   scrollToTurn: (n: number) => void;
   scrollToBottom: () => void;
+  scrollToTop: () => void;
 }
+
+const NEAR_BOTTOM_PX = 140;
 
 function formatTime(ts: number) {
   return new Date(ts).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 }
 
 export const Hero = forwardRef<HeroHandle, HeroProps>(function Hero(
-  { turns, streamingAssistantText, pendingUserText, activeToolCalls = [], isThinking, isStreaming, onRegen, onCopy, onEdit, onScrollTurnChange, recentConversations, onLoadConversation, onConversationSummaryUpdated },
+  {
+    turns,
+    streamingAssistantText,
+    pendingUserText,
+    activeToolCalls = [],
+    isThinking,
+    isStreaming,
+    onRegen,
+    onCopy,
+    onEdit,
+    onScrollTurnChange,
+    recentConversations,
+    onLoadConversation,
+    onConversationSummaryUpdated,
+    conversationAnchorKey,
+  },
   ref,
 ) {
   const heroRef = useRef<HTMLElement | null>(null);
-  const [returnPillVisible, setReturnPillVisible] = useState(false);
+  const [latestButtonVisible, setLatestButtonVisible] = useState(false);
   const [renderedTurnCount, setRenderedTurnCount] = useState(INITIAL_RENDERED_TURNS);
+  const stickToBottomRef = useRef(true);
+  const programmaticScrollRef = useRef(false);
+  const anchorKeyRef = useRef<string | number | null | undefined>(undefined);
+  const pendingStartAnchorRef = useRef(false);
+
+  const isNearBottom = useCallback((el: HTMLElement) => {
+    return el.scrollHeight - el.scrollTop - el.clientHeight < NEAR_BOTTOM_PX;
+  }, []);
+
+  const scrollToTop = useCallback((behavior: ScrollBehavior = "instant") => {
+    const el = heroRef.current;
+    if (!el) return;
+    programmaticScrollRef.current = true;
+    stickToBottomRef.current = false;
+    el.scrollTo({ top: 0, behavior });
+    window.setTimeout(() => {
+      programmaticScrollRef.current = false;
+      if (heroRef.current) setLatestButtonVisible(!isNearBottom(heroRef.current));
+    }, behavior === "smooth" ? 320 : 0);
+  }, [isNearBottom]);
+
+  const scrollToBottom = useCallback((behavior: ScrollBehavior = "instant") => {
+    const el = heroRef.current;
+    if (!el) return;
+    programmaticScrollRef.current = true;
+    stickToBottomRef.current = true;
+    el.scrollTo({ top: el.scrollHeight, behavior });
+    window.setTimeout(() => {
+      programmaticScrollRef.current = false;
+      if (heroRef.current) setLatestButtonVisible(!isNearBottom(heroRef.current));
+    }, behavior === "smooth" ? 320 : 0);
+  }, [isNearBottom]);
+
+  const scrollTargetIntoView = useCallback((target: HTMLElement, behavior: ScrollBehavior = "smooth") => {
+    const container = heroRef.current;
+    if (!container) return;
+    programmaticScrollRef.current = true;
+    stickToBottomRef.current = false;
+    const containerRect = container.getBoundingClientRect();
+    const targetRect = target.getBoundingClientRect();
+    const top = container.scrollTop + (targetRect.top - containerRect.top) - 36;
+    container.scrollTo({ top: Math.max(0, top), behavior });
+    window.setTimeout(() => {
+      programmaticScrollRef.current = false;
+      if (heroRef.current) setLatestButtonVisible(!isNearBottom(heroRef.current));
+    }, behavior === "smooth" ? 320 : 0);
+  }, [isNearBottom]);
+
+  const scrollToTurnIndex = useCallback((turnIndex: number, focus: "kronos" | "start" = "kronos") => {
+    const el = heroRef.current;
+    if (!el) return;
+
+    const latestTurn = pendingUserText !== undefined ? turns.length + 1 : turns.length;
+    if (turnIndex > latestTurn) {
+      scrollToBottom("smooth");
+      return;
+    }
+
+    const scrollTurnBlock = (index: number) => {
+      const node = heroRef.current;
+      if (!node) return;
+      const block = node.querySelector<HTMLElement>(`[data-turn="${index}"]`);
+      if (!block) return;
+      const target =
+        focus === "kronos"
+          ? (block.querySelector<HTMLElement>(".hg-kronos-msg") ?? block)
+          : block;
+      scrollTargetIntoView(target, "smooth");
+    };
+
+    // In-flight pending turn is rendered outside `turns[]`.
+    if (pendingUserText !== undefined && turnIndex === latestTurn) {
+      scrollTurnBlock(turnIndex);
+      return;
+    }
+
+    const pos = turns.findIndex((t) => t.index === turnIndex);
+    if (pos < 0) return;
+
+    const doScroll = () => scrollTurnBlock(turnIndex);
+
+    const requiredRendered = turns.length - pos;
+    if (requiredRendered > renderedTurnCount) {
+      setRenderedTurnCount(requiredRendered);
+      window.requestAnimationFrame(() => {
+        window.requestAnimationFrame(doScroll);
+      });
+      return;
+    }
+
+    doScroll();
+  }, [pendingUserText, renderedTurnCount, scrollToBottom, scrollTargetIntoView, turns]);
 
   useImperativeHandle(ref, () => ({
-    scrollToTurn: (n: number) => {
-      const el = heroRef.current;
-      if (!el) return;
-      const block = el.querySelector<HTMLElement>(`[data-turn="${n}"]`);
-      if (block) el.scrollTo({ top: block.offsetTop - 40, behavior: "smooth" });
-    },
-    scrollToBottom: () => {
-      const el = heroRef.current;
-      if (el) el.scrollTop = el.scrollHeight;
-    },
-  }), []);
+    scrollToTurn: scrollToTurnIndex,
+    scrollToBottom: () => scrollToBottom("smooth"),
+    scrollToTop: () => scrollToTop("instant"),
+  }), [scrollToBottom, scrollToTop, scrollToTurnIndex]);
 
   const currentTurn = turns.length;
   const hiddenTurnCount = Math.max(0, turns.length - renderedTurnCount);
@@ -72,19 +184,19 @@ export const Hero = forwardRef<HeroHandle, HeroProps>(function Hero(
     setRenderedTurnCount((count) => Math.min(Math.max(count, INITIAL_RENDERED_TURNS), Math.max(turns.length, INITIAL_RENDERED_TURNS)));
   }, [turns.length]);
 
-  // Track scroll to toggle return-pill + notify parent
+  // Track scroll: pin/unpin bottom follow + latest button + parent turn indicator.
   useEffect(() => {
     const el = heroRef.current;
     if (!el) return;
     const onScroll = () => {
-      const blocks = el.querySelectorAll<HTMLElement>(".hg-turn-block");
-      if (!blocks.length) return;
-      const lastBlock = blocks[blocks.length - 1];
-      const scrolledPastCurrent = el.scrollTop < lastBlock.offsetTop - 200;
-      setReturnPillVisible(scrolledPastCurrent);
+      if (!programmaticScrollRef.current) {
+        stickToBottomRef.current = isNearBottom(el);
+      }
+      setLatestButtonVisible(turns.length > 0 && !isNearBottom(el));
 
       if (onScrollTurnChange) {
-        // find the block whose top is closest above the visible center
+        const blocks = el.querySelectorAll<HTMLElement>(".hg-turn-block");
+        if (!blocks.length) return;
         const center = el.scrollTop + el.clientHeight / 2;
         let visible = currentTurn;
         for (const b of Array.from(blocks)) {
@@ -93,29 +205,70 @@ export const Hero = forwardRef<HeroHandle, HeroProps>(function Hero(
         onScrollTurnChange(visible);
       }
     };
+    onScroll();
     el.addEventListener("scroll", onScroll, { passive: true });
     return () => el.removeEventListener("scroll", onScroll);
-  }, [currentTurn, onScrollTurnChange, turns.length]);
+  }, [currentTurn, isNearBottom, onScrollTurnChange, turns.length]);
 
-  // Keep streaming cheap: throttle scroll-to-bottom to one layout pass per frame.
-  const scrollRafRef = useRef<number | null>(null);
   useEffect(() => {
-    const el = heroRef.current;
-    if (!el) return;
-    if (scrollRafRef.current != null) cancelAnimationFrame(scrollRafRef.current);
-    scrollRafRef.current = requestAnimationFrame(() => {
-      scrollRafRef.current = null;
-      if (heroRef.current) heroRef.current.scrollTop = heroRef.current.scrollHeight;
-    });
-    return () => {
-      if (scrollRafRef.current != null) cancelAnimationFrame(scrollRafRef.current);
-    };
-  }, [turns.length, streamingAssistantText]);
+    if (anchorKeyRef.current !== conversationAnchorKey) {
+      anchorKeyRef.current = conversationAnchorKey;
+      if (typeof conversationAnchorKey === "number") {
+        pendingStartAnchorRef.current = true;
+      }
+    }
+  }, [conversationAnchorKey]);
 
-  const handleReturnClick = () => {
+  // After a conversation loads or resets, anchor at the beginning once layout settles.
+  useEffect(() => {
+    if (!pendingStartAnchorRef.current || turns.length === 0) return;
+
+    let cancelled = false;
+    const anchor = () => {
+      if (cancelled || !heroRef.current) return;
+      pendingStartAnchorRef.current = false;
+      scrollToTop("instant");
+    };
+
+    const raf = requestAnimationFrame(() => {
+      requestAnimationFrame(anchor);
+    });
+    const settleTimer = window.setTimeout(anchor, 180);
+
+    return () => {
+      cancelled = true;
+      cancelAnimationFrame(raf);
+      window.clearTimeout(settleTimer);
+    };
+  }, [scrollToTop, turns.length]);
+
+  // While streaming, follow the live tail only if the reader is pinned to the bottom.
+  const streamScrollRafRef = useRef<number | null>(null);
+  useEffect(() => {
+    const live = pendingUserText !== undefined || isStreaming;
+    if (!live) return;
     const el = heroRef.current;
-    if (!el) return;
-    el.scrollTop = el.scrollHeight;
+    if (!el || !stickToBottomRef.current) return;
+
+    if (streamScrollRafRef.current != null) cancelAnimationFrame(streamScrollRafRef.current);
+    streamScrollRafRef.current = requestAnimationFrame(() => {
+      streamScrollRafRef.current = null;
+      const node = heroRef.current;
+      if (!node || !stickToBottomRef.current) return;
+      programmaticScrollRef.current = true;
+      node.scrollTop = node.scrollHeight;
+      programmaticScrollRef.current = false;
+    });
+
+    return () => {
+      if (streamScrollRafRef.current != null) cancelAnimationFrame(streamScrollRafRef.current);
+    };
+  }, [isStreaming, pendingUserText, streamingAssistantText]);
+
+  const handleLatestClick = () => {
+    const latest = pendingUserText !== undefined ? turns.length + 1 : turns.length;
+    if (latest <= 0) return;
+    scrollToTurnIndex(latest, "kronos");
   };
 
   const handleLoadEarlier = () => {
@@ -124,14 +277,6 @@ export const Hero = forwardRef<HeroHandle, HeroProps>(function Hero(
 
   return (
     <main className="hg-hero" ref={heroRef as never}>
-      <button
-        type="button"
-        className={`hg-return-pill${returnPillVisible ? " hg-show" : ""}`}
-        onClick={handleReturnClick}
-      >
-        ← return to now (beat {String(currentTurn).padStart(2, "0")})
-      </button>
-
       <div className="hg-doc">
         {turns.length === 0 && !pendingUserText && (
           <div className="hg-doc-empty">
@@ -201,6 +346,16 @@ export const Hero = forwardRef<HeroHandle, HeroProps>(function Hero(
           />
         )}
       </div>
+
+      <button
+        type="button"
+        className={`hg-scroll-latest${latestButtonVisible ? " hg-show" : ""}`}
+        onClick={handleLatestClick}
+        aria-label={`Jump to latest turn, beat ${String(currentTurn).padStart(2, "0")}`}
+      >
+        <span className="hg-scroll-latest-icon" aria-hidden>↓</span>
+        <span>latest · beat {String(currentTurn).padStart(2, "0")}</span>
+      </button>
     </main>
   );
 });
@@ -251,6 +406,28 @@ function PendingTurnBlock({
   );
 }
 
+function UserTurnMessage({ text }: { text: string }) {
+  const [expanded, setExpanded] = useState(false);
+  const trimmed = text.trim();
+  if (!trimmed) return null;
+
+  return (
+    <div className={`hg-user-msg-wrap${expanded ? " hg-expanded" : " hg-collapsed"}`}>
+      <button
+        type="button"
+        className="hg-user-msg-toggle"
+        onClick={() => setExpanded((open) => !open)}
+        aria-expanded={expanded}
+      >
+        <span className="hg-user-msg-label">you</span>
+        {!expanded && <span className="hg-user-msg-preview">{previewUserText(trimmed, 56)}</span>}
+        <span className="hg-user-msg-fold">{expanded ? "hide" : "show"}</span>
+      </button>
+      {expanded && <div className="hg-user-msg hg-user-msg-body">{text}</div>}
+    </div>
+  );
+}
+
 const TurnBlock = memo(function TurnBlock({ turn, isCurrent, isThinking, isStreaming, onRegen, onCopy, onEdit }: TurnBlockProps) {
   const displayedText = turn.assistantText;
   const toolCalls = turn.toolCalls ?? [];
@@ -270,7 +447,7 @@ const TurnBlock = memo(function TurnBlock({ turn, isCurrent, isThinking, isStrea
         </span>
       </div>
 
-      <div className="hg-user-msg">{turn.userText}</div>
+      <UserTurnMessage text={turn.userText} />
 
       <div className="hg-kronos-msg">
         <div className="hg-kronos-avatar" aria-hidden />

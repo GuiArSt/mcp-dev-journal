@@ -1,6 +1,5 @@
-import { convertToModelMessages } from "ai";
+import { convertToModelMessages, modelMessageSchema } from "ai";
 import { z } from "zod/v4";
-import { modelMessageSchema } from "@ai-sdk/provider-utils";
 import { repairModelMessages } from "../lib/chat-message-repair";
 
 const schema = z.array(modelMessageSchema);
@@ -22,7 +21,14 @@ async function main() {
   const broken = [
     {
       role: "user" as const,
-      parts: [{ type: "file" as const, mediaType: "image/png", filename: "image.png" }],
+      parts: [
+        {
+          type: "file" as const,
+          mediaType: "image/png",
+          filename: "image.png",
+          url: "https://example.com/image.png",
+        },
+      ],
     },
   ];
   const raw = await convertToModelMessages(broken);

@@ -67,6 +67,7 @@ export const LEAN_SOUL_CONFIG: SoulConfigState = {
   linearIncludeCompleted: false,
   sliteNotes: false,
   notionPages: false,
+  slackConversations: false,
 };
 
 /** Lean baseline tools config — only journal + repository for basic functionality */
@@ -81,6 +82,7 @@ export const LEAN_TOOLS_CONFIG: ToolsConfigState = {
   webSearch: false,
   slite: false,
   notion: false,
+  slack: false,
   google: false,
   memory: false,
   aiIntegrations: false,
@@ -100,6 +102,7 @@ export const ALL_SOUL_CONFIG: SoulConfigState = {
   linearIncludeCompleted: false,
   sliteNotes: true,
   notionPages: true,
+  slackConversations: true,
 };
 
 /** All tools enabled */
@@ -114,6 +117,7 @@ export const ALL_TOOLS_CONFIG: ToolsConfigState = {
   webSearch: true,
   slite: true,
   notion: true,
+  slack: true,
   google: true,
   memory: true,
   aiIntegrations: true,
@@ -187,7 +191,8 @@ export function soulConfigsEqual(a: SoulConfigState, b: SoulConfigState): boolea
     a.linearIssues === b.linearIssues &&
     a.linearIncludeCompleted === b.linearIncludeCompleted &&
     a.sliteNotes === b.sliteNotes &&
-    a.notionPages === b.notionPages
+    a.notionPages === b.notionPages &&
+    a.slackConversations === b.slackConversations
   );
 }
 
@@ -206,6 +211,7 @@ export function toolsConfigsEqual(a: ToolsConfigState, b: ToolsConfigState): boo
     a.webSearch === b.webSearch &&
     a.slite === b.slite &&
     a.notion === b.notion &&
+    a.slack === b.slack &&
     a.google === b.google &&
     a.memory === b.memory &&
     a.aiIntegrations === b.aiIntegrations
@@ -228,7 +234,8 @@ export function isAlmightyConfig(soul: SoulConfigState, tools: ToolsConfigState)
     soul.linearProjects &&
     soul.linearIssues &&
     soul.sliteNotes &&
-    soul.notionPages;
+    soul.notionPages &&
+    soul.slackConversations;
 
   const allTools =
     tools.journal &&
@@ -241,6 +248,7 @@ export function isAlmightyConfig(soul: SoulConfigState, tools: ToolsConfigState)
     tools.webSearch &&
     tools.slite &&
     tools.notion &&
+    tools.slack &&
     tools.google &&
     tools.memory &&
     tools.aiIntegrations;

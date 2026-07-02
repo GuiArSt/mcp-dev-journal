@@ -28,10 +28,10 @@ export const KRONUS_CONTEXT_SECTION_SEED: ContextSectionTaxonomyRow[] = [
   },
   {
     section_key: "portfolioProjects",
-    label: "Portfolio",
+    label: "Services & Projects",
     category: "soul",
     soul_config_key: "portfolioProjects",
-    source_tables: ["portfolio_projects"],
+    source_tables: ["portfolio_projects", "portfolio_products"],
     sort_order: 20,
   },
   {
@@ -105,5 +105,13 @@ export const KRONUS_CONTEXT_SECTION_SEED: ContextSectionTaxonomyRow[] = [
     soul_config_key: "notionPages",
     source_tables: ["notion_pages"],
     sort_order: 110,
+  },
+  {
+    section_key: "slackConversations",
+    label: "Slack",
+    category: "integration",
+    soul_config_key: "slackConversations",
+    source_tables: ["slack_conversations", "slack_messages"],
+    sort_order: 120,
   },
 ];

@@ -22,6 +22,7 @@ export async function POST(req: NextRequest) {
     size?: PaintSize;
     quality?: PaintQuality;
     provider?: MuseProvider;
+    painterModel?: string;
     styleHint?: string;
     commit_hash?: string;
     document_id?: number;

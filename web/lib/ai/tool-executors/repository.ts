@@ -392,7 +392,18 @@ export const repositoryExecutors: Record<string, ToolExecutor> = {
         technologies: args.technologies || [],
         tags: args.tags || [],
         description: args.description,
+        excerpt: args.excerpt,
         image: args.image || args.image_url,
+        productIds: args.productIds || [],
+        visible: args.visible,
+        diagramImage: args.diagramImage,
+        imageFallback: args.imageFallback,
+        caseStudyLevel: args.caseStudyLevel,
+        humaneProblem: args.humaneProblem,
+        humaneSolution: args.humaneSolution,
+        technicalProblem: args.technicalProblem,
+        technicalSolution: args.technicalSolution,
+        technicalSpecs: args.technicalSpecs,
       }),
     });
 
@@ -418,7 +429,18 @@ export const repositoryExecutors: Record<string, ToolExecutor> = {
         technologies: args.technologies,
         tags: args.tags,
         description: args.description,
+        excerpt: args.excerpt,
         image: args.image || args.image_url,
+        productIds: args.productIds,
+        visible: args.visible,
+        diagramImage: args.diagramImage,
+        imageFallback: args.imageFallback,
+        caseStudyLevel: args.caseStudyLevel,
+        humaneProblem: args.humaneProblem,
+        humaneSolution: args.humaneSolution,
+        technicalProblem: args.technicalProblem,
+        technicalSolution: args.technicalSolution,
+        technicalSpecs: args.technicalSpecs,
       }),
     });
 
@@ -427,6 +449,96 @@ export const repositoryExecutors: Record<string, ToolExecutor> = {
       throw new Error(data.error || "Failed to update portfolio project");
     return {
       output: `✅ Updated portfolio project: **${data.title || args.id}**`,
+    };
+  },
+
+  repository_list_portfolio_products: async (args) => {
+    const params = new URLSearchParams();
+    if (args.wildcard !== undefined) params.set("wildcard", String(args.wildcard));
+
+    const res = await fetch(`/api/portfolio-products?${params.toString()}`);
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || "Failed to list portfolio products");
+
+    const products = data.products || data;
+    return {
+      output: `🛒 **Portfolio Products** (${products.length} found)\n\n${products
+        .map(
+          (p: any) =>
+            `- **${p.title}** [id: \`${p.id}\`] — ${p.tagline}\n  ${p.startingPrice} · ${p.timeline}${p.wildcard ? " · wildcard" : ""}`
+        )
+        .join("\n\n")}`,
+    };
+  },
+
+  repository_get_portfolio_product: async (args) => {
+    const res = await fetch(`/api/portfolio-products/${args.id}`);
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || "Failed to get portfolio product");
+
+    return {
+      output:
+        `🛒 **${data.title}**\n\n` +
+        `**Tagline:** ${data.tagline}\n` +
+        `**Promise:** ${data.promise}\n` +
+        `**Price:** ${data.startingPrice} · **Timeline:** ${data.timeline}\n\n` +
+        `${data.humaneDescription}\n\n` +
+        `**Deliverables:**\n${(data.deliverables || []).map((d: string) => `- ${d}`).join("\n")}`,
+    };
+  },
+
+  repository_create_portfolio_product: async (args) => {
+    const res = await fetch("/api/portfolio-products", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        id: args.id,
+        title: args.title,
+        tagline: args.tagline,
+        humaneDescription: args.humaneDescription,
+        buyerPain: args.buyerPain,
+        promise: args.promise,
+        deliverables: args.deliverables || [],
+        startingPrice: args.startingPrice,
+        timeline: args.timeline,
+        ctaLabel: args.ctaLabel,
+        accent: args.accent || "gold",
+        wildcard: args.wildcard || false,
+        displayOrder: args.displayOrder ?? 0,
+      }),
+    });
+
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || "Failed to create portfolio product");
+    return {
+      output: `✅ Created portfolio product: **${args.title}** (id: \`${data.id || args.id}\`)`,
+    };
+  },
+
+  repository_update_portfolio_product: async (args) => {
+    const res = await fetch(`/api/portfolio-products/${args.id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        title: args.title,
+        tagline: args.tagline,
+        humaneDescription: args.humaneDescription,
+        buyerPain: args.buyerPain,
+        promise: args.promise,
+        deliverables: args.deliverables,
+        startingPrice: args.startingPrice,
+        timeline: args.timeline,
+        ctaLabel: args.ctaLabel,
+        accent: args.accent,
+        wildcard: args.wildcard,
+        displayOrder: args.displayOrder,
+      }),
+    });
+
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || "Failed to update portfolio product");
+    return {
+      output: `✅ Updated portfolio product: **${data.title || args.id}**`,
     };
   },
 };

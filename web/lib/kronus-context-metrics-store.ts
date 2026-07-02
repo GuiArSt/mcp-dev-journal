@@ -66,10 +66,13 @@ function initContextMetricsSchema(): void {
   }
 
   const insertTaxonomy = db.prepare(`
-    INSERT OR IGNORE INTO kronus_context_sections
+    INSERT OR REPLACE INTO kronus_context_sections
       (section_key, label, category, soul_config_key, source_tables, sort_order)
     VALUES (?, ?, ?, ?, ?, ?)
   `);
+  const beforeCount = (
+    db.prepare(`SELECT COUNT(*) as count FROM kronus_context_sections`).get() as { count: number }
+  ).count;
   for (const row of KRONUS_CONTEXT_SECTION_SEED) {
     insertTaxonomy.run(
       row.section_key,
@@ -79,6 +82,12 @@ function initContextMetricsSchema(): void {
       JSON.stringify(row.source_tables),
       row.sort_order,
     );
+  }
+  const afterCount = (
+    db.prepare(`SELECT COUNT(*) as count FROM kronus_context_sections`).get() as { count: number }
+  ).count;
+  if (afterCount > beforeCount) {
+    markKronusContextMetricsStale();
   }
 
   initDone = true;
@@ -145,6 +154,12 @@ function persistMetricsFromStats(stats: KronusContextStats, computedAt: string):
       tokens: stats.notionPagesTokens ?? 0,
       breakdown: {},
     },
+    {
+      key: "slackConversations",
+      count: stats.slackConversations ?? 0,
+      tokens: stats.slackConversationsTokens ?? 0,
+      breakdown: {},
+    },
   ];
 
   const tx = db.transaction(() => {
@@ -193,6 +208,8 @@ function statsFromSectionRows(sections: ContextSectionMetric[]): KronusContextSt
     sliteNotesTokens: byKey.sliteNotes?.token_estimate ?? 0,
     notionPages: byKey.notionPages?.item_count ?? 0,
     notionPagesTokens: byKey.notionPages?.token_estimate ?? 0,
+    slackConversations: byKey.slackConversations?.item_count ?? 0,
+    slackConversationsTokens: byKey.slackConversations?.token_estimate ?? 0,
     baseTokens: byKey.base_prompt?.token_estimate ?? 6000,
     totalTokens: 0,
     totalTokensWithCompleted: 0,
@@ -229,7 +246,8 @@ function statsFromSectionRows(sections: ContextSectionMetric[]): KronusContextSt
     stats.linearProjectsTokens +
     stats.linearIssuesTokens +
     (stats.sliteNotesTokens ?? 0) +
-    (stats.notionPagesTokens ?? 0);
+    (stats.notionPagesTokens ?? 0) +
+    (stats.slackConversationsTokens ?? 0);
 
   if (stats.linear) {
     stats.totalTokensWithCompleted =
@@ -244,7 +262,8 @@ function statsFromSectionRows(sections: ContextSectionMetric[]): KronusContextSt
       stats.linear.projects.tokensAll +
       stats.linear.issues.tokensAll +
       (stats.sliteNotesTokens ?? 0) +
-      (stats.notionPagesTokens ?? 0);
+      (stats.notionPagesTokens ?? 0) +
+      (stats.slackConversationsTokens ?? 0);
     stats.totalTokensActive =
       stats.baseTokens +
       stats.writingsTokens +
@@ -257,7 +276,8 @@ function statsFromSectionRows(sections: ContextSectionMetric[]): KronusContextSt
       stats.linear.projects.tokensActive +
       stats.linear.issues.tokensActive +
       (stats.sliteNotesTokens ?? 0) +
-      (stats.notionPagesTokens ?? 0);
+      (stats.notionPagesTokens ?? 0) +
+      (stats.slackConversationsTokens ?? 0);
   }
 
   return stats;
@@ -319,6 +339,26 @@ function loadSectionMetrics(): { sections: ContextSectionMetric[]; computedAt: s
   };
 }
 
+function hasIncompleteSectionMetrics(): boolean {
+  const db = getDatabase();
+  const row = db
+    .prepare(
+      `
+    SELECT COUNT(*) as missing
+    FROM kronus_context_sections s
+    LEFT JOIN kronus_context_section_metrics m ON m.section_key = s.section_key
+    WHERE s.soul_config_key IS NOT NULL
+      AND (
+        m.section_key IS NULL
+        OR m.computed_at IS NULL
+        OR TRIM(m.computed_at) = ''
+      )
+  `,
+    )
+    .get() as { missing: number };
+  return row.missing > 0;
+}
+
 export async function getKronusContextMetrics(options?: {
   refresh?: boolean;
 }): Promise<{
@@ -334,7 +374,11 @@ export async function getKronusContextMetrics(options?: {
     .get(META_ID) as { stale: number; computed_at: string | null } | undefined;
 
   const shouldRecompute =
-    options?.refresh === true || !meta || meta.stale === 1 || !meta.computed_at;
+    options?.refresh === true ||
+    !meta ||
+    meta.stale === 1 ||
+    !meta.computed_at ||
+    hasIncompleteSectionMetrics();
 
   if (!shouldRecompute) {
     const loaded = loadSectionMetrics();

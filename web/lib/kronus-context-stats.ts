@@ -22,6 +22,8 @@ export interface KronusContextStats {
   sliteNotesTokens?: number;
   notionPages?: number;
   notionPagesTokens?: number;
+  slackConversations?: number;
+  slackConversationsTokens?: number;
   linear?: {
     projects: {
       total: number;
@@ -69,6 +71,7 @@ export const SOUL_CONTEXT_SECTIONS: Array<{
   { key: "linearIssues", countKey: "linearIssues", tokensKey: "linearIssuesTokens" },
   { key: "sliteNotes", countKey: "sliteNotes", tokensKey: "sliteNotesTokens" },
   { key: "notionPages", countKey: "notionPages", tokensKey: "notionPagesTokens" },
+  { key: "slackConversations", countKey: "slackConversations", tokensKey: "slackConversationsTokens" },
 ];
 
 const SECTION_LOOKUP = Object.fromEntries(

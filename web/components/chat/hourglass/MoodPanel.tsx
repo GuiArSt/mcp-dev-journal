@@ -1,9 +1,10 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { ChevronLeft, ChevronRight, RefreshCw, Download, ArrowUpRight, Clock, Plus, Loader2 } from "lucide-react";
+import { ChevronLeft, ChevronRight, ChevronUp, ChevronDown, RefreshCw, Download, ArrowUpRight, Clock, Plus, Loader2 } from "lucide-react";
 import { ArtifactView } from "./artifacts/ArtifactView";
 import { ApprovalCard, type PendingApproval } from "./ApprovalCard";
+import { TurnBeatNavButton } from "./TurnBeatNavButton";
 import type { Artifact, ArtifactRef } from "./artifacts/types";
 import type { MoodTab } from "./types";
 import { beatTurnTooltip, formatBeatPadded, formatShelfSlot, moodTabForRef } from "./hourglass-ui";
@@ -53,6 +54,12 @@ interface MoodPanelProps {
   // Click-to-edit on the displayed image — opens the muse edit popover.
   onEditImage?: () => void;
   editPopover?: React.ReactNode;
+  turnNav?: {
+    visibleTurn: number;
+    latestTurn: number;
+    onStep: (direction: -1 | 1) => void;
+    onCharged: (direction: -1 | 1) => void;
+  };
 }
 
 export function MoodPanel({
@@ -76,6 +83,7 @@ export function MoodPanel({
   onSkipApproval,
   onEditImage,
   editPopover,
+  turnNav,
 }: MoodPanelProps) {
   const [historyOpen, setHistoryOpen] = useState(false);
 
@@ -125,9 +133,33 @@ export function MoodPanel({
 
   return (
     <aside className={`hg-mood${collapsed ? " hg-collapsed" : ""}${historyOpen ? " hg-history-open" : ""}`}>
-      <button className="hg-mood-collapse-btn" onClick={onToggleCollapse} title={collapsed ? "Expand" : "Collapse"}>
-        {collapsed ? <ChevronLeft /> : <ChevronRight />}
-      </button>
+      <div className="hg-mood-edge-nav" aria-label="Kronos beat navigation">
+        {turnNav && turnNav.latestTurn > 0 && (
+          <TurnBeatNavButton
+            direction="up"
+            disabled={turnNav.visibleTurn <= 1}
+            label={`Previous Kronos beat (${formatBeatPadded(Math.max(1, turnNav.visibleTurn - 1))})`}
+            onStep={() => turnNav.onStep(-1)}
+            onCharged={() => turnNav.onCharged(-1)}
+          >
+            <ChevronUp />
+          </TurnBeatNavButton>
+        )}
+        <button className="hg-mood-collapse-btn" onClick={onToggleCollapse} title={collapsed ? "Expand" : "Collapse"}>
+          {collapsed ? <ChevronLeft /> : <ChevronRight />}
+        </button>
+        {turnNav && turnNav.latestTurn > 0 && (
+          <TurnBeatNavButton
+            direction="down"
+            disabled={false}
+            label={`Next Kronos beat (${formatBeatPadded(Math.min(turnNav.latestTurn, turnNav.visibleTurn + 1))})`}
+            onStep={() => turnNav.onStep(1)}
+            onCharged={() => turnNav.onCharged(1)}
+          >
+            <ChevronDown />
+          </TurnBeatNavButton>
+        )}
+      </div>
 
       {/* Collapsed strip — visible only when collapsed */}
       <div className="hg-mood-collapsed-strip">
@@ -188,9 +220,9 @@ export function MoodPanel({
 
               {isEmpty && tab === "mood" && (
                 <div className="hg-muse-standby">
-                  {/* Portrait fills the top of the empty state. Uses the
-                      muse asset (not Kronus) since this is her surface. */}
-                  <div className="hg-muse-oracle">
+                  <div
+                    className={`hg-muse-oracle${museThoughts.length === 0 ? " hg-muse-oracle-idle" : ""}`}
+                  >
                     <div className={`hg-muse-portrait${musePainting ? " hg-muse-portrait-painting" : ""}`}>
                       <div className="hg-muse-portrait-clip">
                         {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -207,18 +239,19 @@ export function MoodPanel({
                         </div>
                       )}
                     </div>
-                    <div className="hg-muse-standby-title">
-                      {musePainting ? "The Muse Is Rendering..." : "The Muse Watches"}
+                    <div className="hg-muse-standby-copy">
+                      <div className="hg-muse-standby-title">
+                        {musePainting ? "The Muse Is Rendering..." : "The Muse Watches"}
+                      </div>
+                      {museThoughts.length === 0 && !musePainting && (
+                        <p className="hg-muse-standby-hint">
+                          Every few turns she&apos;ll offer a poem, a thought, or — when the moment earns it — visual art for you to confirm.
+                        </p>
+                      )}
                     </div>
                   </div>
-                  {/* Lower section — thoughts + hint */}
-                  <div className="hg-muse-lower">
-                    {museThoughts.length === 0 && !musePainting && (
-                      <div className="hg-muse-standby-hint">
-                        Every few turns she&apos;ll offer a poem, a thought, or - when the moment earns it - visual art for you to confirm.
-                      </div>
-                    )}
-                    {museThoughts.length > 0 && (
+                  {museThoughts.length > 0 && (
+                    <div className="hg-muse-lower">
                       <ul className="hg-muse-thoughts">
                         {museThoughts.slice().reverse().map((t, i) => (
                           <li
@@ -232,8 +265,8 @@ export function MoodPanel({
                           </li>
                         ))}
                       </ul>
-                    )}
-                  </div>
+                    </div>
+                  )}
                 </div>
               )}
 

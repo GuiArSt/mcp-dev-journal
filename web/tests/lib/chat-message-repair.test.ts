@@ -10,6 +10,7 @@ import {
   repairPartsForModel,
   repairUiMessagesForModel,
   restorePartsFromPersist,
+  finalizeRestoredUiMessages,
   normalizeUiMessageParts,
 } from "@/lib/chat-message-repair";
 
@@ -32,7 +33,8 @@ describe("chat-message-repair", () => {
   });
 
   it("repairs content-only legacy messages", () => {
-    const repaired = repairUiMessagesForModel([
+    type UiMsg = { role?: string; parts?: unknown[]; content?: unknown };
+    const repaired = repairUiMessagesForModel<UiMsg>([
       {
         role: "user",
         content: [{ type: "file", mediaType: "image/png", filename: "a.png" }],
@@ -42,7 +44,8 @@ describe("chat-message-repair", () => {
   });
 
   it("strips empty anthropic reasoning when switching to OpenAI", () => {
-    const { messages, strippedReasoning } = prepareUiMessagesForInference(
+    type UiMsg = { role?: string; parts?: unknown[]; content?: unknown };
+    const { messages, strippedReasoning } = prepareUiMessagesForInference<UiMsg>(
       [
         {
           role: "assistant",
@@ -220,6 +223,66 @@ describe("chat-message-repair", () => {
     expect(out.content).toBeUndefined();
   });
 
+  it("converts orphaned OpenAI function calls after assistant text", () => {
+    const { messages, repairedOpenAiTools } = prepareUiMessagesForInference(
+      [
+        {
+          role: "assistant",
+          parts: [
+            {
+              type: "reasoning",
+              text: "",
+              providerMetadata: { openai: { itemId: "rs_pair" } },
+            },
+            {
+              type: "tool-slack_get_conversation",
+              toolCallId: "call_ok",
+              toolName: "slack_get_conversation",
+              state: "output-available",
+              output: { ok: true },
+              callProviderMetadata: { openai: { itemId: "fc_ok" } },
+            },
+            { type: "text", text: "partial reply" },
+            {
+              type: "tool-slack_get_conversation",
+              toolCallId: "call_orphan",
+              toolName: "slack_get_conversation",
+              state: "output-available",
+              output: { ok: true },
+              callProviderMetadata: { openai: { itemId: "fc_orphan" } },
+            },
+          ],
+        },
+      ],
+      "openai",
+    );
+    expect(repairedOpenAiTools).toBe(1);
+    const types = messages[0].parts?.map((p: { type?: string }) => p.type);
+    expect(types).toEqual(["reasoning", "tool-slack_get_conversation", "text", "text"]);
+  });
+
+  it("converts Anthropic tool parts when replaying to OpenAI", () => {
+    const { messages, repairedOpenAiTools } = prepareUiMessagesForInference(
+      [
+        {
+          role: "assistant",
+          parts: [
+            {
+              type: "tool-slack_list_conversations",
+              toolCallId: "toolu_01abc",
+              toolName: "slack_list_conversations",
+              state: "output-available",
+              output: { conversations: [] },
+            },
+          ],
+        },
+      ],
+      "openai",
+    );
+    expect(repairedOpenAiTools).toBe(1);
+    expect(messages[0].parts?.[0]).toMatchObject({ type: "text" });
+  });
+
   it("conversation 132 survives full openai inference pipeline", async () => {
     const dbPath = resolve(__dirname, "../../../data/journal.db");
     if (!existsSync(dbPath)) return;
@@ -261,5 +324,65 @@ describe("chat-message-repair", () => {
     expect(result.success, JSON.stringify(result.success ? [] : result.error.issues.slice(0, 5))).toBe(
       true,
     );
+  });
+
+  it("conversation 139 survives full openai inference pipeline", async () => {
+    const dbPath = resolve(__dirname, "../../../data/journal.db");
+    if (!existsSync(dbPath)) return;
+
+    const db = new Database(dbPath, { readonly: true });
+    const row = db.prepare("SELECT messages FROM chat_conversations WHERE id = 139").get() as
+      | { messages?: string }
+      | undefined;
+    db.close();
+    if (!row?.messages) return;
+
+    const raw = JSON.parse(row.messages) as unknown[];
+    const { messages: prepared, repairedOpenAiTools } = prepareUiMessagesForInference(raw as any[], "openai");
+    expect(repairedOpenAiTools).toBeGreaterThan(0);
+
+    const sanitized = prepared
+      .map((msg: any) => {
+        if (Array.isArray(msg.parts)) {
+          return { ...msg, parts: repairPartsForModel(msg.parts), content: undefined };
+        }
+        return msg;
+      })
+      .filter((msg: any) => {
+        if (Array.isArray(msg.parts) && msg.parts.length > 0) {
+          return msg.parts.some((part: any) => {
+            if (part.type === "text") return part.text?.trim().length > 0;
+            if (part.type === "reasoning") return part.text?.trim().length > 0;
+            if (part.type === "tool-call" || part.type === "tool-result") return true;
+            if (part.type === "dynamic-tool" || (typeof part.type === "string" && part.type.startsWith("tool-"))) {
+              return true;
+            }
+            return false;
+          });
+        }
+        return typeof msg.content === "string" && msg.content.trim().length > 0;
+      });
+
+    const modelMessages = repairModelMessages(await convertToModelMessages(sanitized as any));
+    const result = z.array(modelMessageSchema).safeParse(modelMessages);
+    expect(result.success, JSON.stringify(result.success ? [] : result.error.issues.slice(0, 5))).toBe(
+      true,
+    );
+  });
+
+  it("finalizeRestoredUiMessages closes pending tool parts", () => {
+    const messages = finalizeRestoredUiMessages([
+      {
+        role: "assistant",
+        parts: [
+          { type: "tool-slack_list_conversations", toolCallId: "t1", state: "input-available", input: {} },
+        ],
+      },
+    ]);
+    const part = (
+      messages[0] as unknown as { parts: Array<{ state: string; output: string }> }
+    ).parts[0];
+    expect(part.state).toBe("output-available");
+    expect(part.output).toContain("restored");
   });
 });

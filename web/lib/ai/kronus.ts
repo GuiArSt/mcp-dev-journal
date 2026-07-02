@@ -5,6 +5,7 @@ import { getPrompt } from "@/lib/ai/prompt-store";
 import {
   getDrizzleDb,
   documents,
+  portfolioProducts,
   portfolioProjects,
   skills,
   workExperience,
@@ -18,6 +19,15 @@ import {
 import { eq, desc, and } from "drizzle-orm";
 import { formatDateShort } from "@/lib/utils";
 import { buildChatIndexContext } from "@/lib/chat-memory";
+import {
+  MAX_IDENTICAL_TOOL_REPEATS,
+  MAX_RUNAWAY_TOOL_STEPS,
+} from "@/lib/hourglass-auto-send-guard";
+import {
+  formatSlackSoulSection,
+  getSlackConversationsForSoulContext,
+} from "@/lib/slack/vault";
+import { buildPortfolioSoulSection } from "@/lib/portfolio-soul-context";
 
 // Cache the soul only (repository is dynamic based on config)
 let cachedSoul: string | null = null;
@@ -59,6 +69,8 @@ export interface SoulConfig {
   sliteNotes: boolean;
   // Notion context - cached workspace pages
   notionPages: boolean;
+  // Slack context - cached conversation summaries
+  slackConversations: boolean;
 }
 
 export const DEFAULT_SOUL_CONFIG: SoulConfig = {
@@ -77,6 +89,8 @@ export const DEFAULT_SOUL_CONFIG: SoulConfig = {
   sliteNotes: false, // Can be enabled via Soul Config
   // Notion context - disabled by default
   notionPages: false, // Can be enabled via Soul Config
+  // Slack context - disabled by default
+  slackConversations: false, // Can be enabled via Soul Config
 };
 
 /**
@@ -204,40 +218,23 @@ ${writingsSection.join("\n\n---\n\n")}`;
       }
     }
 
-    // ===== PORTFOLIO PROJECTS =====
+    // ===== PORTFOLIO HUB (products + projects) =====
     if (config.portfolioProjects) {
+      const products = db
+        .select()
+        .from(portfolioProducts)
+        .orderBy(portfolioProducts.displayOrder)
+        .all();
       const projects = db
         .select()
         .from(portfolioProjects)
         .orderBy(desc(portfolioProjects.featured))
         .all();
 
-      if (projects.length > 0) {
-        const projectsSection = projects.map((p) => {
-          const techs = JSON.parse(p.technologies || "[]").join(", ");
-          const metrics = JSON.parse(p.metrics || "{}");
-          const metricsStr = Object.entries(metrics)
-            .map(([k, v]) => `${k}: ${v}`)
-            .join(" | ");
-
-          return `### ${p.title}
-**Category:** ${p.category} | **Company:** ${p.company || "Personal"} | **Status:** ${p.status}${p.featured ? " ⭐" : ""}
-**Role:** ${p.role || "N/A"}
-**Technologies:** ${techs || "N/A"}
-${metricsStr ? `**Metrics:** ${metricsStr}` : ""}
-
-${p.description || p.excerpt || ""}`;
-        });
-
-        const projectsText = `## Portfolio Projects (${projects.length})
-
-These are shipped projects, case studies, and professional work.
-They demonstrate what your creator has built and the impact achieved.
-
-${projectsSection.join("\n\n---\n\n")}`;
-
-        sections.push(projectsText);
-        totalChars += projectsText.length;
+      const portfolioText = buildPortfolioSoulSection(products, projects);
+      if (portfolioText) {
+        sections.push(portfolioText);
+        totalChars += portfolioText.length;
       }
     }
 
@@ -594,6 +591,20 @@ ${pagesSection.join("\n\n---\n\n")}`;
       }
     }
 
+    // ===== SLACK VAULT (from local mirror) =====
+    if (config.slackConversations) {
+      try {
+        const conversations = getSlackConversationsForSoulContext();
+        const slackText = formatSlackSoulSection(conversations);
+        if (slackText) {
+          sections.push(slackText);
+          totalChars += slackText.length;
+        }
+      } catch (error) {
+        console.warn("[Kronus] Slack vault not available:", error);
+      }
+    }
+
     // ===== ASSEMBLE LIBRARY =====
     if (sections.length === 0) {
       return { content: "", tokenEstimate: 0 };
@@ -658,6 +669,7 @@ function buildLeanProtocol(agentName: string): string {
 - repository_create_experience / repository_update_experience
 - repository_create_education / repository_update_education
 - repository_create_portfolio_project / repository_update_portfolio_project
+- repository_list/get/create/update_portfolio_product (commercial catalog)
 
 **Media:**
 - save_image (saving to library)
@@ -709,6 +721,27 @@ When the user provides commit information or agent reports, use the journal tool
 When discussing project management, use Linear tools to help manage their workflow.
 
 Always be helpful, insightful, and true to your ${agentName} persona.
+
+---
+
+## Tartarus Runtime Limits (read me)
+
+Your tool calls run inside Tartarus, which enforces a few guardrails. Work *with*
+them — they are not errors:
+
+- **Identical calls are de-duplicated.** Calling the same tool with the *exact
+  same arguments* more than once in a turn is redundant: the first call runs, and
+  each repeat is skipped with a notice instead of re-running. If you get a "skipped"
+  notice, do **not** keep retrying the same call — reuse the result you already
+  have, change the arguments (e.g. a different search query), or just answer.
+- **Repeating the same call ${MAX_IDENTICAL_TOOL_REPEATS}+ times trips the loop guard.**
+  This is a strong signal you are stuck. Stop, use what you have, and respond.
+- **Distinct work is unlimited.** Many *different* searches, reads, or lookups in
+  one turn are fine and encouraged for real research — only identical repeats and
+  pathological runaways are constrained.
+- **Hard ceiling: ~${MAX_RUNAWAY_TOOL_STEPS} tool steps per turn.** If you reach it
+  the run is stopped; summarize your findings and let the user continue with a new
+  message. Plan your tool use so you finish well before this.
 
 ## Formatting Guidelines
 

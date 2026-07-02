@@ -42,6 +42,12 @@ export interface HourglassChromeProps {
   onSkipApproval: () => void;
   onEditImage?: () => void;
   editPopover?: ReactNode;
+  turnNav?: {
+    visibleTurn: number;
+    latestTurn: number;
+    onStep: (direction: -1 | 1) => void;
+    onCharged: (direction: -1 | 1) => void;
+  };
 }
 
 /**
@@ -78,6 +84,7 @@ export const HourglassChrome = memo(function HourglassChrome({
   onSkipApproval,
   onEditImage,
   editPopover,
+  turnNav,
 }: HourglassChromeProps) {
   return (
     <>
@@ -124,6 +131,7 @@ export const HourglassChrome = memo(function HourglassChrome({
         onSkipApproval={onSkipApproval}
         onEditImage={onEditImage}
         editPopover={editPopover}
+        turnNav={turnNav}
       />
     </>
   );

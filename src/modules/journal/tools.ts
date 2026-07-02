@@ -2147,6 +2147,237 @@ Returns projects with titles, categories, technologies, and metrics.`,
     },
   );
 
+  // Tool 19b: repository_get_portfolio_project
+  server.registerTool(
+    "repository_get_portfolio_project",
+    {
+      title: "Get Portfolio Project",
+      description: "Get a single portfolio project by ID, including catalog fields (productIds, visible, humane/technical case-study copy).",
+      inputSchema: {
+        id: z.string().describe("Portfolio project ID slug"),
+      },
+    },
+    async ({ id }) => {
+      try {
+        const project = await fetchTartarus<any>(`/api/portfolio-projects/${encodeURIComponent(id)}`);
+        const text = `🚀 Portfolio Project: ${project.title}\n\n${JSON.stringify(project, null, 2)}`;
+        return { content: [{ type: "text" as const, text: truncateOutput(text) }] };
+      } catch (error) {
+        throw toMcpError(error);
+      }
+    },
+  );
+
+  // Tool 19c: repository_create_portfolio_project
+  server.registerTool(
+    "repository_create_portfolio_project",
+    {
+      title: "Create Portfolio Project",
+      description: "Create a portfolio project (case study). Supports catalog fields: productIds, visible, humane/technical layers.",
+      inputSchema: {
+        id: z.string().describe("Unique project ID slug"),
+        title: z.string().describe("Project title"),
+        category: z.string().describe("Project category"),
+        company: z.string().optional(),
+        role: z.string().optional(),
+        status: z.enum(["shipped", "wip", "archived"]).default("shipped"),
+        featured: z.boolean().default(false),
+        technologies: z.array(z.string()).optional(),
+        tags: z.array(z.string()).optional(),
+        description: z.string().optional(),
+        excerpt: z.string().optional(),
+        image: z.string().optional(),
+        productIds: z.array(z.string()).optional(),
+        visible: z.boolean().optional(),
+        imageFallback: z.string().optional(),
+        caseStudyLevel: z.enum(["full", "compact", "archive"]).optional(),
+        humaneProblem: z.string().optional(),
+        humaneSolution: z.string().optional(),
+        technicalProblem: z.string().optional(),
+        technicalSolution: z.string().optional(),
+        technicalSpecs: z.string().optional(),
+      },
+    },
+    async (args) => {
+      try {
+        const project = await fetchTartarus<any>("/api/portfolio-projects", {
+          method: "POST",
+          body: args,
+        });
+        return {
+          content: [{ type: "text" as const, text: `✅ Created portfolio project: ${project.title} (id: ${project.id})` }],
+        };
+      } catch (error) {
+        throw toMcpError(error);
+      }
+    },
+  );
+
+  // Tool 19d: repository_update_portfolio_project
+  server.registerTool(
+    "repository_update_portfolio_project",
+    {
+      title: "Update Portfolio Project",
+      description: "Update a portfolio project, including catalog visibility and case-study copy.",
+      inputSchema: {
+        id: z.string().describe("Portfolio project ID"),
+        title: z.string().optional(),
+        category: z.string().optional(),
+        company: z.string().optional(),
+        role: z.string().optional(),
+        status: z.enum(["shipped", "wip", "archived"]).optional(),
+        featured: z.boolean().optional(),
+        technologies: z.array(z.string()).optional(),
+        tags: z.array(z.string()).optional(),
+        description: z.string().optional(),
+        excerpt: z.string().optional(),
+        image: z.string().optional(),
+        productIds: z.array(z.string()).optional(),
+        visible: z.boolean().optional(),
+        imageFallback: z.string().optional(),
+        caseStudyLevel: z.enum(["full", "compact", "archive"]).optional(),
+        humaneProblem: z.string().optional(),
+        humaneSolution: z.string().optional(),
+        technicalProblem: z.string().optional(),
+        technicalSolution: z.string().optional(),
+        technicalSpecs: z.string().optional(),
+      },
+    },
+    async ({ id, ...body }) => {
+      try {
+        const project = await fetchTartarus<any>(`/api/portfolio-projects/${encodeURIComponent(id)}`, {
+          method: "PUT",
+          body,
+        });
+        return {
+          content: [{ type: "text" as const, text: `✅ Updated portfolio project: ${project.title} (id: ${id})` }],
+        };
+      } catch (error) {
+        throw toMcpError(error);
+      }
+    },
+  );
+
+  // Tool 19e: repository_list_portfolio_products
+  server.registerTool(
+    "repository_list_portfolio_products",
+    {
+      title: "List Portfolio Products",
+      description: "List commercial portfolio products — what you can hire me to do. Distinct from portfolio projects (case-study proof).",
+      inputSchema: {
+        wildcard: z.boolean().optional().describe("Filter wildcard offerings"),
+      },
+    },
+    async ({ wildcard }) => {
+      try {
+        const params = new URLSearchParams();
+        if (wildcard !== undefined) params.set("wildcard", String(wildcard));
+        const response = await fetchTartarus<{ products: any[] }>(
+          `/api/portfolio-products${params.toString() ? `?${params}` : ""}`,
+        );
+        const text = `🛒 Portfolio Products (${response.products.length})\n\n${JSON.stringify(response.products, null, 2)}`;
+        return { content: [{ type: "text" as const, text: truncateOutput(text) }] };
+      } catch (error) {
+        throw toMcpError(error);
+      }
+    },
+  );
+
+  // Tool 19f: repository_get_portfolio_product
+  server.registerTool(
+    "repository_get_portfolio_product",
+    {
+      title: "Get Portfolio Product",
+      description: "Get a commercial portfolio product by ID.",
+      inputSchema: {
+        id: z.string().describe("Product ID slug (e.g. ai-systems)"),
+      },
+    },
+    async ({ id }) => {
+      try {
+        const product = await fetchTartarus<any>(`/api/portfolio-products/${encodeURIComponent(id)}`);
+        const text = `🛒 Portfolio Product: ${product.title}\n\n${JSON.stringify(product, null, 2)}`;
+        return { content: [{ type: "text" as const, text: truncateOutput(text) }] };
+      } catch (error) {
+        throw toMcpError(error);
+      }
+    },
+  );
+
+  // Tool 19g: repository_create_portfolio_product
+  server.registerTool(
+    "repository_create_portfolio_product",
+    {
+      title: "Create Portfolio Product",
+      description: "Create a commercial portfolio product offering for the public catalog.",
+      inputSchema: {
+        id: z.string().describe("Unique product ID slug"),
+        title: z.string(),
+        tagline: z.string(),
+        humaneDescription: z.string(),
+        buyerPain: z.string(),
+        promise: z.string(),
+        deliverables: z.array(z.string()).optional(),
+        startingPrice: z.string(),
+        timeline: z.string(),
+        ctaLabel: z.string(),
+        accent: z.enum(["gold", "red", "blue"]).default("gold"),
+        wildcard: z.boolean().default(false),
+        displayOrder: z.number().default(0),
+      },
+    },
+    async (args) => {
+      try {
+        const product = await fetchTartarus<any>("/api/portfolio-products", {
+          method: "POST",
+          body: args,
+        });
+        return {
+          content: [{ type: "text" as const, text: `✅ Created portfolio product: ${product.title} (id: ${product.id})` }],
+        };
+      } catch (error) {
+        throw toMcpError(error);
+      }
+    },
+  );
+
+  // Tool 19h: repository_update_portfolio_product
+  server.registerTool(
+    "repository_update_portfolio_product",
+    {
+      title: "Update Portfolio Product",
+      description: "Update a commercial portfolio product offering.",
+      inputSchema: {
+        id: z.string().describe("Product ID"),
+        title: z.string().optional(),
+        tagline: z.string().optional(),
+        humaneDescription: z.string().optional(),
+        buyerPain: z.string().optional(),
+        promise: z.string().optional(),
+        deliverables: z.array(z.string()).optional(),
+        startingPrice: z.string().optional(),
+        timeline: z.string().optional(),
+        ctaLabel: z.string().optional(),
+        accent: z.enum(["gold", "red", "blue"]).optional(),
+        wildcard: z.boolean().optional(),
+        displayOrder: z.number().optional(),
+      },
+    },
+    async ({ id, ...body }) => {
+      try {
+        const product = await fetchTartarus<any>(`/api/portfolio-products/${encodeURIComponent(id)}`, {
+          method: "PUT",
+          body,
+        });
+        return {
+          content: [{ type: "text" as const, text: `✅ Updated portfolio product: ${product.title} (id: ${id})` }],
+        };
+      } catch (error) {
+        throw toMcpError(error);
+      }
+    },
+  );
+
   // Tool 20: artemis_list_applications
   server.registerTool(
     "artemis_list_applications",
@@ -4485,8 +4716,49 @@ Requires TARTARUS_URL and MCP_API_KEY to be configured.`,
     },
   );
 
+  // Resource Template: Get portfolio product by ID
+  server.registerResource(
+    "repository-portfolio-product",
+    new ResourceTemplate("repository://portfolio-product/{id}", {
+      list: undefined,
+    }),
+    {
+      description:
+        "Get full details of a commercial portfolio product by ID. Returns buyer-facing copy, deliverables, and pricing band.",
+      mimeType: "application/json",
+    },
+    async (uri, { id }) => {
+      try {
+        const product = await fetchTartarusForResource<any>(
+          `/api/portfolio-products/${encodeURIComponent(id as string)}`,
+        );
+        return {
+          contents: [
+            {
+              uri: uri.href,
+              mimeType: "application/json",
+              text: JSON.stringify(product, null, 2),
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          contents: [
+            {
+              uri: uri.href,
+              mimeType: "application/json",
+              text: JSON.stringify({
+                error: `Failed to fetch portfolio product: ${error instanceof Error ? error.message : "Unknown error"}`,
+              }),
+            },
+          ],
+        };
+      }
+    },
+  );
+
   logger.success(
-    "Journal resources registered (7 resources) + Repository resources (3 resource templates)",
+    "Journal resources registered (7 resources) + Repository resources (4 resource templates)",
   );
 
   // ============================================

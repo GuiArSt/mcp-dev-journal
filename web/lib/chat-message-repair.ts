@@ -52,6 +52,90 @@ function isToolPart(part: LoosePart): boolean {
   return t === "dynamic-tool" || (typeof t === "string" && t.startsWith("tool-"));
 }
 
+function openAiResponsesItemId(
+  part: LoosePart,
+  metaKey: "callProviderMetadata" | "providerMetadata" | "providerOptions",
+): string | null {
+  const meta = part[metaKey] as Record<string, Record<string, unknown>> | undefined;
+  const openai = meta?.openai;
+  const id = openai?.itemId;
+  return typeof id === "string" ? id : null;
+}
+
+function isOpenAiFunctionCallPart(part: LoosePart): boolean {
+  const id = openAiResponsesItemId(part, "callProviderMetadata");
+  return typeof id === "string" && id.startsWith("fc_");
+}
+
+function isAnthropicToolCallPart(part: LoosePart): boolean {
+  return typeof part.toolCallId === "string" && part.toolCallId.startsWith("toolu_");
+}
+
+/**
+ * OpenAI Responses API requires each fc_ function_call to follow an rs_ reasoning
+ * item in the same assistant segment. Streaming can interleave text or append
+ * extra tool calls after a text tail, which orphans fc_ items at replay time.
+ * Anthropic tool parts (toolu_*) cannot be replayed to OpenAI at all.
+ */
+export function repairOpenAiResponsesToolHistory<
+  T extends { role?: string; parts?: unknown[]; content?: unknown },
+>(messages: T[]): { messages: T[]; repaired: number } {
+  let repaired = 0;
+  const repairedMessages = messages.map((message) => {
+    if (message.role !== "assistant" || !Array.isArray(message.parts)) {
+      return message;
+    }
+
+    let activeOpenAiReasoning = false;
+    let toolsInReasoningSegment = false;
+    let textAfterToolsInSegment = false;
+
+    const parts = message.parts.flatMap((part) => {
+      if (!part || typeof part !== "object") return [part];
+      const p = part as LoosePart;
+
+      if (p.type === "reasoning") {
+        const rsId = openAiResponsesItemId(p, "providerMetadata") ?? openAiResponsesItemId(p, "providerOptions");
+        if (typeof rsId === "string" && rsId.startsWith("rs_")) {
+          activeOpenAiReasoning = true;
+          toolsInReasoningSegment = false;
+          textAfterToolsInSegment = false;
+        }
+        return [part];
+      }
+
+      if (p.type === "text" && typeof p.text === "string" && p.text.trim().length > 0) {
+        if (toolsInReasoningSegment) textAfterToolsInSegment = true;
+        return [part];
+      }
+
+      if (!isToolPart(p)) return [part];
+
+      const mustSummarize =
+        isAnthropicToolCallPart(p) ||
+        !isOpenAiFunctionCallPart(p) ||
+        !activeOpenAiReasoning ||
+        textAfterToolsInSegment;
+
+      if (mustSummarize) {
+        repaired++;
+        const summary = summarizeUnsignedToolPart(p);
+        return summary ? [{ type: "text", text: summary }] : [];
+      }
+
+      toolsInReasoningSegment = true;
+      return [part];
+    });
+
+    if (parts.length === message.parts.length && parts.every((p, i) => p === message.parts![i])) {
+      return message;
+    }
+    return { ...message, parts, content: undefined };
+  });
+
+  return { messages: repairedMessages, repaired };
+}
+
 function toolNameFromPart(part: LoosePart): string {
   if (typeof part.toolName === "string" && part.toolName.trim()) {
     return part.toolName.trim();
@@ -154,12 +238,41 @@ export function repairPartsForModel(parts: unknown[] | undefined): unknown[] {
   return parts.flatMap(repairPartForModel);
 }
 
-/**
- * Same repair as model path — used when reloading conversations into the UI so
+/** Same repair as model path — used when reloading conversations into the UI so
  * we do not run sanitizePartsForPersist twice (which strips already-stripped data).
  */
 export function restorePartsFromPersist(parts: unknown[] | undefined): unknown[] {
   return repairPartsForModel(parts);
+}
+
+/**
+ * Close out in-flight tool parts on restored messages so useChat does not
+ * auto-continue or block the composer waiting for client tool execution.
+ */
+export function finalizeRestoredUiMessages<T extends { role?: string; parts?: unknown }>(
+  messages: T[],
+): T[] {
+  return messages.map((msg) => {
+    if (msg.role !== "assistant" || !Array.isArray(msg.parts)) return msg;
+    let changed = false;
+    const parts = msg.parts.map((part) => {
+      if (!part || typeof part !== "object") return part;
+      const p = part as LoosePart;
+      if (!isToolPart(p)) return part;
+      if (p.state === "output-available" || p.state === "output-error") return part;
+      changed = true;
+      return {
+        ...p,
+        state: "output-available",
+        output:
+          p.output ??
+          (typeof p.errorText === "string" && p.errorText.trim()
+            ? p.errorText
+            : "[restored from saved conversation]"),
+      };
+    });
+    return changed ? { ...msg, parts } : msg;
+  });
 }
 
 export function repairUiMessagesForModel<T extends { role?: string; parts?: unknown[]; content?: unknown }>(
@@ -189,18 +302,24 @@ export function repairUiMessagesForModel<T extends { role?: string; parts?: unkn
     });
 }
 
-/** Normalize, strip cross-provider reasoning, repair media/tools. */
-export function prepareUiMessagesForInference<T extends { role?: string; parts?: unknown; content?: unknown }>(
+export function prepareUiMessagesForInference<
+  T extends { role?: string; parts?: unknown[]; content?: unknown },
+>(
   messages: T[],
   targetProvider: ChatReasoningProvider,
-): { messages: T[]; strippedReasoning: number } {
-  const reasoningRepair = stripIncompatibleReasoningParts(
-    normalizeUiMessagesForModel(messages),
-    targetProvider,
-  );
+): { messages: T[]; strippedReasoning: number; repairedOpenAiTools: number } {
+  let working = normalizeUiMessagesForModel(messages);
+  let repairedOpenAiTools = 0;
+  if (targetProvider === "openai") {
+    const openAiRepair = repairOpenAiResponsesToolHistory(working);
+    working = openAiRepair.messages;
+    repairedOpenAiTools = openAiRepair.repaired;
+  }
+  const reasoningRepair = stripIncompatibleReasoningParts(working, targetProvider);
   return {
     messages: repairUiMessagesForModel(reasoningRepair.messages),
     strippedReasoning: reasoningRepair.stripped,
+    repairedOpenAiTools,
   };
 }
 

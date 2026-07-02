@@ -26,9 +26,11 @@ export const WRITE_TOOLS = new Set([
   "repository_create_education",
   "repository_update_education",
 
-  // Portfolio projects
+  // Portfolio projects & products
   "repository_create_portfolio_project",
   "repository_update_portfolio_project",
+  "repository_create_portfolio_product",
+  "repository_update_portfolio_product",
 
   // Media write operations
   "save_image",
@@ -76,6 +78,9 @@ export const READ_TOOLS = new Set([
   "repository_list_experience",
   "repository_list_education",
   "repository_list_portfolio_projects",
+  "repository_get_portfolio_project",
+  "repository_list_portfolio_products",
+  "repository_get_portfolio_product",
 
   // Media read operations
   "list_media",
@@ -169,6 +174,11 @@ export function getToolActionDescription(toolName: string, args: Record<string, 
       return `Create portfolio project: "${args.title}"`;
     case "repository_update_portfolio_project":
       return `Update portfolio project #${args.id}`;
+
+    case "repository_create_portfolio_product":
+      return `Create portfolio product: "${args.title}"`;
+    case "repository_update_portfolio_product":
+      return `Update portfolio product #${args.id}`;
 
     // Media
     case "save_image":

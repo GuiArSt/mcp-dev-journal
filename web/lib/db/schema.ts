@@ -243,6 +243,62 @@ export const mediaAssets = sqliteTable("media_assets", {
 });
 
 // ============================================================================
+// MEDIA DIGEST SYSTEM (daily news + inbox digest)
+// ============================================================================
+
+/**
+ * media_digests - one composed daily newsletter ("the report"). The durable,
+ * scalable home for the digest; the same content is also mirrored to a
+ * `documents` note for immediate reading in the Library.
+ */
+export const mediaDigests = sqliteTable("media_digests", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  digestDate: text("digest_date").notNull().unique(), // YYYY-MM-DD
+  title: text("title"),
+  summary: text("summary"), // editorial overview
+  commentary: text("commentary"), // Kronus-lite overall note
+  sections: text("sections").default("[]"), // JSON: per-topic commentary + item ids
+  inboxSummary: text("inbox_summary"),
+  itemCount: integer("item_count").default(0),
+  model: text("model"),
+  status: text("status", { enum: ["pending", "complete", "failed"] }).default("pending"),
+  documentSlug: text("document_slug"), // link to the mirrored documents note
+  createdAt: text("created_at").default("CURRENT_TIMESTAMP"),
+  updatedAt: text("updated_at").default("CURRENT_TIMESTAMP"),
+});
+
+/**
+ * public_media - individual ingested items (articles, posts) that make up a
+ * digest. The "Public Media" object: link, text bit, title, metadata.
+ */
+export const publicMedia = sqliteTable("public_media", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  digestId: integer("digest_id").references(() => mediaDigests.id, { onDelete: "cascade" }),
+  url: text("url"),
+  title: text("title").notNull(),
+  snippet: text("snippet"), // the text bit
+  publication: text("publication"), // source / domain
+  author: text("author"),
+  topic: text("topic"), // topic id from MEDIA_DIGEST_TOPICS
+  topicLabel: text("topic_label"),
+  perspective: text("perspective", {
+    enum: ["left", "right", "state", "sensationalist", "neutral", "unknown"],
+  }).default("unknown"),
+  importance: integer("importance").default(0), // 0-100, set by Kronus-lite
+  language: text("language").default("en"),
+  publishedAt: text("published_at"),
+  sourceQuery: text("source_query"),
+  provider: text("provider"),
+  metadata: text("metadata").default("{}"), // JSON catch-all
+  createdAt: text("created_at").default("CURRENT_TIMESTAMP"),
+});
+
+export type MediaDigest = typeof mediaDigests.$inferSelect;
+export type NewMediaDigest = typeof mediaDigests.$inferInsert;
+export type PublicMediaItem = typeof publicMedia.$inferSelect;
+export type NewPublicMediaItem = typeof publicMedia.$inferInsert;
+
+// ============================================================================
 // ARTEMIS JOB HUNTER SYSTEM
 // ============================================================================
 
@@ -603,6 +659,35 @@ export const athenaSessions = sqliteTable("athena_sessions", {
 // ============================================================================
 
 /**
+ * Portfolio products — commercial offerings ("what you can hire me to do").
+ * Projects are proof behind each product. Written by Kronus/MCP; website reads only.
+ */
+export const portfolioProducts = sqliteTable("portfolio_products", {
+  id: text("id").primaryKey(), // e.g., 'ai-systems'
+  title: text("title").notNull(),
+  tagline: text("tagline").notNull(),
+  humaneDescription: text("humane_description").notNull(),
+  buyerPain: text("buyer_pain").notNull(),
+  promise: text("promise").notNull(),
+  deliverables: text("deliverables").default("[]"), // JSON array
+  startingPrice: text("starting_price").notNull(),
+  timeline: text("timeline").notNull(),
+  ctaLabel: text("cta_label").notNull(),
+  accent: text("accent", { enum: ["gold", "red", "blue"] })
+    .notNull()
+    .default("gold"),
+  wildcard: integer("wildcard", { mode: "boolean" }).default(false),
+  displayOrder: integer("display_order").default(0),
+  blueprintTitle: text("blueprint_title"),
+  serviceTiers: text("service_tiers").default("[]"), // JSON: [{ title, description }]
+  caseStudyCtaLabel: text("case_study_cta_label"),
+  summary: text("summary"),
+  summaryUpdatedAt: text("summary_updated_at"),
+  createdAt: text("created_at").default("CURRENT_TIMESTAMP"),
+  updatedAt: text("updated_at").default("CURRENT_TIMESTAMP"),
+});
+
+/**
  * Portfolio projects - shipped work, case studies, showcased projects
  * Distinct from `repository_overviews` (per-repo Entry 0 documentation)
  */
@@ -627,6 +712,17 @@ export const portfolioProjects = sqliteTable("portfolio_projects", {
   sortOrder: integer("sort_order").default(0), // Manual ordering
   summary: text("summary"), // AI-generated 3-sentence summary for Kronus indexing
   summaryUpdatedAt: text("summary_updated_at"),
+  // Trinity catalog — product mapping + case-study layers for public site
+  productIds: text("product_ids").default("[]"), // JSON array of portfolio_products.id
+  visible: integer("visible", { mode: "boolean" }).default(true),
+  diagramImage: text("diagram_image"),
+  imageFallback: text("image_fallback"),
+  caseStudyLevel: text("case_study_level", { enum: ["full", "compact", "archive"] }),
+  humaneProblem: text("humane_problem"),
+  humaneSolution: text("humane_solution"),
+  technicalProblem: text("technical_problem"),
+  technicalSolution: text("technical_solution"),
+  technicalSpecs: text("technical_specs"),
   createdAt: text("created_at").default("CURRENT_TIMESTAMP"),
   updatedAt: text("updated_at").default("CURRENT_TIMESTAMP"),
 });
@@ -960,6 +1056,9 @@ export type NewHermesDictionaryTerm = typeof hermesDictionary.$inferInsert;
 
 export type HermesUserStats = typeof hermesStats.$inferSelect;
 export type NewHermesUserStats = typeof hermesStats.$inferInsert;
+
+export type PortfolioProduct = typeof portfolioProducts.$inferSelect;
+export type NewPortfolioProduct = typeof portfolioProducts.$inferInsert;
 
 export type PortfolioProject = typeof portfolioProjects.$inferSelect;
 export type NewPortfolioProject = typeof portfolioProjects.$inferInsert;

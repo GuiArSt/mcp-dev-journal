@@ -342,12 +342,13 @@ export interface ToolsConfig {
   linear: boolean; // Linear issue tracking
   slite: boolean; // Slite knowledge base
   notion: boolean; // Notion workspace pages
+  slack: boolean; // Slack vault mirror (read-only)
   git: boolean; // Git repository access (GitHub/GitLab)
   media: boolean; // Media library, attachments
 
   // Heavy/optional tools
   imageGeneration: boolean; // FLUX, Gemini image generation
-  webSearch: boolean; // Perplexity web search/research
+  webSearch: boolean; // Perplexity + Gemini web search tools
 
   // External integrations
   google: boolean; // Google Workspace (Drive, Gmail, Calendar)
@@ -382,6 +383,7 @@ export const DEFAULT_TOOLS_CONFIG: ToolsConfig = {
   linear: true,
   slite: false, // Off by default - requires SLITE_API_KEY
   notion: false, // Off by default - requires NOTION_API_KEY
+  slack: false, // Off by default - requires mirrored Slack vault
   git: false, // Off by default - requires GitHub/GitLab token
   media: true,
   imageGeneration: false, // Off by default - heavy
@@ -489,6 +491,8 @@ function buildTools(toolsConfig: ToolsConfig): Record<string, any> {
     "journal",
     "linear",
     "slite",
+    "notion",
+    "slack",
     "repository",
     "cursorDelegate",
     "aiIntegrations",
@@ -541,6 +545,7 @@ export async function POST(req: Request) {
           linearIncludeCompleted: soulConfig.linearIncludeCompleted ?? false,
           sliteNotes: soulConfig.sliteNotes ?? false,
           notionPages: soulConfig.notionPages ?? false,
+          slackConversations: soulConfig.slackConversations ?? false,
         }
       : undefined;
 
@@ -619,6 +624,7 @@ export async function POST(req: Request) {
           linear: merged.tools.linear || (toolsConfig?.linear ?? false),
           slite: merged.tools.slite || (toolsConfig?.slite ?? false),
           notion: merged.tools.notion || (toolsConfig?.notion ?? false),
+          slack: merged.tools.slack || (toolsConfig?.slack ?? false),
           git: merged.tools.git || (toolsConfig?.git ?? false),
           media: merged.tools.media || (toolsConfig?.media ?? false),
           imageGeneration:
@@ -643,6 +649,7 @@ export async function POST(req: Request) {
               linear: toolsConfig.linear ?? false,
               slite: toolsConfig.slite ?? false,
               notion: toolsConfig.notion ?? false,
+              slack: toolsConfig.slack ?? false,
               git: toolsConfig.git ?? false,
               media: toolsConfig.media ?? false,
               imageGeneration: toolsConfig.imageGeneration ?? false,
@@ -658,6 +665,7 @@ export async function POST(req: Request) {
               linear: false,
               slite: false,
               notion: false,
+              slack: false,
               git: false,
               media: false,
               imageGeneration: false,
@@ -683,6 +691,7 @@ export async function POST(req: Request) {
             linearIncludeCompleted: soulConfig.linearIncludeCompleted ?? false,
             sliteNotes: soulConfig.sliteNotes ?? false,
             notionPages: soulConfig.notionPages ?? false,
+            slackConversations: soulConfig.slackConversations ?? false,
           }
         : DEFAULT_SOUL_CONFIG;
 
@@ -696,6 +705,7 @@ export async function POST(req: Request) {
             linear: toolsConfig.linear ?? true,
             slite: toolsConfig.slite ?? false,
             notion: toolsConfig.notion ?? false,
+            slack: toolsConfig.slack ?? false,
             git: toolsConfig.git ?? false,
             media: toolsConfig.media ?? true,
             imageGeneration: toolsConfig.imageGeneration ?? false,
@@ -741,6 +751,11 @@ export async function POST(req: Request) {
         : messages;
 
     const inferencePrep = prepareUiMessagesForInference(messagesForModel as any[], actualProvider);
+    if (inferencePrep.repairedOpenAiTools > 0) {
+      console.warn(
+        `[OpenAI] Converted ${inferencePrep.repairedOpenAiTools} orphaned/cross-provider tool part(s) to text history`
+      );
+    }
     if (inferencePrep.strippedReasoning > 0) {
       console.warn(
         `[${actualProvider}] Stripped ${inferencePrep.strippedReasoning} cross-provider reasoning part(s) from history`
@@ -818,7 +833,9 @@ export async function POST(req: Request) {
     let modelMessages = repairModelMessages(await convertToModelMessages(sanitizedMessages));
 
     const isAnthropicAdaptive =
-      (activeModelId === "claude-opus-4-7" || activeModelId === "claude-fable-5") &&
+      (activeModelId === "claude-opus-4-7" ||
+        activeModelId === "claude-fable-5" ||
+        activeModelId === "claude-sonnet-5") &&
       actualProvider === "anthropic";
     if (isAnthropicAdaptive) {
       modelMessages = stripLeadingAssistantMessages(modelMessages);
@@ -866,7 +883,11 @@ export async function POST(req: Request) {
     if (hasThinking) {
       if (actualProvider === "anthropic") {
         // Opus 4.7 / Fable 5: adaptive thinking only (budget_tokens rejected by API)
-        if (activeModelId === "claude-opus-4-7" || activeModelId === "claude-fable-5") {
+        if (
+          activeModelId === "claude-opus-4-7" ||
+          activeModelId === "claude-fable-5" ||
+          activeModelId === "claude-sonnet-5"
+        ) {
           providerOptions.anthropic = {
             thinking: { type: "adaptive", display: "summarized" },
             effort: "xhigh",

@@ -91,6 +91,13 @@ export function getDatabase(): Database.Database {
     console.warn("Linear cache migration failed:", error);
   }
 
+  // Portfolio products catalog + case-study columns
+  try {
+    migratePortfolioCatalogSchema();
+  } catch (error) {
+    console.warn("Portfolio catalog migration failed:", error);
+  }
+
   return db;
 }
 
@@ -272,6 +279,74 @@ export function migrateLinearCacheSchema(): void {
     console.log("✅ Linear cache tables migrated");
   } catch (error: any) {
     console.warn("Could not migrate Linear cache tables:", error.message);
+  }
+}
+
+/**
+ * Migrate portfolio products table + catalog columns on portfolio_projects (030).
+ */
+export function migratePortfolioCatalogSchema(): void {
+  const database = getDatabase();
+
+  try {
+    database.exec(`
+      CREATE TABLE IF NOT EXISTS portfolio_products (
+        id TEXT PRIMARY KEY,
+        title TEXT NOT NULL,
+        tagline TEXT NOT NULL,
+        humane_description TEXT NOT NULL,
+        buyer_pain TEXT NOT NULL,
+        promise TEXT NOT NULL,
+        deliverables TEXT DEFAULT '[]',
+        starting_price TEXT NOT NULL,
+        timeline TEXT NOT NULL,
+        cta_label TEXT NOT NULL,
+        accent TEXT NOT NULL DEFAULT 'gold' CHECK (accent IN ('gold', 'red', 'blue')),
+        wildcard INTEGER DEFAULT 0,
+        display_order INTEGER DEFAULT 0,
+        summary TEXT,
+        summary_updated_at TEXT,
+        created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+        updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_portfolio_products_display_order ON portfolio_products(display_order);
+    `);
+  } catch (error: any) {
+    console.warn("Could not create portfolio_products table:", error.message);
+  }
+
+  const addColumn = (sql: string) => {
+    try {
+      database.exec(sql);
+    } catch (error: any) {
+      if (!error.message?.includes("duplicate column")) {
+        console.warn("Portfolio catalog column migration:", error.message);
+      }
+    }
+  };
+
+  addColumn(`ALTER TABLE portfolio_projects ADD COLUMN product_ids TEXT DEFAULT '[]'`);
+  addColumn(`ALTER TABLE portfolio_projects ADD COLUMN visible INTEGER DEFAULT 1`);
+  addColumn(`ALTER TABLE portfolio_projects ADD COLUMN diagram_image TEXT`);
+  addColumn(`ALTER TABLE portfolio_projects ADD COLUMN image_fallback TEXT`);
+  addColumn(`ALTER TABLE portfolio_projects ADD COLUMN case_study_level TEXT`);
+  addColumn(`ALTER TABLE portfolio_projects ADD COLUMN humane_problem TEXT`);
+  addColumn(`ALTER TABLE portfolio_projects ADD COLUMN humane_solution TEXT`);
+  addColumn(`ALTER TABLE portfolio_projects ADD COLUMN technical_problem TEXT`);
+  addColumn(`ALTER TABLE portfolio_projects ADD COLUMN technical_solution TEXT`);
+  addColumn(`ALTER TABLE portfolio_projects ADD COLUMN technical_specs TEXT`);
+
+  addColumn(`ALTER TABLE portfolio_products ADD COLUMN blueprint_title TEXT`);
+  addColumn(`ALTER TABLE portfolio_products ADD COLUMN service_tiers TEXT DEFAULT '[]'`);
+  addColumn(`ALTER TABLE portfolio_products ADD COLUMN case_study_cta_label TEXT`);
+
+  try {
+    database.exec(
+      `CREATE INDEX IF NOT EXISTS idx_portfolio_projects_visible ON portfolio_projects(visible)`
+    );
+  } catch (error: any) {
+    console.warn("Portfolio visible index:", error.message);
   }
 }
 

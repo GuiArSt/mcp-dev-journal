@@ -7,6 +7,7 @@ import { stringIdParamSchema, updatePortfolioProjectSchema } from "@/lib/validat
 import { NotFoundError } from "@/lib/errors";
 import { getDatabase } from "@/lib/db";
 import { normalizePortfolioImageInput, portfolioProjectImageForClient } from "@/lib/media-image-url";
+import { serializePortfolioProject } from "@/lib/portfolio-serialize";
 
 /**
  * Generate AI summary for portfolio project (async, non-blocking)
@@ -89,14 +90,9 @@ export const GET = withErrorHandler(
     }
 
     const sqlite = getDatabase();
-    return NextResponse.json({
-      ...project,
-      image: portfolioProjectImageForClient(project.image, sqlite),
-      technologies: JSON.parse(project.technologies || "[]"),
-      metrics: JSON.parse(project.metrics || "{}"),
-      links: JSON.parse(project.links || "{}"),
-      tags: JSON.parse(project.tags || "[]"),
-    });
+    return NextResponse.json(
+      serializePortfolioProject(project, portfolioProjectImageForClient(project.image, sqlite))
+    );
   }
 );
 
@@ -155,6 +151,18 @@ export const PUT = withErrorHandler(
     if (body.tags !== undefined) {
       updateData.tags = JSON.stringify(body.tags);
     }
+    if (body.productIds !== undefined) {
+      updateData.productIds = JSON.stringify(body.productIds);
+    }
+    if (body.visible !== undefined) updateData.visible = body.visible;
+    if (body.diagramImage !== undefined) updateData.diagramImage = body.diagramImage;
+    if (body.imageFallback !== undefined) updateData.imageFallback = body.imageFallback;
+    if (body.caseStudyLevel !== undefined) updateData.caseStudyLevel = body.caseStudyLevel;
+    if (body.humaneProblem !== undefined) updateData.humaneProblem = body.humaneProblem;
+    if (body.humaneSolution !== undefined) updateData.humaneSolution = body.humaneSolution;
+    if (body.technicalProblem !== undefined) updateData.technicalProblem = body.technicalProblem;
+    if (body.technicalSolution !== undefined) updateData.technicalSolution = body.technicalSolution;
+    if (body.technicalSpecs !== undefined) updateData.technicalSpecs = body.technicalSpecs;
 
     // Update project
     db.update(portfolioProjects).set(updateData).where(eq(portfolioProjects.id, id)).run();
@@ -175,14 +183,12 @@ export const PUT = withErrorHandler(
     }
 
     const sqlite = getDatabase();
-    return NextResponse.json({
-      ...project,
-      image: project ? portfolioProjectImageForClient(project.image, sqlite) : null,
-      technologies: JSON.parse(project?.technologies || "[]"),
-      metrics: JSON.parse(project?.metrics || "{}"),
-      links: JSON.parse(project?.links || "{}"),
-      tags: JSON.parse(project?.tags || "[]"),
-    });
+    return NextResponse.json(
+      serializePortfolioProject(
+        project!,
+        project ? portfolioProjectImageForClient(project.image, sqlite) : null
+      )
+    );
   }
 );
 

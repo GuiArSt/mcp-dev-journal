@@ -7,6 +7,7 @@ import { portfolioQuerySchema, createPortfolioProjectSchema } from "@/lib/valida
 import { ConflictError } from "@/lib/errors";
 import { getDatabase } from "@/lib/db";
 import { normalizePortfolioImageInput, portfolioProjectImageForClient } from "@/lib/media-image-url";
+import { serializePortfolioProject } from "@/lib/portfolio-serialize";
 
 /**
  * Generate AI summary for portfolio project (async, non-blocking)
@@ -101,14 +102,9 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
 
   const sqlite = getDatabase();
   // Parse JSON fields
-  const parsedProjects = projects.map((p) => ({
-    ...p,
-    image: portfolioProjectImageForClient(p.image, sqlite),
-    technologies: JSON.parse(p.technologies || "[]"),
-    metrics: JSON.parse(p.metrics || "{}"),
-    links: JSON.parse(p.links || "{}"),
-    tags: JSON.parse(p.tags || "[]"),
-  }));
+  const parsedProjects = projects.map((p) =>
+    serializePortfolioProject(p, portfolioProjectImageForClient(p.image, sqlite))
+  );
 
   return NextResponse.json({
     projects: parsedProjects,
@@ -158,6 +154,16 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
       links: JSON.stringify(body.links),
       tags: JSON.stringify(body.tags),
       sortOrder: body.sortOrder,
+      productIds: JSON.stringify(body.productIds ?? []),
+      visible: body.visible ?? true,
+      diagramImage: body.diagramImage ?? null,
+      imageFallback: body.imageFallback ?? null,
+      caseStudyLevel: body.caseStudyLevel ?? null,
+      humaneProblem: body.humaneProblem ?? null,
+      humaneSolution: body.humaneSolution ?? null,
+      technicalProblem: body.technicalProblem ?? null,
+      technicalSolution: body.technicalSolution ?? null,
+      technicalSpecs: body.technicalSpecs ?? null,
     })
     .run();
 
@@ -181,11 +187,10 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
   const { markContextMetricsStale } = await import("@/lib/mark-context-metrics-stale");
   markContextMetricsStale();
 
-  return NextResponse.json({
-    ...project,
-    technologies: JSON.parse(project?.technologies || "[]"),
-    metrics: JSON.parse(project?.metrics || "{}"),
-    links: JSON.parse(project?.links || "{}"),
-    tags: JSON.parse(project?.tags || "[]"),
-  });
+  return NextResponse.json(
+    serializePortfolioProject(
+      project!,
+      portfolioProjectImageForClient(project?.image, sqlite)
+    )
+  );
 });

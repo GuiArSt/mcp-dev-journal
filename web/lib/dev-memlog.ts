@@ -223,16 +223,26 @@ export function startMemLog(opts: { intervalMs?: number; getCtx?: CtxProvider } 
   tick();
   timer = window.setInterval(tick, intervalMs);
 
-  // On a previously-saved breach buffer: surface it loudly so the next
-  // session sees what happened before the crash.
+  // On a previously-saved breach buffer: surface it when it has samples (dev only).
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (raw) {
       const parsed = JSON.parse(raw) as { reason?: string; savedAt?: number; samples?: MemSample[] };
-      console.error("[mem] previous-session breach buffer", parsed);
-      // Keep it around — the user / agent may want to copy it.
+      const samples = Array.isArray(parsed.samples) ? parsed.samples : [];
+      if (samples.length > 0) {
+        console.info(
+          `[mem] ${samples.length} sample(s) from previous session${parsed.reason ? ` (${parsed.reason})` : ""}`,
+          parsed,
+        );
+      } else {
+        localStorage.removeItem(STORAGE_KEY);
+      }
     }
-  } catch { /* ignore */ }
+  } catch {
+    try {
+      localStorage.removeItem(STORAGE_KEY);
+    } catch { /* ignore */ }
+  }
 
   // Capture the final ring state when the tab is unloading. This is the
   // path that survives a freeze-then-close: sendBeacon flushes during

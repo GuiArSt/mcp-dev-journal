@@ -174,14 +174,26 @@ export function startClientErrorLog(opts: { getCtx?: CtxProvider } = {}) {
     });
   });
 
-  // Surface errors from the previous session after a crash/reload.
+  // Surface errors from the previous session after a crash/reload (dev only).
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (raw) {
       const parsed = JSON.parse(raw) as { savedAt?: number; errors?: ClientErrorReport[] };
-      console.error("[client-error] previous-session buffer", parsed);
+      const errors = Array.isArray(parsed.errors) ? parsed.errors : [];
+      if (errors.length > 0) {
+        console.info(
+          `[client-error] ${errors.length} error(s) from previous session`,
+          errors,
+        );
+      } else {
+        localStorage.removeItem(STORAGE_KEY);
+      }
     }
-  } catch { /* ignore */ }
+  } catch {
+    try {
+      localStorage.removeItem(STORAGE_KEY);
+    } catch { /* ignore */ }
+  }
 
   window.__dumpClientErrors = () => {
     try {

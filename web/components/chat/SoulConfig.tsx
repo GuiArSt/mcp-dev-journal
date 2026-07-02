@@ -52,6 +52,8 @@ export interface SoulConfigState {
   sliteNotes: boolean;
   // Notion context - cached workspace pages
   notionPages: boolean;
+  // Slack context - cached conversation summaries
+  slackConversations: boolean;
 }
 
 // Linear breakdown stats
@@ -83,6 +85,8 @@ interface SectionStats {
   sliteNotesTokens?: number;
   notionPages?: number;
   notionPagesTokens?: number;
+  slackConversations?: number;
+  slackConversationsTokens?: number;
   // Legacy fields for backwards compatibility
   linearProjects: number;
   linearProjectsTokens: number;
@@ -117,6 +121,7 @@ const DEFAULT_CONFIG: SoulConfigState = {
   linearIncludeCompleted: false,
   sliteNotes: false,
   notionPages: false,
+  slackConversations: false,
 };
 
 const FALLBACK_STATS: SectionStats = {
@@ -158,7 +163,7 @@ const REPOSITORY_SECTIONS = [
   },
   {
     key: "portfolioProjects",
-    label: "Portfolio",
+    label: "Services & Projects",
     icon: Briefcase,
     statsKey: "portfolioProjects",
     tokensKey: "portfolioProjectsTokens",
@@ -205,6 +210,13 @@ const REPOSITORY_SECTIONS = [
     icon: BookOpen,
     statsKey: "notionPages",
     tokensKey: "notionPagesTokens",
+  },
+  {
+    key: "slackConversations",
+    label: "Slack",
+    icon: MessageSquareText,
+    statsKey: "slackConversations",
+    tokensKey: "slackConversationsTokens",
   },
 ] as const;
 
@@ -296,7 +308,8 @@ export function SoulConfig({
     (config.linearProjects ? linearProjectTokens : 0) +
     (config.linearIssues ? linearIssueTokens : 0) +
     (config.sliteNotes ? (currentStats.sliteNotesTokens ?? 0) : 0) +
-    (config.notionPages ? (currentStats.notionPagesTokens ?? 0) : 0);
+    (config.notionPages ? (currentStats.notionPagesTokens ?? 0) : 0) +
+    (config.slackConversations ? (currentStats.slackConversationsTokens ?? 0) : 0);
 
   const contextPercentage = (estimatedTokens / contextLimit) * 100;
   const isHighContext = contextPercentage > CONTEXT_WARNING_THRESHOLD * 100;
@@ -319,6 +332,7 @@ export function SoulConfig({
       linearIssues: true,
       sliteNotes: true,
       notionPages: true,
+      slackConversations: true,
     });
   };
 
@@ -336,6 +350,7 @@ export function SoulConfig({
       linearIssues: false,
       sliteNotes: false,
       notionPages: false,
+      slackConversations: false,
     });
   };
 

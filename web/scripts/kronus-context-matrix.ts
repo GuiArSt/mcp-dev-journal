@@ -45,6 +45,10 @@ async function main() {
     linearIssues: { count: stats.linearIssues, tokens: stats.linearIssuesTokens },
     sliteNotes: { count: stats.sliteNotes ?? 0, tokens: stats.sliteNotesTokens ?? 0 },
     notionPages: { count: stats.notionPages ?? 0, tokens: stats.notionPagesTokens ?? 0 },
+    slackConversations: {
+      count: stats.slackConversations ?? 0,
+      tokens: stats.slackConversationsTokens ?? 0,
+    },
   };
 
   const db = getDrizzleDb();
@@ -63,13 +67,13 @@ async function main() {
 
   const skills: KronusSkill[] = skillDocs
     .map((d) => {
-      const meta = JSON.parse(d.metadata || "{}");
-      const cfg = meta.skillConfig || { soul: {}, tools: {} };
+      const meta = JSON.parse(d.metadata || "{}") as Record<string, unknown>;
+      const cfg = (meta.skillConfig || { soul: {}, tools: {} }) as KronusSkill["config"];
       return {
         id: d.id,
         slug: d.slug,
         title: d.title,
-        description: d.description || "",
+        description: typeof meta.description === "string" ? meta.description : "",
         content: d.content,
         config: cfg,
         icon: cfg.icon || "sparkles",

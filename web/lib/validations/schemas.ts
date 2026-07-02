@@ -617,6 +617,16 @@ export const createPortfolioProjectSchema = z.object({
   links: z.record(z.string(), z.string()).default({}),
   tags: z.array(z.string()).default([]),
   sortOrder: z.number().default(0),
+  productIds: z.array(z.string()).optional(),
+  visible: z.boolean().optional(),
+  diagramImage: z.string().optional().nullable(),
+  imageFallback: z.string().optional().nullable(),
+  caseStudyLevel: z.enum(["full", "compact", "archive"]).optional().nullable(),
+  humaneProblem: z.string().optional().nullable(),
+  humaneSolution: z.string().optional().nullable(),
+  technicalProblem: z.string().optional().nullable(),
+  technicalSolution: z.string().optional().nullable(),
+  technicalSpecs: z.string().optional().nullable(),
 });
 
 export type CreatePortfolioProject = z.infer<typeof createPortfolioProjectSchema>;
@@ -629,6 +639,53 @@ export const updatePortfolioProjectSchema = createPortfolioProjectSchema
   .omit({ id: true });
 
 export type UpdatePortfolioProject = z.infer<typeof updatePortfolioProjectSchema>;
+
+// ============================================================================
+// PORTFOLIO PRODUCT SCHEMAS
+// ============================================================================
+
+export const portfolioProductQuerySchema = z.object({
+  wildcard: z.coerce.boolean().optional(),
+});
+
+export type PortfolioProductQueryParams = z.infer<typeof portfolioProductQuerySchema>;
+
+export const createPortfolioProductSchema = z.object({
+  id: z
+    .string()
+    .min(1)
+    .regex(/^[a-z0-9-]+$/, "ID must be lowercase alphanumeric with dashes"),
+  title: z.string().min(1, "Title is required"),
+  tagline: z.string().min(1, "Tagline is required"),
+  humaneDescription: z.string().min(1, "Humane description is required"),
+  buyerPain: z.string().min(1, "Buyer pain is required"),
+  promise: z.string().min(1, "Promise is required"),
+  deliverables: z.array(z.string()).default([]),
+  blueprintTitle: z.string().optional().nullable(),
+  serviceTiers: z
+    .array(
+      z.object({
+        title: z.string().min(1),
+        description: z.string().min(1),
+      }),
+    )
+    .default([]),
+  caseStudyCtaLabel: z.string().optional().nullable(),
+  startingPrice: z.string().min(1, "Starting price is required"),
+  timeline: z.string().min(1, "Timeline is required"),
+  ctaLabel: z.string().min(1, "CTA label is required"),
+  accent: z.enum(["gold", "red", "blue"]).default("gold"),
+  wildcard: z.boolean().default(false),
+  displayOrder: z.number().default(0),
+});
+
+export type CreatePortfolioProduct = z.infer<typeof createPortfolioProductSchema>;
+
+export const updatePortfolioProductSchema = createPortfolioProductSchema
+  .partial()
+  .omit({ id: true });
+
+export type UpdatePortfolioProduct = z.infer<typeof updatePortfolioProductSchema>;
 
 // ============================================================================
 // EXPERIENCE SCHEMAS

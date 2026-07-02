@@ -95,9 +95,19 @@ const SOURCES: BackfillSource[] = [
     query: `SELECT id AS source_id, title, summary FROM portfolio_projects`,
   },
   {
+    type: "portfolio_product",
+    sourceTable: "portfolio_products",
+    query: `SELECT id AS source_id, title, tagline AS summary FROM portfolio_products`,
+  },
+  {
     type: "attachment",
     sourceTable: "entry_attachments",
     query: `SELECT CAST(id AS TEXT) AS source_id, filename AS title, description AS summary FROM entry_attachments`,
+  },
+  {
+    type: "media_digest",
+    sourceTable: "media_digests",
+    query: `SELECT CAST(id AS TEXT) AS source_id, title, summary FROM media_digests`,
   },
 ];
 

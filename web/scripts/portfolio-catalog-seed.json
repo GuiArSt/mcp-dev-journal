@@ -1,0 +1,246 @@
+{
+  "pricingFloor": "€7,000",
+  "pricingCeiling": "€35,000",
+  "products": [
+    {
+      "id": "ai-systems",
+      "title": "AI Systems Engineering",
+      "tagline": "Are you building an app, or do you need one built that relies on AI?",
+      "humaneDescription": "Are you building an app, or do you need one built that relies on AI?\n\nI can help you from architecture to hands-on maintenance & development. I offer AI Agents that can scale for any of your digital needs.\n\nYour AI agent is messy and you need help? I am your man.",
+      "buyerPain": "Your AI agent is messy and you need help?",
+      "promise": "I can help you from architecture to hands-on maintenance & development — AI agents that scale for any of your digital needs.",
+      "blueprintTitle": "AI SYSTEMS BLUEPRINT",
+      "deliverables": [
+        "Architecture & Deployment: Designing custom tool-calling agents and multi-step workflows.",
+        "LLMOps & Observability: Implementing Langfuse tracing, latency monitoring, and cost tracking.",
+        "Fallback & Resilience: Building multi-provider failover chains (OpenAI, Anthropic, Gemini).",
+        "Automated Validation: Setting up LLM-as-judge evaluation loops to catch quality regressions.",
+        "Provenance & Safety: Implementing cryptographic signature layers to protect manual user edits."
+      ],
+      "serviceTiers": [
+        {
+          "title": "The Diagnostic Audit",
+          "description": "A technical review of your existing AI pipeline, identifying failure points, model latency bottlenecks, and cost risks."
+        },
+        {
+          "title": "The System Build",
+          "description": "Designing and shipping a fully functional, production-ready AI agent or content-generation pipeline."
+        },
+        {
+          "title": "Systems Retainer",
+          "description": "Ongoing architectural support, code reviews, and hands-on maintenance for your legacy AI systems."
+        }
+      ],
+      "caseStudyCtaLabel": "View AI Case Studies",
+      "startingPrice": "From €12,000 / sprint",
+      "timeline": "3–6 weeks",
+      "ctaLabel": "Talk about your AI system",
+      "accent": "gold",
+      "wildcard": false,
+      "displayOrder": 1
+    },
+    {
+      "id": "product-dev",
+      "title": "Product Development",
+      "tagline": "You have an existing product and are open to AI-augmented contributions?",
+      "humaneDescription": "You have an existing product and are open to AI-augmented contributions?\n\nI can join your team and start shipping clean code immediately. Full-stack experience, a good mood and respect for engineering principles make it easy to fit with any team. Surreal adaptability via agentic coding.\n\nProduct development means I can also help you architect your product to achieve your business goals. I am a good translator of tech, business, and operations.\n\nYour team needs a reliable developer with experience? Click here for solid solution.",
+      "buyerPain": "Your team needs a reliable developer with experience?",
+      "promise": "I join your product, ship clean code fast, and translate between tech, business, and operations.",
+      "blueprintTitle": "PRODUCT ENGINEERING BLUEPRINT",
+      "deliverables": [
+        "Core Backend & APIs: Developing type-safe Hono and Next.js API endpoints.",
+        "Database Infrastructure: Designing clean, optimized relational schemas and migrations (SQLite, PostgreSQL).",
+        "Queue & Job Optimization: Refactoring monolithic, timeout-prone background jobs into decoupled tasks.",
+        "i18n & Localization: Building locale-resolution engines with support for complex regional variants.",
+        "Business Intelligence: Structuring clean databases (ETL) and building interactive analytics dashboards."
+      ],
+      "serviceTiers": [
+        {
+          "title": "The Feature Sprint",
+          "description": "A fixed-scope engagement to build, test, and ship a major backend or frontend module."
+        },
+        {
+          "title": "Fractional Product Engineer",
+          "description": "Joining your product team as an AI-augmented developer, handling tickets, refactoring database layouts, and shipping code."
+        },
+        {
+          "title": "Core Systems Retainer",
+          "description": "Continuous technical maintenance, database health checks, API optimizations, and documentation updates."
+        }
+      ],
+      "caseStudyCtaLabel": "View Engineering Case Studies",
+      "startingPrice": "From €7,000 / month",
+      "timeline": "Ongoing",
+      "ctaLabel": "Join your team",
+      "accent": "blue",
+      "wildcard": false,
+      "displayOrder": 2
+    },
+    {
+      "id": "content-pipelines",
+      "title": "Digital Content",
+      "tagline": "Digital content is a powerful canvas today. Everyone needs one, and I would be glad to shape yours.",
+      "humaneDescription": "Digital content is a powerful canvas today. Everyone needs one, and I would be glad to shape yours.\n\nI excel at communicating your message to the world & at obtaining your goals with unorthodox beauty.\n\nMultimedia, web design, or single pieces of content. Image and pen. Whatever you are after goes if it's via online content that you get it.\n\nI curate digital presences with great care; let me care for yours.\n\nYou need someone for a website? Here, please.",
+      "buyerPain": "You need someone for a website?",
+      "promise": "I shape digital presences with unorthodox beauty — handcrafted when it matters, automated when you need scale.",
+      "blueprintTitle": "DIGITAL CONTENT & CREATIVE BLUEPRINT",
+      "deliverables": [
+        "Custom Web Design: Handcrafting fast, responsive, and secure Next.js and React web spaces from scratch.",
+        "The Handcrafted Track: Writing brand manifestos, high-impact profiles, and unique web copy by hand.",
+        "The Automated Track: Designing custom AI copywriting systems (e.g. Aquinas) to scale content.",
+        "Visual & Video Production: Generating premium, upscaled AI visuals and directing narrative short videos.",
+        "Digital Marketing Strategy: Mapping performance marketing pipelines and building PostHog/analytics funnels."
+      ],
+      "serviceTiers": [
+        {
+          "title": "The Handcrafted Identity",
+          "description": "A complete digital presence package: custom Next.js website, visual design assets, and copy written by hand."
+        },
+        {
+          "title": "The Content Pipeline Build",
+          "description": "Designing an AI-assisted copywriting engine, training your team, and setting up the PostHog analytics."
+        },
+        {
+          "title": "Artistic/Marketing Commission",
+          "description": "Direct, ad-hoc creative execution for specific high-value copy, visual, or video assets."
+        }
+      ],
+      "caseStudyCtaLabel": "View Creative Projects",
+      "startingPrice": "From €6,000",
+      "timeline": "2–4 weeks",
+      "ctaLabel": "Shape my digital presence",
+      "accent": "red",
+      "wildcard": false,
+      "displayOrder": 3
+    },
+    {
+      "id": "commission",
+      "title": "Bring Me the Mess",
+      "tagline": "The wildcard. One owner for the whole stack.",
+      "humaneDescription": "Some problems do not fit a single box. If you do not know whether you need an AI developer, a backend engineer, a designer, or a copywriter, commission me to take absolute ownership of the entire stack: database, code, visuals, and copy. You bypass the friction of managing separate agencies and freelancers, and deal with one high-bandwidth builder who ships a complete, premium product from raw intent.",
+      "buyerPain": "You have a complex digital problem but no idea which discipline it belongs to.",
+      "promise": "Bring me the mess. We map it, name it, and decide what to build.",
+      "deliverables": [
+        "End-to-end ownership: data, code, visuals, copy",
+        "Discovery session + written technical roadmap",
+        "Full-spectrum builds up to enterprise scope"
+      ],
+      "startingPrice": "From €500 / session",
+      "timeline": "Custom",
+      "ctaLabel": "Bring me your mess",
+      "accent": "gold",
+      "wildcard": true,
+      "displayOrder": 4
+    }
+  ],
+  "projectOverlays": {
+    "ai-evaluation-framework": {
+      "productIds": ["ai-systems"],
+      "visible": true,
+      "caseStudyLevel": "full",
+      "imageFallback": "/images/hero-ai.png",
+      "excerptFallback": "Automated validation loops that replace vibe-based prompt testing with deterministic, multi-judge quality gates.",
+      "humaneProblem": "Creative AI output is a liability in production. A small prompt shift can introduce discriminatory language, break a layout, or violate labor law — and no human team can review thousands of generated ad variants by hand.",
+      "humaneSolution": "An automated testing layer enforces quality across the whole generation lifecycle. The moment the AI produces copy, it is intercepted and graded against structured criteria; if it fails a legal or quality check, the system generates remedy instructions and auto-corrects before any user sees a failure.",
+      "technicalProblem": "Model drift across providers makes output unpredictable, and gating production requires quantitative feedback rather than loose text analysis, with zero-tolerance gates for compliance.",
+      "technicalSolution": "A multi-judge LLM-as-judge system: smaller thematic judges evaluate specific dimensions in parallel to save tokens and avoid context-window drift, feeding a blind-ranked prompt-optimization loop.",
+      "technicalSpecs": "Wired into Langfuse via TypeScript/Hono, running 73 binary assertions across 6 judges (Legal Compliance, Best Practices, Content Relevance, Content Quality, Campaign QA, Extraction Accuracy) at a 10% production sampling rate. Golden datasets version-controlled as JSONL."
+    },
+    "langfuse-refactor": {
+      "productIds": ["ai-systems"],
+      "visible": true,
+      "caseStudyLevel": "full",
+      "humaneProblem": "AI pipelines become unmanageable when prompts are hardcoded in source files. Versioning is impossible, and changing one instruction means a full deployment, leaving developers blind to failures.",
+      "humaneSolution": "Langfuse became the operational control layer: every prompt pulled out of the code into a versioned, secure cloud environment, with instant promotion and rollback across environments and Slack error alerts.",
+      "technicalProblem": "Prompt iteration was coupled to the deploy cycle, with no tracing linking a generation failure to a specific prompt version.",
+      "technicalSolution": "Prompts organized as system/user/chat triplets composed dynamically at runtime, matched to production spans via Langfuse trace metadata.",
+      "technicalSpecs": "Shipped across 12 endpoints. Runtime prompt promotion via env labels (dev/stg/prd) with no code deploy; OpenTelemetry trace linkage for version-level observability."
+    },
+    "surgical-chat-provenance": {
+      "productIds": ["ai-systems", "product-dev"],
+      "visible": true,
+      "caseStudyLevel": "full",
+      "imageFallback": "/images/hero-copy.png",
+      "excerptFallback": "Content provenance that protects manual human edits from being silently overwritten by later AI-generation rounds.",
+      "humaneProblem": "When a user manually edited an AI-generated ad or landing page, asking the chatbot for a follow-up change silently regenerated the whole page and wiped their work — destroying trust.",
+      "humaneSolution": "A content fingerprint system marks which fields are pure AI and which a human touched, so the AI is instructed to surgically edit only untouched fields and preserve human choices verbatim.",
+      "technicalProblem": "The assistant had no awareness of the boundaries of manual edits across multiple entities (Feeds, Stories, WelcomeScreens, Forms), causing destructive overwrites on save.",
+      "technicalSolution": "The AI-Pristine provenance architecture writes cryptographic field signatures on generation, enabling asymmetric drift detection on user save.",
+      "technicalSpecs": "AiBaselineService (PHP/Laravel) stores SHA256-truncated content signatures in polymorphic metadata. The Hono chat gateway runs a silent blast-zone check before dispatching background jobs, stripping edited fields from the AI mutation scope. (ENG-4216)"
+    },
+    "ai-image-pipeline": {
+      "productIds": ["ai-systems", "content-pipelines"],
+      "visible": true,
+      "caseStudyLevel": "compact",
+      "humaneProblem": "The marketing team depended on expensive stock photography with slow turnaround and limited flexibility.",
+      "humaneSolution": "An on-demand AI image-generation pipeline integrating Midjourney and Magnific upscaling, producing royalty-free, brand-fit assets and eliminating annual stock costs.",
+      "technicalProblem": "Stitching multiple image models and an upscaler into a reliable, cost-aware production flow.",
+      "technicalSolution": "A Python/Laravel pipeline orchestrating generation, upscaling, and validation, later hardened with direct provider routing to cut timeouts.",
+      "technicalSpecs": "Eliminated €10,000+ in annual Shutterstock cost; integrated Midjourney, Magnific, and Imagen with on-demand generation."
+    },
+    "tartarus-ai-operating-substrate": {
+      "productIds": ["ai-systems", "product-dev"],
+      "visible": true,
+      "caseStudyLevel": "full",
+      "imageFallback": "/images/portfolio-meta.png",
+      "excerptFallback": "A local-first, sovereign AI workspace — persistent context, journal memory, media, and agent tooling over MCP.",
+      "humaneProblem": "Testing cutting-edge AI orchestration, experimental schemas, or custom MCP servers inside a live enterprise environment is a major security and downtime risk.",
+      "humaneSolution": "Tartarus is a local-first personal AI workspace and private sandbox where new technologies are hardened before production — credential security, encryption-at-rest, media sync, and MCP-based resource exposure.",
+      "technicalProblem": "Loading large-scale personal context (writings, files, project history) with strict type safety and minimal latency in a single local server.",
+      "technicalSolution": "A Next.js + Hono + SQLite (WAL) stack with Drizzle schemas and an esbuild-optimized stdio-to-HTTP MCP bridge, plus local-to-cloud media sync.",
+      "technicalSpecs": "Orchestrates context across many SQLite tables, loads a lean baseline and additively merges skills on demand; esbuild-optimized MCP bridge wrapping stdio protocols."
+    },
+    "hades-bi-platform": {
+      "productIds": ["product-dev", "content-pipelines"],
+      "visible": true,
+      "caseStudyLevel": "full",
+      "imageFallback": "/images/projects/data-pipeline.png",
+      "excerptFallback": "An ETL pipeline that classified 23K+ campaigns into ISCO/NACE/NUTS taxonomies to power forecasting and BI.",
+      "humaneProblem": "The company sat on disconnected oceans of unstructured data — CRM extracts, Excel, Metabase exports, Meta API metrics — with no common taxonomy, making aggregate analysis impossible.",
+      "humaneSolution": "A modular ETL pipeline that ingests, cleans, and standardizes disparate sources into optimized databases, then compiles aggregate BI and forecasting on top.",
+      "technicalProblem": "Classifying tens of thousands of unstructured job postings into international occupational, industrial, and geographic standards was too slow and costly with synchronous calls.",
+      "technicalSolution": "A layered Python/SQL pipeline using the OpenAI Batch API for bulk hierarchical classification, with weighted-scoring forecasting over the cleaned dataset.",
+      "technicalSpecs": "Classified 23,199 campaigns into ISCO/NACE/NUTS, reducing API cost ~50% and lookup queries from 12 to 3 per job; feeds PostHog HogQL dashboards and a cost-forecasting engine."
+    },
+    "campaign-labeling-pipeline": {
+      "productIds": ["product-dev", "content-pipelines"],
+      "visible": true,
+      "caseStudyLevel": "compact",
+      "humaneProblem": "Manual labeling of campaign data for BI would take thousands of human hours with high error rates.",
+      "humaneSolution": "A Python CLI that mass-labels and validates campaigns with well-prompted structured LLM outputs, cutting processing from hours to minutes.",
+      "technicalProblem": "Reliable, cost-effective structured extraction at scale over noisy real-world data.",
+      "technicalSolution": "Async CLI pipeline normalizing data and using Gemini Flash for ~99% reliable structured outputs into SQLite.",
+      "technicalSpecs": "26K campaigns + 7K companies labeled to ISCO/NACE at a fraction of crowd-labeling cost; built the database that powers forecasting."
+    },
+    "portfolio-website": {
+      "productIds": ["product-dev", "content-pipelines"],
+      "visible": true,
+      "caseStudyLevel": "compact"
+    },
+    "ngo-digital-toolkit": {
+      "productIds": ["content-pipelines"],
+      "visible": true,
+      "caseStudyLevel": "compact"
+    },
+    "guacamole-website": {
+      "productIds": ["content-pipelines"],
+      "visible": true,
+      "caseStudyLevel": "compact"
+    },
+    "amz-marketing-infographics": {
+      "productIds": ["content-pipelines"],
+      "visible": true,
+      "caseStudyLevel": "compact"
+    },
+    "partner-website": {
+      "productIds": ["content-pipelines"],
+      "visible": true,
+      "caseStudyLevel": "compact"
+    },
+    "musician-website": {
+      "productIds": ["content-pipelines"],
+      "visible": true,
+      "caseStudyLevel": "compact"
+    }
+  }
+}

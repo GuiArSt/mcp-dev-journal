@@ -35,6 +35,7 @@ export interface ToolsConfigState {
   linear: boolean;
   slite: boolean;
   notion: boolean;
+  slack: boolean;
   git: boolean;
   media: boolean;
   imageGeneration: boolean;
@@ -56,6 +57,7 @@ const DEFAULT_CONFIG: ToolsConfigState = {
   linear: false,
   slite: false,
   notion: false,
+  slack: false,
   git: false,
   media: false,
   imageGeneration: false,
@@ -98,6 +100,7 @@ const CORE_TOOLS = [
   { key: "linear", name: "Linear", icon: Briefcase, description: "Issues & projects", count: 7 },
   { key: "slite", name: "Slite", icon: BookOpen, description: "Knowledge base", count: 5 },
   { key: "notion", name: "Notion", icon: BookOpen, description: "Workspace pages", count: 4 },
+  { key: "slack", name: "Slack", icon: MessageSquareText, description: "Vault mirror", count: 2 },
   { key: "git", name: "Git", icon: Github, description: "GitHub/GitLab repos", count: 3 },
   { key: "media", name: "Media", icon: Image, description: "Asset management", count: 3 },
   { key: "google", name: "Google", icon: Cloud, description: "Drive, Gmail, Calendar", count: 11 },
@@ -118,7 +121,7 @@ const MULTIMODAL_TOOLS = [
     description: "FLUX, Gemini, Imagen",
     count: 1,
   },
-  { key: "webSearch", name: "Web Search", icon: Search, description: "Google, Perplexity", count: 5 },
+  { key: "webSearch", name: "Web Search", icon: Search, description: "Perplexity + Gemini", count: 6 },
 ] as const;
 
 export function ToolsConfig({ config, onChange }: ToolsConfigProps) {
@@ -136,6 +139,7 @@ export function ToolsConfig({ config, onChange }: ToolsConfigProps) {
       linear: true,
       slite: true,
       notion: true,
+      slack: true,
       git: true,
       media: true,
       imageGeneration: true,
@@ -154,6 +158,7 @@ export function ToolsConfig({ config, onChange }: ToolsConfigProps) {
       linear: true,
       slite: true,
       notion: true,
+      slack: false,
       git: false,
       media: true,
       imageGeneration: false,
@@ -172,10 +177,11 @@ export function ToolsConfig({ config, onChange }: ToolsConfigProps) {
     ...(config.linear ? [7] : []),
     ...(config.slite ? [5] : []),
     ...(config.notion ? [4] : []),
+    ...(config.slack ? [2] : []),
     ...(config.git ? [3] : []),
     ...(config.media ? [3] : []),
     ...(config.imageGeneration ? [1] : []),
-    ...(config.webSearch ? [5] : []),
+    ...(config.webSearch ? [6] : []),
     ...(config.google ? [11] : []),
     ...(config.memory ? [2] : []),
     ...(config.aiIntegrations ? [8] : []),

@@ -5,6 +5,7 @@
 import {
   getDrizzleDb,
   documents,
+  portfolioProducts,
   portfolioProjects,
   skills,
   workExperience,
@@ -19,7 +20,12 @@ import { eq, desc, and } from "drizzle-orm";
 import { formatDateShort } from "@/lib/utils";
 import { estimateTokens } from "@/lib/chat-text-cleaner";
 import { buildChatIndexContext } from "@/lib/chat-memory";
+import {
+  formatSlackSoulSection,
+  getSlackConversationsForSoulContext,
+} from "@/lib/slack/vault";
 import type { KronusContextStats } from "@/lib/kronus-context-stats";
+import { buildPortfolioSoulSection } from "@/lib/portfolio-soul-context";
 
 const BASE_TOKENS = 6000;
 
@@ -81,32 +87,11 @@ ${writingsSection.join("\n\n---\n\n")}`;
   }
   const writingsTokens = sectionTokens(writingsBlock);
 
-  // ── Portfolio ──
+  // ── Portfolio hub (products + projects) ──
+  const products = db.select().from(portfolioProducts).orderBy(portfolioProducts.displayOrder).all();
   const projects = db.select().from(portfolioProjects).orderBy(desc(portfolioProjects.featured)).all();
-  let projectsBlock = "";
-  if (projects.length > 0) {
-    const projectsSection = projects.map((p) => {
-      const techs = JSON.parse(p.technologies || "[]").join(", ");
-      const metrics = JSON.parse(p.metrics || "{}");
-      const metricsStr = Object.entries(metrics)
-        .map(([k, v]) => `${k}: ${v}`)
-        .join(" | ");
-      return `### ${p.title}
-**Category:** ${p.category} | **Company:** ${p.company || "Personal"} | **Status:** ${p.status}${p.featured ? " ⭐" : ""}
-**Role:** ${p.role || "N/A"}
-**Technologies:** ${techs || "N/A"}
-${metricsStr ? `**Metrics:** ${metricsStr}` : ""}
-
-${p.description || p.excerpt || ""}`;
-    });
-    projectsBlock = `## Portfolio Projects (${projects.length})
-
-These are shipped projects, case studies, and professional work.
-They demonstrate what your creator has built and the impact achieved.
-
-${projectsSection.join("\n\n---\n\n")}`;
-  }
-  const portfolioProjectsTokens = sectionTokens(projectsBlock);
+  const portfolioBlock = buildPortfolioSoulSection(products, projects);
+  const portfolioProjectsTokens = sectionTokens(portfolioBlock);
 
   // ── CV Skills ──
   const allSkills = db.select().from(skills).all();
@@ -398,6 +383,18 @@ ${pagesSection.join("\n\n---\n\n")}`;
     /* optional */
   }
 
+  // ── Slack ──
+  let slackCount = 0;
+  let slackConversationsTokens = 0;
+  try {
+    const conversations = getSlackConversationsForSoulContext();
+    slackCount = conversations.length;
+    const block = formatSlackSoulSection(conversations);
+    if (block) slackConversationsTokens = sectionTokens(block);
+  } catch {
+    /* optional */
+  }
+
   const totalTokensActive =
     BASE_TOKENS +
     writingsTokens +
@@ -410,7 +407,8 @@ ${pagesSection.join("\n\n---\n\n")}`;
     linearProjectsTokensActive +
     linearIssuesTokensActive +
     sliteNotesTokens +
-    notionPagesTokens;
+    notionPagesTokens +
+    slackConversationsTokens;
 
   const totalTokensWithCompleted =
     BASE_TOKENS +
@@ -424,7 +422,8 @@ ${pagesSection.join("\n\n---\n\n")}`;
     linearProjectsTokensAll +
     linearIssuesTokensAll +
     sliteNotesTokens +
-    notionPagesTokens;
+    notionPagesTokens +
+    slackConversationsTokens;
 
   const totalTokensKronus =
     BASE_TOKENS +
@@ -438,12 +437,13 @@ ${pagesSection.join("\n\n---\n\n")}`;
     linearProjectsTokensKronus +
     linearIssuesTokensKronus +
     sliteNotesTokens +
-    notionPagesTokens;
+    notionPagesTokens +
+    slackConversationsTokens;
 
   return {
     writings: writings.length,
     writingsTokens,
-    portfolioProjects: projects.length,
+    portfolioProjects: products.length + projects.length,
     portfolioProjectsTokens,
     skills: allSkills.length,
     skillsTokens,
@@ -483,6 +483,8 @@ ${pagesSection.join("\n\n---\n\n")}`;
     sliteNotesTokens,
     notionPages: notionCount,
     notionPagesTokens,
+    slackConversations: slackCount,
+    slackConversationsTokens,
     baseTokens: BASE_TOKENS,
     totalTokens: totalTokensKronus,
     totalTokensWithCompleted,

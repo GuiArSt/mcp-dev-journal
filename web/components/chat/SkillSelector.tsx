@@ -52,6 +52,8 @@ const SOUL_SECTIONS: { key: keyof SoulConfigState; label: string }[] = [
   { key: "linearProjects", label: "Linear Projects" },
   { key: "linearIssues", label: "Linear Issues" },
   { key: "sliteNotes", label: "Slite Notes" },
+  { key: "notionPages", label: "Notion Pages" },
+  { key: "slackConversations", label: "Slack" },
 ];
 
 // Tools config section labels
@@ -62,6 +64,8 @@ const TOOL_SECTIONS: { key: keyof ToolsConfigState; label: string }[] = [
   { key: "aiIntegrations", label: "AI Integrations" },
   { key: "linear", label: "Linear" },
   { key: "slite", label: "Slite" },
+  { key: "notion", label: "Notion" },
+  { key: "slack", label: "Slack" },
   { key: "git", label: "Git" },
   { key: "media", label: "Media" },
   { key: "imageGeneration", label: "Image Gen" },

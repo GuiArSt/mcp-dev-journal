@@ -3,7 +3,7 @@ import os from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { closeDatabase, getDatabase } from "@/lib/db";
-import { getSlackVaultStatus, listSlackVaultCache, syncSlackVault } from "@/lib/slack/vault";
+import { getSlackVaultStatus, listSlackVaultCache, listSlackConversationsFromVault, getSlackConversationFromVault, syncSlackVault } from "@/lib/slack/vault";
 
 let tempDir: string;
 const originalUserToken = process.env.SLACK_USER_TOKEN;
@@ -253,5 +253,46 @@ describe("Slack vault sync", () => {
         expect.objectContaining({ conversationId: "CACHED1", conversationTitle: "cached-room", text: "cached sync" }),
       ]),
     );
+  });
+
+  it("lists and fetches mirrored conversations for Kronus tools", () => {
+    getSlackVaultStatus();
+    const db = getDatabase();
+    db.prepare(`
+      INSERT INTO slack_conversations
+        (id, name, type, vault_type, is_member, is_channel, raw_json, summary, latest_ts)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(
+      "CTX1",
+      "design-team",
+      "public_channel",
+      "public_forum",
+      1,
+      1,
+      JSON.stringify({ id: "CTX1", name: "design-team" }),
+      "Discussed launch timeline and muse UI polish.",
+      "1710000100.000100",
+    );
+    db.prepare(`
+      INSERT INTO slack_messages
+        (conversation_id, ts, user_id, username, text, raw_json)
+      VALUES (?, ?, ?, ?, ?, ?)
+    `).run(
+      "CTX1",
+      "1710000100.000100",
+      "U1",
+      "guillermo",
+      "Ship summaries before raw history in Kronus.",
+      JSON.stringify({ ts: "1710000100.000100", text: "Ship summaries before raw history in Kronus." }),
+    );
+
+    const listed = listSlackConversationsFromVault({ query: "launch", limit: 10 });
+    expect(listed.total).toBe(1);
+    expect(listed.conversations[0]?.id).toBe("CTX1");
+
+    const detail = getSlackConversationFromVault("CTX1", { messageLimit: 10 });
+    expect(detail?.conversation.title).toBe("design-team");
+    expect(detail?.messages).toHaveLength(1);
+    expect((detail?.messages[0] as { text?: string } | undefined)?.text).toContain("summaries");
   });
 });
